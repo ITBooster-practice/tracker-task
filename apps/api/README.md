@@ -1,26 +1,103 @@
-# With-NestJs | API
+# API (Tracker Task)
 
-## Getting Started
+REST API сервер построен на **NestJS** с использованием TypeScript.
 
-First, run the development server:
+## Запуск
 
 ```bash
-pnpm run dev
-# Also works with NPM, YARN, BUN, ...
+pnpm dev
 ```
 
-By default, your server will run at [localhost:3000](http://localhost:3000). You can use your favorite API platform like [Insomnia](https://insomnia.rest/) or [Postman](https://www.postman.com/) to test your APIs
+API будет доступен по адресу [localhost:3000](http://localhost:3000)
 
-You can start editing the demo **APIs** by modifying [linksService](./src/links/links.service.ts) provider.
+## Архитектура приложения
 
-### Important Note 🚧
+```
+main.ts → AppModule → LinksModule
+             ↓           ↓
+        AppController  LinksController
+             ↓           ↓
+         AppService   LinksService
+```
 
-If you plan to `build` or `test` the app. Please make sure to build the `packages/*` first.
+**Принцип работы:**
 
-## Learn More
+- **main.ts** — точка входа, создает приложение и запускает сервер
+- **Module** — объединяет контроллеры и сервисы
+- **Controller** — принимает HTTP запросы (endpoints)
+- **Service** — содержит бизнес-логику
 
-Learn more about `NestJs` with following resources:
+## Структура API
 
-- [Official Documentation](https://docs.nestjs.com) - A progressive Node.js framework for building efficient, reliable and scalable server-side applications.
-- [Official NestJS Courses](https://courses.nestjs.com) - Learn everything you need to master NestJS and tackle modern backend applications at any scale.
-- [GitHub Repo](https://github.com/nestjs/nest)
+```
+src/
+├── main.ts              # Точка входа, запуск сервера на :3000
+├── app.module.ts        # Корневой модуль приложения
+├── app.controller.ts    # Demo endpoint (GET /)
+├── app.service.ts       # Demo логика
+└── links/               # Пример модуля
+    ├── links.module.ts       # Модуль для работы со ссылками
+    ├── links.controller.ts   # HTTP endpoints (CRUD)
+    ├── links.service.ts      # Бизнес-логика (пока моки)
+    ├── links.controller.spec.ts  # Unit тесты
+    └── links.service.spec.ts     # Unit тесты
+
+test/
+└── app.e2e-spec.ts      # E2E тесты
+
+vitest.config.ts         # Конфигурация unit-тестов
+vitest.config.e2e.ts     # Конфигурация e2e-тестов
+```
+
+## Доступные endpoints
+
+### Demo
+
+- `GET /` — Hello World
+
+### Links (пример CRUD)
+
+- `GET /links` — получить все ссылки
+- `GET /links/:id` — получить одну ссылку
+- `POST /links` — создать ссылку
+- `PATCH /links/:id` — обновить ссылку
+- `DELETE /links/:id` — удалить ссылку
+
+## Тестирование
+
+```bash
+# Unit тесты
+pnpm test
+
+# E2E тесты
+pnpm test:e2e
+
+# С UI
+pnpm test:ui
+```
+
+## ✅ Текущая структура
+
+- ✅ **main.ts** — точка входа
+- ✅ **app.module.ts** — корневой модуль
+- ✅ **links/** — пример модуля (использует моки)
+- ✅ **test/** — E2E тесты
+- ✅ **vitest.config.ts** — конфигурация тестов
+
+## 🚧 Следующие шаги
+
+1. **Добавить базу данных** (PostgreSQL + Prisma)
+2. **Заменить моки** в LinksService на реальные запросы к БД
+3. **Создать модули** для основных сущностей:
+   - Projects (проекты)
+   - Issues (задачи)
+   - Sprints (спринты)
+   - Users (пользователи)
+4. **Добавить аутентификацию** (JWT)
+5. **Удалить** AppController/AppService или переделать в HealthCheck
+
+## Разработка
+
+- API автоматически перезагружается при изменении кода
+- Используйте [Postman](https://www.postman.com/) для тестирования endpoints
+- Перед сборкой проекта убедитесь, что скомпилированы `packages/*`

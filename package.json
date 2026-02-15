@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "tracker-task",
   "version": "0.0.0",
   "private": true,
   "description": "",
@@ -16,11 +16,11 @@
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "prettier": "^3.2.5",
+    "prettier": "^3.8.1",
     "turbo": "^2.8.9"
   },
-  "packageManager": "pnpm@8.15.5",
+  "packageManager": "pnpm@10.29.3",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@repo/jest-config",
+  "name": "@repo/vitest-config",
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
@@ -31,10 +31,12 @@
     }
   },
   "devDependencies": {
-    "@jest/types": "^30.2.0",
-    "jest": "^30.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^3.0.5",
+    "@vitest/ui": "^3.0.5",
     "next": "16.1.5",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.5"
   },
   "scripts": {
     "build": "tsc"
