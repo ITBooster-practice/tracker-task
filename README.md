@@ -70,7 +70,6 @@ tracker-task/
 - [Turborepo](https://turborepo.dev/docs/getting-started/installation) - для монорепозитория
 - [axios](https://axios-http.com/docs/intro) - для HTTP запросов
 
-
 ### **Архитектурная методология**
 
 - [Feature sliced design](https://feature-sliced.design/docs/get-started) - для организации структуры проекта
@@ -103,8 +102,8 @@ tracker-task/
 ### **Стек**
 
 - [NestJS](https://docs.nestjs.com/) - для создания серверного приложения
-- [Полный курс по Nest.js](https://teacoder.ru/lesson/53bb0ebf-34f1-4423-882f-117f18b97b07)
-- [Nest JS(ITBooster)](https://itbooster.ru/roadmap/10/?nodeId=dec7d585-da3c-41a0-a15a-b450dfbd5a6b)
+	- [Полный курс по Nest.js](https://teacoder.ru/lesson/53bb0ebf-34f1-4423-882f-117f18b97b07)
+	- [Nest JS(ITBooster)](https://itbooster.ru/roadmap/10/?nodeId=dec7d585-da3c-41a0-a15a-b450dfbd5a6b)
 - [TypeScript](https://www.typescriptlang.org/docs/) - для статической типизации
 - [Socket.IO](https://socket.io/docs/v4/tutorial/introduction) - для уведомлений
 - [Prisma](https://www.pris.ly/docs) - для работы с базой
@@ -113,13 +112,13 @@ tracker-task/
 - [Swagger UI](https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/) - для документирования API
 - [sentry](https://docs.sentry.io/platforms/javascript/guides/nestjs/) - для мониторинга ошибок в продакшене
 - [Redis](https://redis.io/docs/latest/develop/clients/nodejs/) - для кэширования и управления сессиями
-- [Redis(ITBooster)](https://itbooster.ru/roadmap/4/?nodeId=1dc9c1d5-145b-4c40-9a5e-2931f65ac41c)
-- [Redis(ITBooster) обучение](https://itbooster.ru/database/category/14/)
+	- [Redis(ITBooster)](https://itbooster.ru/roadmap/4/?nodeId=1dc9c1d5-145b-4c40-9a5e-2931f65ac41c)
+	- [Redis(ITBooster) обучение](https://itbooster.ru/database/category/14/)
 - [PostgreSQL](https://www.postgresql.org/docs/current/) - для хранения данных
   - [pgAdmin](https://www.pgadmin.org/) - для управления базой данных PostgreSQL
   - [PostgreSQL(ITBooster)](https://itbooster.ru/roadmap/10/?nodeId=98d6d7cd-a36d-4086-9bd3-5b6229aac8cb)
 - [BullMQ](https://docs.bullmq.io/readme-1) - для управления очередями задач
-- [BullMQ](https://itbooster.ru/roadmap/4/?nodeId=08380761-24eb-42b8-9f9b-522bc5f6ee8b)
+	- [BullMQ](https://itbooster.ru/roadmap/4/?nodeId=08380761-24eb-42b8-9f9b-522bc5f6ee8b)
 - [OpenAI Node.js](https://github.com/openai/openai-node#readme) - для интеграции с OpenAI API
 
 ### **Инструменты**
@@ -150,7 +149,7 @@ tracker-task/
 
 ## **Общее**
 
-- **[CI\CD]**(https://itbooster.ru/roadmap/2/?nodeId=4318d274-56ee-4161-ab9f-4ed89f574870) - для автоматизации сборки, тестирования и деплоя приложения
+- **[CI_CD]**(https://itbooster.ru/roadmap/2/?nodeId=4318d274-56ee-4161-ab9f-4ed89f574870) - для автоматизации сборки, тестирования и деплоя приложения
 - Обязательно на каждый пул реквест прогоняем линтеры, тесты, билд проекта, typecheck через ts.
 - Релизы через отведение ветки + нажатие кнопки release в github.
 - Пуш в dev/trunk/master - запрещен напрямую, только через ПР с код ревью
