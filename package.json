@@ -14,6 +14,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "type-check": "turbo run type-check",
 		"docker:redis-up": "docker compose up redis -d",
+		"docker:redis-status": "docker ps --filter \"name=redis\"",
 		"docker:redis-down": "docker compose down redis"
   },
   "devDependencies": {
