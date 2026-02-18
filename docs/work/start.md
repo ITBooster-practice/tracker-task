@@ -21,28 +21,52 @@ git pull origin <название-ветки>
 pnpm install
 ```
 
-<!-- ## 3. Запустить Redis через Docker
+## 3. Запустить Redis через Docker
 
 ```bash
-docker-compose up -d redis
+pnpm docker:redis-up
 ```
 
 Проверить статус:
+
 ```bash
-docker ps
-``` -->
+pnpm docker:redis-status
+```
 
 ## 4. Настроить базу данных
 
-### Подключиться к PostgreSQL через pgAdmin
+### Первый раз: Настройка pgAdmin
 
-1. Открыть pgAdmin
-2. Создать подключение к локальной БД
-3. Выполнить миграции:
+1. **Открыть [pgAdmin](https://www.pgadmin.org/)**
+
+2. **Создать подключение к серверу PostgreSQL:**
+   - Правый клик на "Servers" → Register → Server
+   - Вкладка General:
+     - Name: `Local PostgreSQL` (или любое имя)
+   - Вкладка Connection:
+     - Host: `localhost`
+     - Port: `5432`
+     - Username: `postgres`
+     - Password: (твой пароль от PostgreSQL)
+   - Save
+
+3. **Создать базу данных:**
+   - Раскрыть сервер → правый клик на Databases → Create → Database
+   - Database: `tracker-task`
+   - Owner: `postgres`
+   - Save
+
+4. **Проверить подключение:**
+   - Выбрать БД `tracker-task`
+   - правый клик на `tracker-task` → Query Tool
+   - Выполнить: `SELECT 1;` (F5)
+   - Если вернулось `1` - всё работает ✅
+
+<!-- 5. Выполнить миграции:
 
 ```bash
 pnpm --filter @tracker-task/api migration:run
-```
+``` -->
 
 ## 5. Запустить проект в dev-режиме
 
@@ -69,7 +93,8 @@ pnpm dev
 - `pnpm test` - запустить тесты
 - `pnpm lint` - проверить код линтером
 - `pnpm build` - собрать проект
-<!-- - `docker-compose down` - остановить Docker-сервисы -->
+- `pnpm format` - отформатировать код
+- `pnpm type-check` - проверить типы
 
 ---
 
