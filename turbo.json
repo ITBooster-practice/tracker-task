@@ -1,14 +1,21 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "globalDependencies": ["**/.env.*local"],
+	"globalEnv": ["DATABASE_URL"],
   "tasks": {
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+			"env": ["DATABASE_URL"]
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+			"env": ["DATABASE_URL"]
+    },
+		"prisma:generate": {
+      "cache": false,
+      "env": ["DATABASE_URL"]
     },
     "lint": {},
     "test": {},
