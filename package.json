@@ -1,32 +1,38 @@
 {
-  "name": "tracker-task",
-  "version": "0.0.0",
-  "private": true,
-  "description": "",
-  "author": "",
-  "license": "UNLICENSED",
-  "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
-    "test:e2e": "turbo run test:e2e",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "type-check": "turbo run type-check"
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^20.4.1",
-    "@commitlint/config-conventional": "^20.4.1",
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
-    "cross-env": "^10.1.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "prettier": "^3.8.1",
-    "turbo": "^2.8.9"
-  },
-  "packageManager": "pnpm@10.29.3",
-  "engines": {
-    "node": ">=22"
-  }
+	"name": "tracker-task",
+	"version": "0.0.0",
+	"private": true,
+	"description": "",
+	"author": "",
+	"license": "UNLICENSED",
+	"scripts": {
+		"dev": "turbo run dev",
+		"build": "turbo run build",
+		"test": "turbo run test",
+		"test:e2e": "turbo run test:e2e",
+		"lint": "turbo run lint",
+		"format": "prettier --write \"**/*.{ts,tsx,md}\"",
+		"type-check": "turbo run type-check",
+		"docker:redis-up": "docker compose up redis -d",
+		"docker:redis-status": "docker ps --filter \"name=redis\"",
+		"docker:redis-down": "docker compose down redis",
+		"prisma:generate": "turbo run prisma:generate",
+		"prisma:migrate": "pnpm --filter api prisma:migrate",
+		"prisma:studio": "pnpm --filter api prisma:studio"
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^20.4.1",
+		"@commitlint/config-conventional": "^20.4.1",
+		"@repo/eslint-config": "workspace:*",
+		"@repo/typescript-config": "workspace:*",
+		"cross-env": "^10.1.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.2.7",
+		"prettier": "^3.8.1",
+		"turbo": "^2.8.9"
+	},
+	"packageManager": "pnpm@10.29.3",
+	"engines": {
+		"node": ">=22"
+	}
 }
