@@ -13,9 +13,10 @@
 	"iconLibrary": "lucide",
 	"rtl": false,
 	"aliases": {
-		"components": "@/components",
-		"ui": "@/components",
-		"utils": "@/lib/utils"
+		"components": "@repo/ui/components",
+		"ui": "@repo/ui/components",
+		"lib": "@repo/ui/lib",
+		"utils": "@repo/ui/lib/utils"
 	},
 	"registries": {}
 }
