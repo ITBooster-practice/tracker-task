@@ -24,7 +24,8 @@
 
 - `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `revert`, `ci`
 
-**Разрешенные области (scope):**
+**Разрешенные области (scope) - Опционально:**
+Если scope указан, он должен быть одним из списка:
 
 - `api` - Backend (apps/api)
 - `web` - Frontend (apps/web)
