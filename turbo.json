@@ -13,6 +13,10 @@
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
 			"env": ["DATABASE_URL"]
     },
+		"prisma:generate": {
+      "cache": false,
+      "env": ["DATABASE_URL"]
+    },
     "lint": {},
     "test": {},
 		"type-check": {},
