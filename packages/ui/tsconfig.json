@@ -2,9 +2,11 @@
   "extends": "@repo/typescript-config/react-library.json",
   "compilerOptions": {
     "outDir": "dist",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"],
+			"@repo/ui/*": ["./src/*"],
+			"react": ["./node_modules/@types/react"]
     }
   },
   "include": ["src"],
