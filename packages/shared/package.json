@@ -1,0 +1,11 @@
+{
+	"name": "@repo/shared",
+	"version": "0.0.0",
+	"private": true,
+	"exports": {
+		"./feature-flags": "./src/feature-flags.ts"
+	},
+	"devDependencies": {
+		"@repo/typescript-config": "workspace:*"
+	}
+}

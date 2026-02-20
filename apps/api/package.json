@@ -24,6 +24,7 @@
 		"@prisma/adapter-pg": "^7.4.0",
 		"@prisma/client": "^7.4.0",
 		"@repo/api": "workspace:*",
+		"@repo/shared": "workspace:*",
 		"dotenv": "^17.3.1",
 		"escape-html": "^1.0.3",
 		"pg": "^8.18.0",
