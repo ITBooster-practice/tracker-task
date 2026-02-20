@@ -47,7 +47,6 @@ tracker-task/
 │   ├── eslint-config/    # Конфигурация ESLint
 │   ├── vitest-config/    # Конфигурация Vitest
 │   └── typescript-config/ # Конфигурация TypeScript
-│   └── shared/     # Общие функции
 ```
 
 ---
