@@ -1,14 +1,30 @@
 module.exports = {
-    // Проверка и форматирование TypeScript/React файлов в приложениях
-    'apps/**/*.{ts,tsx}': [
-        'eslint --fix',
-        'prettier --write'
-    ],
-    // Проверка и форматирование TypeScript/React файлов в пакетах
-    'packages/**/*.{ts,tsx}': [
-        'eslint --fix',
-        'prettier --write'
-    ],
+    // Проверка и форматирование TypeScript/React файлов в приложениях и пакетах
+    '{apps,packages}/*/**/*.{ts,tsx}': (files) => {
+        const commands = [];
+        const workspaceFiles = {};
+
+        // Группируем файлы по их рабочим пространствам (workspaces)
+        for (const file of files) {
+            const match = file.match(/^(.*?\/(?:apps|packages)\/[^\/]+)/);
+            if (match) {
+                const workspace = match[1];
+                if (!workspaceFiles[workspace]) {
+                    workspaceFiles[workspace] = [];
+                }
+                workspaceFiles[workspace].push(file);
+            }
+        }
+
+        // Генерируем команды для каждого рабочего пространства отдельно
+        for (const [workspace, filesInWorkspace] of Object.entries(workspaceFiles)) {
+            const escapedFiles = filesInWorkspace.map(f => `"${f}"`).join(' ');
+            commands.push(`cd "${workspace}" && npx eslint --fix ${escapedFiles}`);
+            commands.push(`prettier --write ${escapedFiles}`);
+        }
+
+        return commands;
+    },
     // Форматирование остальных файлов (JSON, MD, YML)
     '*.{json,md,yml}': [
         'prettier --write'
