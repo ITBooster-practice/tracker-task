@@ -47,6 +47,7 @@ tracker-task/
 │   ├── eslint-config/    # Конфигурация ESLint
 │   ├── vitest-config/    # Конфигурация Vitest
 │   └── typescript-config/ # Конфигурация TypeScript
+│   └── shared/     # Общие функции
 ```
 
 ---
@@ -64,7 +65,7 @@ tracker-task/
 - [Tanstack query (react query) полный курс от А до Я за 70 минут](https://www.youtube.com/watch?v=mg9Kq1YaENI)
 - [Zustand](https://zustand.docs.pmnd.rs/getting-started/introduction) - для управления локальным состоянием
   - [Zustand и React query. State management в React без боли](https://www.youtube.com/watch?v=Egg8jH0Yj14)
-	- [Persisting store data](https://zustand.docs.pmnd.rs/integrations/persisting-store-data) - для сохранения состояния в localStorage
+  - [Persisting store data](https://zustand.docs.pmnd.rs/integrations/persisting-store-data) - для сохранения состояния в localStorage
 - [ShadCN UI](https://ui.shadcn.com/docs/installation/next) + [Tailwind CSS](https://tailwindcss.com/docs/installation)/[Tailwind v4](https://ui.shadcn.com/docs/tailwind-v4) - для UI компонентов
 - [React Hook Form](https://react-hook-form.com/get-started) + [Zod](https://zod.dev/) - для валидации форм
 - [Turborepo](https://turborepo.dev/docs/getting-started/installation) - для монорепозитория
@@ -102,8 +103,8 @@ tracker-task/
 ### **Стек**
 
 - [NestJS](https://docs.nestjs.com/) - для создания серверного приложения
-	- [Полный курс по Nest.js](https://teacoder.ru/lesson/53bb0ebf-34f1-4423-882f-117f18b97b07)
-	- [Nest JS(ITBooster)](https://itbooster.ru/roadmap/10/?nodeId=dec7d585-da3c-41a0-a15a-b450dfbd5a6b)
+  - [Полный курс по Nest.js](https://teacoder.ru/lesson/53bb0ebf-34f1-4423-882f-117f18b97b07)
+  - [Nest JS(ITBooster)](https://itbooster.ru/roadmap/10/?nodeId=dec7d585-da3c-41a0-a15a-b450dfbd5a6b)
 - [TypeScript](https://www.typescriptlang.org/docs/) - для статической типизации
 - [Socket.IO](https://socket.io/docs/v4/tutorial/introduction) - для уведомлений
 - [Prisma](https://www.pris.ly/docs) - для работы с базой
@@ -112,13 +113,13 @@ tracker-task/
 - [Swagger UI](https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/) - для документирования API
 - [sentry](https://docs.sentry.io/platforms/javascript/guides/nestjs/) - для мониторинга ошибок в продакшене
 - [Redis](https://redis.io/docs/latest/develop/clients/nodejs/) - для кэширования и управления сессиями
-	- [Redis(ITBooster)](https://itbooster.ru/roadmap/4/?nodeId=1dc9c1d5-145b-4c40-9a5e-2931f65ac41c)
-	- [Redis(ITBooster) обучение](https://itbooster.ru/database/category/14/)
+  - [Redis(ITBooster)](https://itbooster.ru/roadmap/4/?nodeId=1dc9c1d5-145b-4c40-9a5e-2931f65ac41c)
+  - [Redis(ITBooster) обучение](https://itbooster.ru/database/category/14/)
 - [PostgreSQL](https://www.postgresql.org/docs/current/) - для хранения данных
   - [pgAdmin](https://www.pgadmin.org/) - для управления базой данных PostgreSQL
   - [PostgreSQL(ITBooster)](https://itbooster.ru/roadmap/10/?nodeId=98d6d7cd-a36d-4086-9bd3-5b6229aac8cb)
 - [BullMQ](https://docs.bullmq.io/readme-1) - для управления очередями задач
-	- [BullMQ](https://itbooster.ru/roadmap/4/?nodeId=08380761-24eb-42b8-9f9b-522bc5f6ee8b)
+  - [BullMQ](https://itbooster.ru/roadmap/4/?nodeId=08380761-24eb-42b8-9f9b-522bc5f6ee8b)
 - [OpenAI Node.js](https://github.com/openai/openai-node#readme) - для интеграции с OpenAI API
 
 ### **Инструменты**
@@ -167,6 +168,7 @@ tracker-task/
 - [Соглашение о коммитах](https://www.conventionalcommits.org/ru/v1.0.0/#%d0%b3%d0%bb%d0%b0%d0%b2%d0%bd%d0%be%d0%b5)
 
 ## **Git config**
+
 Проверьте настройки гита, чтобы коммиты имели правильного автора.:
 
 ```bash
