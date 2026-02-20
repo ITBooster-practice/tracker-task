@@ -1,5 +1,7 @@
-import { FEATURES, isFeatureEnabled } from '../lib/feature-flags'
+export const FEATURES = {
+	AUTH: process.env.NEXT_PUBLIC_FEATURE_AUTH === 'true',
+} as const
 
-export const useFeatureFlag = (feature: keyof typeof FEATURES) => {
-	return isFeatureEnabled(feature)
+export const useFeatureFlag = (featureName: keyof typeof FEATURES) => {
+	return FEATURES[featureName] ?? false
 }
