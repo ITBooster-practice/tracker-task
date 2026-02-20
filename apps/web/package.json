@@ -11,21 +11,24 @@
 		"check-types": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@hookform/resolvers": "^5.2.2",
 		"@repo/ui": "workspace:*",
-		"@tailwindcss/postcss": "^4.2.0",
 		"next": "16.1.6",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
-		"tailwindcss": "^4.2.0"
+		"react-hook-form": "^7.71.1",
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@repo/api": "workspace:*",
 		"@repo/eslint-config": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
+		"@tailwindcss/postcss": "^4.2.0",
 		"@types/node": "^24.10.13",
 		"@types/react": "19.2.14",
 		"@types/react-dom": "19.2.3",
 		"eslint": "^9.39.2",
+		"tailwindcss": "^4.2.0",
 		"typescript": "5.9.3"
 	}
 }
