@@ -1,25 +1,25 @@
 {
-  "$schema": "https://turborepo.dev/schema.json",
-  "globalDependencies": ["**/.env.*local"],
-	"globalEnv": ["DATABASE_URL"],
-  "tasks": {
-    "dev": {
-      "cache": false,
-      "persistent": true,
+	"$schema": "https://turborepo.dev/schema.json",
+	"globalDependencies": ["**/.env.*local"],
+	"globalEnv": ["NEXT_PUBLIC_FEATURE_AUTH"],
+	"tasks": {
+		"dev": {
+			"cache": false,
+			"persistent": true,
 			"env": ["DATABASE_URL"]
-    },
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+		},
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": [".next/**", "!.next/cache/**", "dist/**"],
 			"env": ["DATABASE_URL"]
-    },
+		},
 		"prisma:generate": {
-      "cache": false,
-      "env": ["DATABASE_URL"]
-    },
-    "lint": {},
-    "test": {},
+			"cache": false,
+			"env": ["DATABASE_URL"]
+		},
+		"lint": {},
+		"test": {},
 		"type-check": {},
-    "test:e2e": {}
-  }
+		"test:e2e": {}
+	}
 }
