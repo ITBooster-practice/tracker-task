@@ -18,9 +18,18 @@ git pull origin main
 
 Если работаешь в ветке:
 
+- Обновить main
+
 ```bash
-git fetch origin
-git pull origin <название-ветки>
+git checkout main
+git pull origin main
+```
+
+- Переключиться обратно на свою ветку и слить изменения
+
+```bash
+git checkout <твоя-ветка>
+git rebase main
 ```
 
 ### 2. Установить зависимости
