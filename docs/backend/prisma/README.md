@@ -8,13 +8,15 @@ Prisma используется в качестве ORM для работы с P
 
 ### 1. Установка зависимостей
 
-Prisma установлена в пакете `apps/api`:
+Prisma 7.x установлена в пакете `apps/api`:
 
 ```bash
 cd apps/api
-pnpm add prisma @types/node @types/pg --save-dev
+pnpm add -D prisma @types/node @types/pg
 pnpm add @prisma/client @prisma/adapter-pg pg dotenv
 ```
+
+**Важно**: Prisma 7.x требует адаптер для работы с PostgreSQL.
 
 ### 2. Инициализация Prisma
 
@@ -33,11 +35,13 @@ pnpm prisma init
 ```
 apps/api/
 ├── prisma/
-│   ├── schema.prisma       # Схема базы данных
+│   ├── schema.prisma       # Схема базы данных (БЕЗ url)
+│   ├── prisma.service.ts   # Prisma Service с адаптером
+│   ├── prisma.module.ts    # Глобальный модуль
 │   └── migrations/         # Миграции базы данных
-├── src/
-│   └── lib/
-│       └── prisma.ts       # Prisma Client instance (или в модуле)
+├── prisma.config.ts        # Конфигурация Prisma 7.x (с URL БД)
+├── generated/
+│   └── prisma/             # Сгенерированный Prisma Client
 └── .env                    # Переменные окружения
 ```
 
@@ -51,18 +55,19 @@ apps/api/
 DATABASE_URL="postgresql://postgres:password@localhost:5432/mydb?schema=public"
 ```
 
-### 2. Схема Prisma
+### 2. Схема Prisma (версия 7.x)
 
-Файл `apps/api/prisma/schema.prisma`:
+**Файл `apps/api/prisma/schema.prisma`**:
 
 ```prisma
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"  // Новый генератор для Prisma 7
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // URL больше не указывается здесь - он в prisma.config.ts
 }
 
 // Пример модели
@@ -70,33 +75,64 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@map("users")
 }
 ```
 
-### 3. Prisma Client в NestJS
-
-Создайте сервис Prisma в `apps/api/src/prisma/`:
+**Файл `apps/api/prisma.config.ts`** (создается автоматически):
 
 ```typescript
-// prisma.service.ts
+import 'dotenv/config'
+import { defineConfig } from 'prisma/config'
+
+export default defineConfig({
+	schema: 'prisma/schema.prisma',
+	migrations: {
+		path: 'prisma/migrations',
+	},
+	datasource: {
+		url: process.env['DATABASE_URL'], // URL теперь здесь
+	},
+})
+```
+
+### 3. Prisma Client в NestJS (версия 7.x)
+
+Создайте сервис Prisma в `apps/api/prisma/`:
+
+**Файл `apps/api/prisma/prisma.service.ts`**:
+
+```typescript
 import { Injectable, OnModuleInit } from '@nestjs/common'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
+	constructor() {
+		// Создаем пул соединений PostgreSQL
+		const pool = new Pool({ connectionString: process.env['DATABASE_URL'] })
+		// Создаем адаптер для Prisma 7
+		const adapter = new PrismaPg(pool)
+		// Передаем адаптер в PrismaClient
+		super({ adapter })
+	}
+
 	async onModuleInit() {
 		await this.$connect()
 	}
 }
 ```
 
+> **Важно**: Prisma 7.x требует явного указания адаптера. Для PostgreSQL используется `@prisma/adapter-pg`.
+
+**Файл `apps/api/prisma/prisma.module.ts`**:
+
 ```typescript
-// prisma.module.ts
-import { Module, Global } from '@nestjs/common'
+import { Global, Module } from '@nestjs/common'
 import { PrismaService } from './prisma.service'
 
 @Global()
@@ -109,16 +145,21 @@ export class PrismaModule {}
 
 Затем импортируйте `PrismaModule` в `AppModule`:
 
+**Файл `apps/api/src/app.module.ts`**:
+
 ```typescript
 import { Module } from '@nestjs/common'
-import { PrismaModule } from './prisma/prisma.module'
+import { PrismaModule } from '../prisma/prisma.module'
 
 @Module({
 	imports: [PrismaModule],
-	// ...
+	controllers: [],
+	providers: [],
 })
 export class AppModule {}
 ```
+
+> **Примечание**: `@Global()` декоратор делает PrismaService доступным во всех модулях без повторного импорта.
 
 ## Работа с миграциями
 
@@ -402,9 +443,30 @@ model User {
 | P2003 | Foreign key constraint violation |
 | P2016 | Query interpretation error       |
 
+## Особенности Prisma 7.x
+
+### Отличия от Prisma 5.x
+
+| Аспект      | Prisma 5.x         | Prisma 7.x                        |
+| ----------- | ------------------ | --------------------------------- |
+| Генератор   | `prisma-client-js` | `prisma-client`                   |
+| URL БД      | В `schema.prisma`  | В `prisma.config.ts`              |
+| Адаптер     | Не требуется       | Обязателен (`@prisma/adapter-pg`) |
+| Подключение | Встроенное         | Через Pool + Adapter              |
+
+### Зачем нужен адаптер?
+
+Prisma 7 использует унифицированный подход:
+
+- Один генератор для Node.js, Serverless и Edge окружений
+- Адаптеры для разных драйверов (pg, neon, planetscale)
+- Более гибкая конфигурация соединений
+
 ## Полезные ссылки
 
-- [Prisma Documentation](https://www.prisma.io/docs)
+- [Prisma 7 Documentation](https://www.prisma.io/docs)
+- [Prisma 7 Client Config](https://pris.ly/d/prisma7-client-config)
+- [PostgreSQL Driver Adapters](https://www.prisma.io/docs/orm/overview/databases/postgresql#driver-adapters)
 - [Prisma Schema Reference](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference)
 - [Prisma Client API](https://www.prisma.io/docs/reference/api-reference/prisma-client-reference)
 - [Prisma Migrate](https://www.prisma.io/docs/concepts/components/prisma-migrate)
