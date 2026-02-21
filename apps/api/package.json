@@ -13,10 +13,12 @@
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+		"lint": "eslint \"{src,apps,libs,test,prisma}/**/*.ts\"",
 		"prisma:generate": "prisma generate",
 		"prisma:migrate": "prisma migrate dev",
-		"prisma:studio": "prisma studio"
+		"prisma:studio": "prisma studio",
+		"prisma:seed": "ts-node prisma/seed.ts",
+		"prisma:reset": "prisma migrate reset --force"
 	},
 	"dependencies": {
 		"@nestjs/common": "^11.1.11",

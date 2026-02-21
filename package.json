@@ -11,6 +11,8 @@
 		"test": "turbo run test",
 		"test:e2e": "turbo run test:e2e",
 		"lint": "turbo run lint",
+		"lint:api": "turbo run lint --filter=api",
+		"lint:web": "turbo run lint --filter=web",
 		"format": "prettier --write \"**/*.{ts,tsx,md}\"",
 		"type-check": "turbo run type-check",
 		"prepare": "husky || true",
@@ -19,7 +21,9 @@
 		"docker:redis-down": "docker compose down redis",
 		"prisma:generate": "turbo run prisma:generate",
 		"prisma:migrate": "pnpm --filter api prisma:migrate",
-		"prisma:studio": "pnpm --filter api prisma:studio"
+		"prisma:studio": "pnpm --filter api prisma:studio",
+		"prisma:seed": "pnpm --filter api prisma:seed",
+		"prisma:reset": "pnpm --filter api prisma:migrate reset --force"
 	},
 	"devDependencies": {
 		"@commitlint/cli": "^20.4.1",

@@ -85,6 +85,7 @@ model User {
 
 ```typescript
 import 'dotenv/config'
+
 import { defineConfig } from 'prisma/config'
 
 export default defineConfig({
@@ -211,6 +212,140 @@ pnpm prisma generate
 - Установке зависимостей (`pnpm install`)
 - Выполнении миграций (`prisma migrate dev`)
 
+## Заполнение базы данных (Seeding)
+
+### Описание
+
+Seed-файл используется для заполнения базы данных начальными или тестовыми данными. Это особенно полезно для:
+
+- Разработки и тестирования
+- Демонстрации функциональности
+- Быстрого старта проекта с базовыми данными
+
+### Структура seed-файла
+
+Seed-файл находится в `apps/api/prisma/seed.ts` и содержит:
+
+- **3 пользователя** с разными ролями (Администратор, Разработчик, Менеджер)
+- **2 проекта** с описаниями
+- **8 задач** с различными статусами и приоритетами
+
+### Запуск seed
+
+**Перед первым запуском** необходимо выполнить:
+
+1. Настроить переменные окружения:
+
+   ```bash
+   cd apps/api
+   cp .env.example .env
+   # Отредактируйте .env и укажите правильный DATABASE_URL
+   ```
+
+2. Выполнить миграции:
+
+   ```bash
+   # Из корня проекта
+   pnpm prisma:migrate
+
+   # Или из apps/api
+   pnpm prisma migrate dev
+   ```
+
+3. Сгенерировать Prisma Client (если еще не сгенерирован):
+
+   ```bash
+   # Из корня проекта
+   pnpm prisma:generate
+
+   # Или из apps/api
+   pnpm prisma generate
+   ```
+
+**После настройки** можно запускать seed:
+
+#### Из корня проекта
+
+```bash
+pnpm prisma:seed
+```
+
+#### Из директории API
+
+```bash
+cd apps/api
+pnpm prisma:seed
+```
+
+### Структура создаваемых данных
+
+#### Пользователи
+
+- **admin@example.com** - Администратор (создатель первого проекта)
+- **developer@example.com** - Разработчик (исполнитель задач)
+- **manager@example.com** - Менеджер проектов (создатель второго проекта)
+
+#### Проекты
+
+1. **Веб-приложение трекера задач** - основной проект с 5 задачами
+2. **Мобильное приложение** - вспомогательный проект с 3 задачами
+
+#### Задачи с разными статусами
+
+- `DONE` - завершенные задачи
+- `IN_PROGRESS` - задачи в работе
+- `IN_REVIEW` - задачи на проверке
+- `TODO` - запланированные задачи
+
+### Очистка данных перед заполнением
+
+По умолчанию seed-файл **не удаляет** существующие данные. Если вы хотите полностью пересоздать данные, раскомментируйте строки очистки в файле `apps/api/prisma/seed.ts`:
+
+```typescript
+// Очистка существующих данных
+await prisma.task.deleteMany()
+await prisma.project.deleteMany()
+await prisma.user.deleteMany()
+```
+
+**Важно**: Удаление выполняется в правильном порядке - сначала зависимые таблицы (Task), затем промежуточные (Project), и в конце основные (User).
+
+### Пример использования seed данных
+
+После запуска seed вы можете:
+
+1. Войти в систему как любой из пользователей
+2. Просмотреть проекты и задачи в Prisma Studio:
+   ```bash
+   pnpm prisma:studio
+   ```
+3. Использовать данные для тестирования API endpoints
+4. Разрабатывать UI на основе реальных данных
+
+### Настройка seed для вашего проекта
+
+Чтобы изменить данные в seed-файле:
+
+1. Откройте `apps/api/prisma/seed.ts`
+2. Измените данные в соответствующих секциях:
+   - Пользователи (с комментариями на русском)
+   - Проекты
+   - Задачи
+3. Запустите seed повторно: `pnpm prisma:seed`
+
+### Безопасность
+
+⚠️ **Важно для production**:
+
+- Seed-файл содержит тестовые данные и пароли
+- **Никогда не запускайте seed в production базе данных**
+- Используйте переменную окружения для контроля:
+  ```typescript
+  if (process.env.NODE_ENV === 'production') {
+  	throw new Error('Seed cannot be run in production!')
+  }
+  ```
+
 ## Prisma Studio
 
 Веб-интерфейс для просмотра и редактирования данных:
@@ -260,7 +395,8 @@ pnpm prisma studio
 	"scripts": {
 		"prisma:generate": "turbo run prisma:generate",
 		"prisma:migrate": "pnpm --filter api prisma:migrate",
-		"prisma:studio": "pnpm --filter api prisma:studio"
+		"prisma:studio": "pnpm --filter api prisma:studio",
+		"prisma:seed": "pnpm --filter api prisma:seed"
 	}
 }
 ```
@@ -272,7 +408,8 @@ pnpm prisma studio
 	"scripts": {
 		"prisma:generate": "prisma generate",
 		"prisma:migrate": "prisma migrate dev",
-		"prisma:studio": "prisma studio"
+		"prisma:studio": "prisma studio",
+		"prisma:seed": "ts-node prisma/seed.ts"
 	}
 }
 ```
