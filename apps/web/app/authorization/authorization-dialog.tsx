@@ -1,11 +1,11 @@
 'use client'
 
 import React from 'react'
-import { Button } from '@repo/ui/components/button'
-import { Dialog, DialogContent, DialogTrigger } from '@repo/ui/components/dialog'
-import { Form } from '@repo/ui/components/form'
-import { AuthorizationForm } from './authorization-form'
+
+import { Button, Dialog, DialogContent, DialogTrigger, Form } from '@repo/ui'
+
 import { AuthorizationDialogLayout } from './authorization-dialog-layout'
+import { AuthorizationForm } from './authorization-form'
 import { useAuthorizationForm } from './use-authorization-form'
 
 const AuthorizationDialog = () => {
