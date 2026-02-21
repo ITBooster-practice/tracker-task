@@ -1,13 +1,10 @@
-import {
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from '@repo/ui/components/form'
-import { Input } from '@repo/ui/components/input'
+'use client'
+
 import React from 'react'
 import { useFormContext } from 'react-hook-form'
+
+import { FormControl, FormField, FormItem, FormLabel, FormMessage, Input } from '@repo/ui'
+
 import { AuthorizationFormValues } from './use-authorization-form'
 
 const AuthorizationForm = () => {

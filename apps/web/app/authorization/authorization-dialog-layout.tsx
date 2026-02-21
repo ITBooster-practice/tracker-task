@@ -1,5 +1,6 @@
-import { DialogFooter, DialogHeader, DialogTitle } from '@repo/ui/components/dialog'
 import type { ReactNode } from 'react'
+
+import { DialogFooter, DialogHeader, DialogTitle } from '@repo/ui'
 
 interface AuthorizationDialogLayoutProps {
 	children?: ReactNode
