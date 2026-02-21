@@ -1,0 +1,6 @@
+@import '@repo/ui/globals.css';
+
+/* источники для сканирования Tailwind (пути — относительно этого файла) */
+@source "../src"; /* packages/ui/kit/src */
+
+/* затем импорт Tailwind + любые дополнения (tw-animate-css, если установлен) */
