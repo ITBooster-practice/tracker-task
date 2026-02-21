@@ -449,6 +449,74 @@ return (
 )
 ```
 
+## Layout
+
+### Stack / HStack / VStack
+
+Компоненты для flexbox-раскладки.
+
+```tsx
+import { Stack, HStack, VStack } from '@repo/ui'
+
+// Вертикальный стек (по умолчанию)
+return (
+	<Stack spacing='md'>
+		<div>Элемент 1</div>
+		<div>Элемент 2</div>
+	</Stack>
+)
+
+// Горизонтальный стек
+return (
+	<HStack spacing='lg' align='center'>
+		<div>Слева</div>
+		<div>Справа</div>
+	</HStack>
+)
+
+// С выравниванием
+return (
+	<VStack spacing='sm' align='center' justify='between'>
+		<div>Верх</div>
+		<div>Низ</div>
+	</VStack>
+)
+```
+
+**Пропсы:**
+
+- `direction`: `horizontal` | `vertical` (по умолчанию `vertical`)
+- `spacing`: `none` | `xs` | `sm` | `md` | `lg` | `xl` | `2xl`
+- `align`: `start` | `center` | `end` | `stretch` | `baseline`
+- `justify`: `start` | `center` | `end` | `between` | `around` | `evenly`
+- `wrap`: `true` | `false`
+
+### Container
+
+Контейнер с адаптивными отступами и максимальной шириной.
+
+```tsx
+import { Container } from '@repo/ui'
+
+return (
+	<Container size='lg'>
+		<p>Контент с ограниченной шириной</p>
+	</Container>
+)
+
+// Центрированный контент
+return (
+	<Container size='md' centered>
+		<p>Центрированный контент</p>
+	</Container>
+)
+```
+
+**Пропсы:**
+
+- `size`: `sm` | `md` | `lg` | `xl` | `2xl` | `full`
+- `centered`: `true` | `false`
+
 ## Утилиты
 
 ### cn
