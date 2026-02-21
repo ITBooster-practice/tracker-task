@@ -16,7 +16,8 @@
 		"components": "@repo/ui/components",
 		"ui": "@repo/ui/components",
 		"lib": "@repo/ui/lib",
-		"utils": "@repo/ui/lib/utils"
+		"utils": "@repo/ui/lib/utils",
+		"hooks": "@repo/ui/hooks"
 	},
 	"registries": {}
 }
