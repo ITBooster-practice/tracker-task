@@ -1,4 +1,5 @@
 import type { Preview } from '@storybook/react-vite'
+import { withThemeByClassName } from '@storybook/addon-themes'
 
 import './styles.css'
 
@@ -18,6 +19,17 @@ const preview: Preview = {
 			test: 'todo',
 		},
 	},
+	decorators: [
+		withThemeByClassName({
+			themes: {
+				light: '', // Светлая тема - без классов
+				dark: 'dark', // Темная тема - добавляем класс "dark"
+			},
+			defaultTheme: 'light',
+			// Указываем, куда вешать класс. Для Tailwind обычно нужен 'html'
+			parentSelector: 'html',
+		}),
+	],
 }
 
 export default preview
