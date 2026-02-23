@@ -18,6 +18,13 @@ export default meta
 type Story = StoryObj<typeof Input>
 
 export const Default: Story = {
+	decorators: [
+		(Story) => (
+			<div style={{ width: '350px' }}>
+				<Story />
+			</div>
+		),
+	],
 	args: {
 		placeholder: 'placeholder',
 		value: '',
@@ -25,6 +32,13 @@ export const Default: Story = {
 }
 
 export const Disabled: Story = {
+	decorators: [
+		(Story) => (
+			<div style={{ width: '350px' }}>
+				<Story />
+			</div>
+		),
+	],
 	args: {
 		disabled: true,
 		placeholder: 'placeholder',
@@ -33,12 +47,26 @@ export const Disabled: Story = {
 }
 
 export const FileInput: Story = {
+	decorators: [
+		(Story) => (
+			<div style={{ width: '350px' }}>
+				<Story />
+			</div>
+		),
+	],
 	args: {
 		type: 'file',
 	},
 }
 
 export const Invalid: Story = {
+	decorators: [
+		(Story) => (
+			<div style={{ width: '350px' }}>
+				<Story />
+			</div>
+		),
+	],
 	args: {
 		placeholder: 'placeholder',
 		value: '',
