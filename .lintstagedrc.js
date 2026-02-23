@@ -10,7 +10,7 @@ module.exports = {
         if (filteredFiles.length === 0) return [];
 
         // Группируем файлы по их рабочим пространствам (workspaces)
-        for (const file of files) {
+        for (const file of filteredFiles) {
             const match = file.match(/^(.*?\/(?:apps|packages)\/[^\/]+)/);
             if (match) {
                 const workspace = match[1];
