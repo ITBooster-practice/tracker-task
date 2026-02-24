@@ -1,6 +1,6 @@
 'use client'
 
-import { zodResolver } from '@hookform/resolvers/zod'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -17,7 +17,7 @@ export type AuthorizationFormValues = z.infer<typeof formSchema>
 
 const useAuthorizationForm = () =>
 	useForm<AuthorizationFormValues>({
-		resolver: zodResolver(formSchema),
+		resolver: standardSchemaResolver(formSchema),
 		defaultValues: {
 			email: '',
 			password: '',
