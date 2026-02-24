@@ -1,3 +1,2 @@
-export { Link } from './links/entities/link.entity'
-export { CreateLinkDto } from './links/dto/create-link.dto'
-export { UpdateLinkDto } from './links/dto/update-link.dto'
+export { User } from './auth/entities/user.entity'
+export { RegisterRequest } from './auth/dto/register.dto'
