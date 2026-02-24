@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
+
 import '@repo/ui/globals.css'
+
+import { Providers } from './providers'
 
 export const metadata: Metadata = {
 	title: 'Tracker Task - Открытая система управления IT-проектами',
@@ -14,7 +17,9 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang='ru'>
-			<body>{children}</body>
+			<body>
+				<Providers>{children}</Providers>
+			</body>
 		</html>
 	)
 }
