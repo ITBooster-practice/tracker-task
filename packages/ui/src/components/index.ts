@@ -15,3 +15,5 @@ export * from './tooltip'
 
 export * from './layout/stack'
 export * from './layout/container'
+
+export * from './icons'

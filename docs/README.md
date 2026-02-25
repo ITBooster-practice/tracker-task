@@ -55,10 +55,10 @@
   - Создать структуру папок (app, pages, widgets, features, entities, shared)
   - Настроить ESLint плагин для FSD
   - Документация по структуре
-- [ ] **Настроить State Management**
+- [x] **Настроить State Management**
   - Zustand для локального состояния
   - TanStack Query для серверного состояния
-  - Создать базовые stores и queries
+  - [x] Созданы базовые Zustand stores (`entities/user`, `features/theme`, `widgets/sidebar`)
 - [ ] **Настроить Forms**
   - React Hook Form + Zod
   - Создать базовые схемы валидации

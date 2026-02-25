@@ -1,8 +1,6 @@
 'use client'
 
-import { Moon, Sun } from 'lucide-react'
-
-import { Button } from '@repo/ui'
+import { Button, MoonIcon, SunIcon } from '@repo/ui'
 
 import { useHydratedStore } from '../../../shared/hooks'
 import { useThemeStore } from '../model/store'
@@ -16,7 +14,7 @@ export const ThemeToggle = () => {
 		return null
 	}
 
-	const Icon = theme === 'light' ? Moon : Sun
+	const Icon = theme === 'light' ? SunIcon : MoonIcon
 
 	return (
 		<Button onClick={toggleTheme} variant='outline' size='icon'>
