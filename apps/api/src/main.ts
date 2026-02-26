@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core'
 
 import { AppModule } from './app.module'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { cleanupOpenApiDoc } from 'nestjs-zod'
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule)
@@ -16,7 +17,7 @@ async function bootstrap() {
 
 	const document = SwaggerModule.createDocument(app, config)
 
-	SwaggerModule.setup('api/docs', app, document)
+	SwaggerModule.setup('api/docs', app, cleanupOpenApiDoc(document))
 
 	await app.listen(4000)
 }
