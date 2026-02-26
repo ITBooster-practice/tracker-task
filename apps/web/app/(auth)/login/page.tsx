@@ -15,7 +15,7 @@ export default function LoginPage() {
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)}>
+			<form onSubmit={form.handleSubmit(onSubmit)} className='w-full max-w-sm'>
 				<AuthFormLayout
 					title='Войдите в свой аккаунт'
 					footer={
