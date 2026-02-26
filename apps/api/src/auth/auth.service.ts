@@ -1,12 +1,12 @@
 import { ConflictException, Injectable } from '@nestjs/common'
-import { RegisterRequest } from '@repo/api'
+import { RegisterRequestDto } from './dto/register.dto'
 import { PrismaService } from '../../prisma/prisma.service'
 
 @Injectable()
 export class AuthService {
 	constructor(private readonly prismaService: PrismaService) {}
 
-	async register(dto: RegisterRequest) {
+	async register(dto: RegisterRequestDto) {
 		const { name, email, password } = dto
 
 		const existUser = await this.prismaService.user.findUnique({
