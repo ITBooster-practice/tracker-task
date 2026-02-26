@@ -26,7 +26,7 @@ const RegisterForm = () => {
 					<FormItem>
 						<FormLabel>Почта</FormLabel>
 						<FormControl>
-							<Input {...field} autoComplete='off' />
+							<Input {...field} autoComplete='email' />
 						</FormControl>
 						<FormMessage />
 					</FormItem>
@@ -39,7 +39,7 @@ const RegisterForm = () => {
 					<FormItem>
 						<FormLabel>Имя</FormLabel>
 						<FormControl>
-							<Input {...field} autoComplete='off' />
+							<Input {...field} />
 						</FormControl>
 						<FormMessage />
 					</FormItem>
