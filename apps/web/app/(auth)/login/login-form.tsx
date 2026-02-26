@@ -12,8 +12,10 @@ import {
 	VStack,
 } from '@repo/ui'
 
+import { LoginFormValues } from './use-login-form'
+
 const LoginForm = () => {
-	const { control } = useFormContext()
+	const { control } = useFormContext<LoginFormValues>()
 
 	return (
 		<VStack>

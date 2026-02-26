@@ -4,23 +4,34 @@ import { Button, Form } from '@repo/ui'
 
 import { AuthFormLayout } from '../auth-form-layout'
 import { RegisterForm } from './register-form'
-import { useRegisterForm } from './use-register-form'
+import { RegisterFormValues, useRegisterForm } from './use-register-form'
 
 export default function RegisterPage() {
 	const form = useRegisterForm()
 
+	const onSubmit = async (data: RegisterFormValues) => {
+		console.log(data)
+	}
+
 	return (
 		<Form {...form}>
-			<AuthFormLayout
-				title='Регистрация'
-				footer={
-					<Button type='submit' variant='default' className='w-full'>
-						Зарегистрироваться
-					</Button>
-				}
-			>
-				<RegisterForm />
-			</AuthFormLayout>
+			<form onSubmit={form.handleSubmit(onSubmit)}>
+				<AuthFormLayout
+					title='Регистрация'
+					footer={
+						<Button
+							disabled={form.formState.isSubmitting}
+							type='submit'
+							variant='default'
+							className='w-full'
+						>
+							Зарегистрироваться
+						</Button>
+					}
+				>
+					<RegisterForm />
+				</AuthFormLayout>
+			</form>
 		</Form>
 	)
 }
