@@ -13,10 +13,10 @@ const formSchema = z.object({
 	}),
 })
 
-export type AuthorizationFormValues = z.infer<typeof formSchema>
+export type LoginFormValues = z.infer<typeof formSchema>
 
-const useAuthorizationForm = () =>
-	useForm<AuthorizationFormValues>({
+const useLoginForm = () =>
+	useForm<LoginFormValues>({
 		resolver: standardSchemaResolver(formSchema),
 		defaultValues: {
 			email: '',
@@ -24,4 +24,4 @@ const useAuthorizationForm = () =>
 		},
 	})
 
-export { useAuthorizationForm }
+export { useLoginForm }

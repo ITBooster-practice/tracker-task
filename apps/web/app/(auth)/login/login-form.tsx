@@ -1,17 +1,24 @@
 'use client'
 
-import React from 'react'
 import { useFormContext } from 'react-hook-form'
 
-import { FormControl, FormField, FormItem, FormLabel, FormMessage, Input } from '@repo/ui'
+import {
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+	Input,
+	VStack,
+} from '@repo/ui'
 
-import { AuthorizationFormValues } from './use-authorization-form'
+import { LoginFormValues } from './use-login-form'
 
-const AuthorizationForm = () => {
-	const { control } = useFormContext<AuthorizationFormValues>()
+const LoginForm = () => {
+	const { control } = useFormContext<LoginFormValues>()
 
 	return (
-		<div className='py-4 grid gap-2'>
+		<VStack>
 			<FormField
 				control={control}
 				name='email'
@@ -32,14 +39,14 @@ const AuthorizationForm = () => {
 					<FormItem>
 						<FormLabel>Пароль</FormLabel>
 						<FormControl>
-							<Input {...field} />
+							<Input {...field} type='password' />
 						</FormControl>
 						<FormMessage />
 					</FormItem>
 				)}
 			/>
-		</div>
+		</VStack>
 	)
 }
 
-export { AuthorizationForm }
+export { LoginForm }

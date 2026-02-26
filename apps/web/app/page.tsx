@@ -1,5 +1,4 @@
 import styles from './page.module.css'
-import { AuthorizationDialog } from './authorization'
 
 export default function Home() {
 	return (
@@ -11,8 +10,6 @@ export default function Home() {
 				</div>
 
 				<div className={styles.content}>
-					<AuthorizationDialog />
-
 					<section className={styles.section}>
 						<h2>О проекте</h2>
 						<p>
