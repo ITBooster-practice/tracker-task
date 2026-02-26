@@ -322,3 +322,32 @@
 - Type-safety (строгий TypeScript)
 - Unit тесты для критичной логики
 - FSD линтер для Frontend
+
+---
+
+## 📖 Документация проекта
+
+### Валидация данных
+
+- [Общая валидация (Zod)](./validation/README.md) - Концепция и архитектура
+- [Настройка валидации](./validation/setup.md) - Пошаговая инструкция
+- [Backend валидация](./backend/validation/README.md) - NestJS + Zod
+- [Кастомные ошибки](./backend/validation/custom-errors.md) - Формат ошибок
+
+### Backend
+
+- [Prisma](./backend/prisma/README.md) - База данных
+- [Swagger API](./backend/swagger/README.md) - Документация API
+- [E2E тесты](./backend/test/e2e-connection-test.md) - Тестирование
+
+### Frontend
+
+- [ShadCN UI](./frontend/shadcn.md) - Компоненты UI
+
+### Рабочие процессы
+
+- [Начало работы](./work/start.md) - С чего начать
+- [Git](./work/git.md) - Работа с Git
+- [Git Hooks](./work/git-hooks.md) - Автоматизация проверок
+- [Feature Flags](./work/feature-flags.md) - Управление фичами
+- [Общие практики](./work/common.md) - Best practices
