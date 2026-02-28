@@ -29,7 +29,7 @@
 		"@nestjs/swagger": "^11.2.6",
 		"@prisma/adapter-pg": "^7.4.0",
 		"@prisma/client": "^7.4.0",
-		"@repo/api": "workspace:*",
+		"@repo/types": "workspace:*",
 		"argon2": "^0.44.0",
 		"dotenv": "^17.3.1",
 		"escape-html": "^1.0.3",

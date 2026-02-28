@@ -23,7 +23,7 @@
 		"zustand": "^5.0.11"
 	},
 	"devDependencies": {
-		"@repo/api": "workspace:*",
+		"@repo/types": "workspace:*",
 		"@repo/eslint-config": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
 		"@tailwindcss/postcss": "^4.2.0",
