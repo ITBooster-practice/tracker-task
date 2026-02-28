@@ -1,11 +1,30 @@
+import { hash } from 'argon2'
+import { ConfigService } from '@nestjs/config'
 import { ConflictException, Injectable } from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
+
 import { RegisterRequestDto } from './dto/register.dto'
 import { PrismaService } from '../../prisma/prisma.service'
-import { hash } from 'argon2'
+import { JwtPayload } from './interfaces/jwt.interface'
 
 @Injectable()
 export class AuthService {
-	constructor(private readonly prismaService: PrismaService) {}
+	private readonly JWT_SECRET: string
+	private readonly JWT_ACCESS_TOKEN_TTL
+	private readonly JWT_REFRESH_TOKEN_TTL
+
+	constructor(
+		private readonly prismaService: PrismaService,
+		private readonly configService: ConfigService,
+		private readonly jwtService: JwtService,
+	) {
+		this.JWT_SECRET = this.configService.getOrThrow<string>('JWT_SECRET')
+		this.JWT_ACCESS_TOKEN_TTL =
+			this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_TTL')
+		this.JWT_REFRESH_TOKEN_TTL = this.configService.getOrThrow<string>(
+			'JWT_REFRESH_TOKEN_TTL',
+		)
+	}
 
 	async register(dto: RegisterRequestDto) {
 		const { name, email, password } = dto
@@ -28,6 +47,20 @@ export class AuthService {
 			},
 		})
 
-		return user
+		return this.generateTokens(user.id)
+	}
+
+	private generateTokens(userId: string) {
+		const payload: JwtPayload = { id: userId }
+
+		const accessToken = this.jwtService.sign(payload, {
+			expiresIn: this.JWT_ACCESS_TOKEN_TTL,
+		})
+
+		const refreshToken = this.jwtService.sign(payload, {
+			expiresIn: this.JWT_REFRESH_TOKEN_TTL,
+		})
+
+		return { accessToken, refreshToken }
 	}
 }

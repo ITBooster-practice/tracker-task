@@ -17,6 +17,7 @@ import { CustomZodValidationPipe } from './common/providers/zod-validation.provi
 		AppService,
 		{ provide: APP_PIPE, useClass: CustomZodValidationPipe },
 		{ provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
-	],
+	]
 })
+
 export class AppModule {}
