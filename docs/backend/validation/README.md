@@ -57,7 +57,7 @@ export type RegisterRequest = z.infer<typeof registerRequestSchema>
 // apps/api/src/auth/dto/register.dto.ts
 import { createZodDto } from 'nestjs-zod'
 
-import { registerRequestSchema } from '@repo/api'
+import { registerRequestSchema } from '@repo/types'
 
 export class RegisterRequestDto extends createZodDto(registerRequestSchema) {}
 ```

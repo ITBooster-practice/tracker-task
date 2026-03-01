@@ -56,7 +56,7 @@ export type { RegisterRequest } from './auth/dto/register.dto'
 ```typescript
 import { createZodDto } from 'nestjs-zod'
 
-import { registerRequestSchema } from '@repo/api'
+import { registerRequestSchema } from '@repo/types'
 
 export class RegisterRequestDto extends createZodDto(registerRequestSchema) {}
 ```
