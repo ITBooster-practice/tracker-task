@@ -79,7 +79,7 @@ export default function SprintsPage() {
 	}
 
 	return (
-		<div className='min-h-screen bg-slate-950 text-slate-100'>
+		<div className='bg-slate-950 text-slate-100 w-full h-full'>
 			<div className='mx-auto flex w-full max-w-[1700px] flex-col gap-4 px-3 py-4 md:px-5'>
 				<header className='rounded-lg border border-slate-800 bg-slate-900 px-3 py-2.5'>
 					<div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
