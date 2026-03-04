@@ -17,7 +17,9 @@
 
 ### Тестирование
 
-- [E2E тесты](./test/e2e-connection-test.md) - Интеграционные тесты
+- [Обзор](./test/README.md) - Структура, команды
+- [Unit-тесты](./test/unit-tests.md) - AuthService: register, login
+- [E2E тест Prisma](./test/e2e-connection-test.md) - Проверка соединения с БД
 
 ---
 
@@ -26,6 +28,13 @@
 1. **Настройка валидации** - [validation/setup](../validation/setup.md)
 2. **Swagger документация** - http://localhost:4000/api/docs
 3. **Prisma Studio** - `pnpm prisma:studio`
+
+## Реализованные эндпоинты
+
+| Метод  | Путь             | Описание                                        |
+| ------ | ---------------- | ----------------------------------------------- |
+| `POST` | `/auth/register` | Регистрация нового пользователя                 |
+| `POST` | `/auth/login`    | Вход, возвращает `accessToken` + `refreshToken` |
 
 ## Структура Backend
 
