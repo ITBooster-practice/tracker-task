@@ -1,7 +1,11 @@
 {
 	"$schema": "https://turborepo.dev/schema.json",
 	"globalDependencies": ["**/.env.*local"],
-	"globalEnv": ["DATABASE_URL", "NEXT_PUBLIC_FEATURE_AUTH"],
+	"globalEnv": [
+		"DATABASE_URL",
+		"NEXT_PUBLIC_FEATURE_AUTH",
+		"NEXT_PUBLIC_FEATURE_PROJECTS"
+	],
 	"tasks": {
 		"dev": {
 			"cache": false,
