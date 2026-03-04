@@ -30,7 +30,6 @@ const Header = () => (
 					<Avatar size='sm'>
 						<AvatarFallback>U</AvatarFallback>
 					</Avatar>
-					<span className='hidden sm:inline'>User</span>
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align='end' className='w-48'>
