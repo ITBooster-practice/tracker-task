@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import type { SideBarStore } from '../types/sidebar'
+import type { SideBarStore } from './types'
 
 export const useSideBarStore = create<SideBarStore>((set) => ({
 	isOpen: false,
