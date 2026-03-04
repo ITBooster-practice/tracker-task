@@ -7,6 +7,8 @@ export default mergeConfig(
 	defineConfig({
 		plugins: [swc.vite()],
 		test: {
+			root: '.',
+			include: ['src/**/*.spec.ts', 'test/unit/**/*.spec.ts'],
 			setupFiles: ['./vitest.setup.ts'],
 		},
 	}),
