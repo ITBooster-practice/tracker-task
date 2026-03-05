@@ -16,8 +16,23 @@ import {
 import { MobileSidebarTrigger } from './mobile-sidebar-trigger'
 import { SidebarToggle } from './sidebar-toggle'
 
+const currentUser = {
+	name: 'Alex',
+	avatar: 'AL',
+}
+
 const Header = () => (
 	<div className='flex h-14 items-center justify-between bg-background px-3 text-foreground'>
+		<div className='flex min-w-0 items-center gap-2'>
+			<SidebarToggle />
+			<nav
+				aria-label='Breadcrumb'
+				className='hidden items-center gap-2 text-sm text-muted-foreground md:flex'
+			>
+				<span>Главная</span>
+				<span>/</span>
+				<span className='text-foreground'>Раздел</span>
+			</nav>
 		<div className='flex items-center gap-2'>
 			<MobileSidebarTrigger />
 			<div className='hidden md:block'>
@@ -25,7 +40,7 @@ const Header = () => (
 			</div>
 			<Input
 				placeholder='Поиск (пока не реализовано)'
-				className='h-9 w-[260px] md:w-[320px]'
+				className='h-9 w-[220px] md:w-[280px] lg:w-[320px]'
 			/>
 		</div>
 		<DropdownMenu>
@@ -37,7 +52,16 @@ const Header = () => (
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align='end' className='w-48'>
-				<DropdownMenuLabel>Мой аккаунт</DropdownMenuLabel>
+				<DropdownMenuLabel className='py-2'>
+					<div className='flex items-center gap-2'>
+						<Avatar size='sm'>
+							<AvatarFallback>{currentUser.avatar}</AvatarFallback>
+						</Avatar>
+						<span className='text-sm font-medium text-foreground'>
+							{currentUser.name}
+						</span>
+					</div>
+				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem>Профиль</DropdownMenuItem>
 				<DropdownMenuItem>Настройки</DropdownMenuItem>
