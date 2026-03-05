@@ -1,4 +1,6 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common'
+import { Body, Controller, HttpCode, HttpStatus, Post, Res } from '@nestjs/common'
+import { Response } from 'express'
+
 import { AuthService } from './auth.service'
 import { RegisterRequestDto } from './dto/register.dto'
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger'
@@ -14,8 +16,8 @@ export class AuthController {
 	@ApiOperation({ summary: 'Регистрация нового пользователя' })
 	@ApiResponse({ status: 201, description: 'Пользователь успешно зарегистрирован' })
 	@ApiResponse({ status: 400, description: 'Некорректные данные' })
-	async register(@Body() dto: RegisterRequestDto) {
-		return this.authService.register(dto)
+	async register(@Res() res: Response, @Body() dto: RegisterRequestDto) {
+		return this.authService.register(res, dto)
 	}
 
 	@Post('login')
@@ -23,7 +25,7 @@ export class AuthController {
 	@ApiOperation({ summary: 'Вход пользователя' })
 	@ApiResponse({ status: 200, description: 'Пользователь успешно вошел' })
 	@ApiResponse({ status: 400, description: 'Некорректные данные' })
-	async login(@Body() dto: LoginRequestDto) {
-		return this.authService.login(dto)
+	async login(@Res() res: Response, @Body() dto: LoginRequestDto) {
+		return this.authService.login(res, dto)
 	}
 }
