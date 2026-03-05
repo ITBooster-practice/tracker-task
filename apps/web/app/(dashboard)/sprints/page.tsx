@@ -79,19 +79,19 @@ export default function SprintsPage() {
 	}
 
 	return (
-		<div className='bg-slate-950 text-slate-100 w-full h-full'>
+		<div className='bg-background text-foreground w-full h-full'>
 			<div className='mx-auto flex w-full max-w-[1700px] flex-col gap-4 px-3 py-4 md:px-5'>
-				<header className='rounded-lg border border-slate-800 bg-slate-900 px-3 py-2.5'>
+				<header className='rounded-lg border border-border bg-card px-3 py-2.5'>
 					<div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
 						<div>
 							<h1 className='text-2xl font-semibold tracking-tight'>Sprint Board</h1>
-							<p className='text-sm text-slate-100'>Tracker Task</p>
+							<p className='text-sm text-foreground'>Tracker Task</p>
 						</div>
 						<div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
-							<select className='h-9 rounded-md border border-slate-700 bg-slate-950 px-2.5 text-sm text-slate-100'>
+							<select className='h-9 rounded-md border border-border bg-background px-2.5 text-sm text-foreground'>
 								<option>Все типы</option>
 							</select>
-							<select className='h-9 rounded-md border border-slate-700 bg-slate-950 px-2.5 text-sm text-slate-100'>
+							<select className='h-9 rounded-md border border-border bg-background px-2.5 text-sm text-foreground'>
 								<option>Все</option>
 							</select>
 						</div>
@@ -102,18 +102,18 @@ export default function SprintsPage() {
 					{sprintColumns.map((column) => (
 						<div
 							key={column.name}
-							className='rounded-lg border border-slate-800 bg-slate-950 p-2.5'
+							className='rounded-lg border border-border bg-background p-2.5'
 						>
 							<div className='mb-2.5 flex items-center justify-between'>
-								<h2 className='text-lg font-semibold text-slate-100'>
+								<h2 className='text-lg font-semibold text-foreground'>
 									{column.name}{' '}
-									<span className='rounded-md bg-slate-800 px-1.5 py-0.5 text-xs text-slate-100'>
+									<span className='rounded-md bg-muted px-1.5 py-0.5 text-xs text-foreground'>
 										{column.tasks.length}
 									</span>
 								</h2>
 								<button
 									type='button'
-									className='h-6 rounded-md border border-slate-700 px-2 text-xs text-slate-100'
+									className='h-6 rounded-md border border-border px-2 text-xs text-foreground'
 								>
 									Добавить
 								</button>
@@ -123,19 +123,19 @@ export default function SprintsPage() {
 								{column.tasks.map((task) => (
 									<Card
 										key={task.id}
-										className='gap-2 rounded-lg border-slate-800 bg-slate-900 py-0'
+										className='gap-2 rounded-lg border-border bg-card py-0'
 									>
-										<CardContent className='space-y-2.5 px-3 py-3 text-slate-100'>
+										<CardContent className='space-y-2.5 px-3 py-3 text-foreground'>
 											<div className='flex items-center gap-2'>
 												<span
 													className={`rounded-full px-2 py-0.5 text-xs font-medium ${typeClassName[task.type]}`}
 												>
 													{task.type}
 												</span>
-												<span className='text-xs text-slate-100'>{task.id}</span>
+												<span className='text-xs text-foreground'>{task.id}</span>
 											</div>
 
-											<p className='text-lg font-medium leading-snug text-slate-100'>
+											<p className='text-lg font-medium leading-snug text-foreground'>
 												{task.title}
 											</p>
 
@@ -143,7 +143,7 @@ export default function SprintsPage() {
 												{task.tags.map((tag) => (
 													<span
 														key={tag}
-														className='rounded-md bg-slate-800 px-1.5 py-0.5 text-xs text-slate-100'
+														className='rounded-md bg-muted px-1.5 py-0.5 text-xs text-foreground'
 													>
 														{tag}
 													</span>
