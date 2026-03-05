@@ -9,15 +9,25 @@ interface Props {
 	href: string
 	isOpen: boolean
 	isActive?: boolean
+	onNavigate?: () => void
 }
 
 const SidebarMenuItem = (props: Props) => {
-	const { href, title, icon, isOpen, isActive = false } = props
+	const { href, title, icon, isOpen, isActive = false, onNavigate } = props
+
+	const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+		if (href === '#') {
+			event.preventDefault()
+		}
+
+		onNavigate?.()
+	}
 
 	return (
 		<Link
 			href={href}
 			title={!isOpen ? title : undefined}
+			onClick={handleClick}
 			className={cn(
 				'flex h-9 items-center rounded-md px-2 text-sm transition-colors justify-start gap-2',
 				{

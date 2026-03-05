@@ -8,8 +8,8 @@ interface Props {
 
 function Layout({ header, sidebar, children }: Props) {
 	return (
-		<div className='flex flex-col h-screen flex-row'>
-			<aside className='shrink-0 border-r border-r-sidebar-border bg-sidebar text-sidebar-foreground'>
+		<div className='flex h-screen'>
+			<aside className='hidden shrink-0 border-r border-r-sidebar-border bg-sidebar text-sidebar-foreground md:block'>
 				{sidebar}
 			</aside>
 			<div className='flex flex-col min-h-0 flex-1 overflow-hidden'>
