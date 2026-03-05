@@ -59,11 +59,11 @@ export default function TasksPage() {
 	}
 
 	return (
-		<div className='bg-slate-950 text-slate-100 w-full h-full'>
+		<div className='bg-background text-foreground w-full h-full'>
 			<div className='mx-auto flex w-full max-w-[2100px] flex-col gap-8 px-5 py-8 md:px-8'>
 				<header className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
 					<h1 className='text-3xl font-semibold tracking-tight'>Задачи</h1>
-					<Button className='h-10 rounded-lg bg-blue-500 px-5 text-base font-medium hover:bg-blue-400'>
+					<Button className='h-10 rounded-lg bg-primary px-5 text-base font-medium text-primary-foreground hover:bg-primary/90'>
 						Создать задачу
 					</Button>
 				</header>
@@ -72,25 +72,25 @@ export default function TasksPage() {
 					<input
 						type='text'
 						placeholder='Поиск по названию или ключу...'
-						className='h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-base text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'
+						className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 					/>
-					<select className='h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-base text-slate-100'>
+					<select className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground'>
 						<option>Все типы</option>
 					</select>
-					<select className='h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-base text-slate-100'>
+					<select className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground'>
 						<option>Все статусы</option>
 					</select>
-					<select className='h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-base text-slate-100'>
+					<select className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground'>
 						<option>Все</option>
 					</select>
 				</section>
 
-				<div className='overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900'>
+				<div className='overflow-x-auto rounded-3xl border border-border bg-card'>
 					<table className='min-w-full border-collapse'>
-						<thead className='border-b border-slate-800'>
-							<tr className='text-left text-base text-slate-400'>
+						<thead className='border-b border-border'>
+							<tr className='text-left text-base text-muted-foreground'>
 								<th className='w-12 px-4 py-4'>
-									<span className='block h-5 w-5 rounded-md border-2 border-blue-500' />
+									<span className='block h-5 w-5 rounded-md border-2 border-primary' />
 								</th>
 								<th className='min-w-28 px-3 py-4 font-semibold'>Ключ</th>
 								<th className='min-w-[360px] px-3 py-4 font-semibold'>Название</th>
@@ -102,12 +102,12 @@ export default function TasksPage() {
 						</thead>
 						<tbody>
 							{tasks.map((task) => (
-								<tr key={task.key} className='border-b border-slate-800 last:border-b-0'>
+								<tr key={task.key} className='border-b border-border last:border-b-0'>
 									<td className='px-4 py-3'>
-										<span className='block h-5 w-5 rounded-md border-2 border-blue-500' />
+										<span className='block h-5 w-5 rounded-md border-2 border-primary' />
 									</td>
-									<td className='px-3 py-3 text-xl text-slate-400'>{task.key}</td>
-									<td className='px-3 py-3 text-xl font-medium text-slate-100'>
+									<td className='px-3 py-3 text-xl text-muted-foreground'>{task.key}</td>
+									<td className='px-3 py-3 text-xl font-medium text-foreground'>
 										{task.title}
 									</td>
 									<td className='px-3 py-3'>
@@ -117,9 +117,9 @@ export default function TasksPage() {
 											{task.type}
 										</span>
 									</td>
-									<td className='px-3 py-3 text-xl text-slate-200'>{task.status}</td>
-									<td className='px-3 py-3 text-xl text-slate-200'>{task.priority}</td>
-									<td className='px-3 py-3 text-xl text-slate-200'>{task.assignee}</td>
+									<td className='px-3 py-3 text-xl text-foreground'>{task.status}</td>
+									<td className='px-3 py-3 text-xl text-foreground'>{task.priority}</td>
+									<td className='px-3 py-3 text-xl text-foreground'>{task.assignee}</td>
 								</tr>
 							))}
 						</tbody>
