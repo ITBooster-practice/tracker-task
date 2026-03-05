@@ -7,24 +7,26 @@ import { RegisterRequestDto } from './dto/register.dto'
 import { PrismaService } from '../../prisma/prisma.service'
 import { JwtPayload } from './interfaces/jwt.interface'
 import { LoginRequestDto } from './dto/login.dto'
+import { Response } from 'express'
+import { isDev } from 'src/utils/is-dev.util'
 
 @Injectable()
 export class AuthService {
-	private readonly JWT_SECRET: string
 	private readonly JWT_ACCESS_TOKEN_TTL
 	private readonly JWT_REFRESH_TOKEN_TTL
+	private readonly COOKIE_DOMAIN: string
 
 	constructor(
 		private readonly prismaService: PrismaService,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService,
 	) {
-		this.JWT_SECRET = this.configService.getOrThrow<string>('JWT_SECRET')
 		this.JWT_ACCESS_TOKEN_TTL =
 			this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_TTL')
 		this.JWT_REFRESH_TOKEN_TTL = this.configService.getOrThrow<string>(
 			'JWT_REFRESH_TOKEN_TTL',
 		)
+		this.COOKIE_DOMAIN = this.configService.getOrThrow<string>('COOKIE_DOMAIN')
 	}
 
 	async register(dto: RegisterRequestDto) {
@@ -89,5 +91,14 @@ export class AuthService {
 		})
 
 		return { accessToken, refreshToken }
+	}
+	private setCookie(res: Response, value: string, expires: Date) {
+		res.cookie('refreshToken', value, {
+			httpOnly: true,
+			secure: !isDev(this.configService),
+			sameSite: isDev(this.configService) ? 'none' : 'lax',
+			domain: this.COOKIE_DOMAIN,
+			expires,
+		})
 	}
 }
