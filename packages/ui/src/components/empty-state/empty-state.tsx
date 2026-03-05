@@ -8,6 +8,7 @@ type EmptyStateProps = React.ComponentProps<'section'> & {
 	icon?: React.ReactNode
 	title: string
 	description?: string
+	action?: React.ReactNode
 	actionLabel?: string
 	onAction?: () => void
 }
@@ -17,6 +18,7 @@ function EmptyState({
 	icon,
 	title,
 	description,
+	action,
 	actionLabel,
 	onAction,
 	...props
@@ -41,7 +43,7 @@ function EmptyState({
 				) : null}
 			</div>
 
-			{actionLabel ? <Button onClick={onAction}>{actionLabel}</Button> : null}
+			{action ?? (actionLabel ? <Button onClick={onAction}>{actionLabel}</Button> : null)}
 		</section>
 	)
 }
