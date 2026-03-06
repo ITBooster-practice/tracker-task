@@ -11,5 +11,8 @@ export function setupSwagger(app: INestApplication) {
 	SwaggerModule.setup('api/docs', app, cleanupOpenApiDoc(document), {
 		jsonDocumentUrl: '/swagger.json',
 		yamlDocumentUrl: '/swagger.yaml',
+		swaggerOptions: {
+			withCredentials: true,
+		},
 	})
 }

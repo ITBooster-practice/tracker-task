@@ -20,6 +20,7 @@ import {
 	ApiBadRequestResponse,
 	ApiNotFoundResponse,
 	ApiUnauthorizedResponse,
+	ApiBearerAuth,
 } from '@nestjs/swagger'
 import { LoginRequestDto } from './dto/login.dto'
 import { AuthResponse } from './dto/auth.dto'
@@ -136,7 +137,44 @@ export class AuthController {
 		return this.authService.logout(res)
 	}
 
+	@ApiOperation({
+		summary: 'Получение информации о текущем пользователе',
+		description: 'Возвращает информацию о текущем аутентифицированном пользователе',
+	})
+	@ApiOkResponse({
+		description: 'Информация о пользователе успешно получена',
+		schema: {
+			example: {
+				id: '123e4567-e89b-12d3-a456-426614174000',
+				email: 'user@example.com',
+				name: 'John Doe',
+				createdAt: '2023-01-01T00:00:00.000Z',
+				updatedAt: '2023-01-01T00:00:00.000Z',
+			},
+		},
+	})
+	@ApiUnauthorizedResponse({
+		description: 'Пользователь не авторизован',
+		schema: {
+			example: {
+				statusCode: 401,
+				error: 'Unauthorized',
+				message: 'Пользователь не авторизован',
+			},
+		},
+	})
+	@ApiNotFoundResponse({
+		description: 'Пользователь не найден',
+		schema: {
+			example: {
+				statusCode: 404,
+				error: 'Not Found',
+				message: 'Пользователь не найден',
+			},
+		},
+	})
 	@Authorization()
+	@ApiBearerAuth()
 	@Get('me')
 	@HttpCode(HttpStatus.OK)
 	async me(@Authorized() userInfo: User) {
