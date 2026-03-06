@@ -120,6 +120,20 @@ export class AuthService {
 		return { message: 'Пользователь успешно вышел', success: true }
 	}
 
+	async validateUser(userId: string) {
+		const user = await this.prismaService.user.findUnique({
+			where: {
+				id: userId,
+			},
+		})
+
+		if (!user) {
+			throw new NotFoundException('Пользователь не найден')
+		}
+
+		return user
+	}
+
 	private auth(res: Response, userId: string) {
 		const { accessToken, refreshToken } = this.generateTokens(userId)
 
@@ -150,7 +164,7 @@ export class AuthService {
 		res.cookie('refreshToken', value, {
 			httpOnly: true,
 			secure: !isDev(this.configService),
-			sameSite: isDev(this.configService) ? 'none' : 'lax',
+			sameSite: isDev(this.configService) ? 'lax' : 'strict',
 			domain: this.COOKIE_DOMAIN,
 			expires,
 		})
