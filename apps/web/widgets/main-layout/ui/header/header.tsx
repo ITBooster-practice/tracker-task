@@ -13,12 +13,16 @@ import {
 	Input,
 } from '@repo/ui'
 
+import { MobileSidebarTrigger } from './mobile-sidebar-trigger'
 import { SidebarToggle } from './sidebar-toggle'
 
 const Header = () => (
 	<div className='flex h-14 items-center justify-between bg-background px-3 text-foreground'>
 		<div className='flex items-center gap-2'>
-			<SidebarToggle />
+			<MobileSidebarTrigger />
+			<div className='hidden md:block'>
+				<SidebarToggle />
+			</div>
 			<Input
 				placeholder='Поиск (пока не реализовано)'
 				className='h-9 w-[260px] md:w-[320px]'

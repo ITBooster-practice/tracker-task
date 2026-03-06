@@ -27,9 +27,16 @@ const sidebarItems = [
 	},
 ]
 
-const Sidebar = () => {
-	const { isOpen } = useSideBarStore()
+interface Props {
+	className?: string
+	forceOpen?: boolean
+	onNavigate?: () => void
+}
+
+const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
+	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
+	const isOpen = forceOpen ?? isDesktopOpen
 
 	return (
 		<div
@@ -39,6 +46,7 @@ const Sidebar = () => {
 					'w-56': isOpen,
 					'w-12': !isOpen,
 				},
+				className,
 			)}
 		>
 			{sidebarItems.map((item) => (
@@ -49,6 +57,7 @@ const Sidebar = () => {
 					href={item.href}
 					isOpen={isOpen}
 					isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+					onNavigate={onNavigate}
 				/>
 			))}
 		</div>
