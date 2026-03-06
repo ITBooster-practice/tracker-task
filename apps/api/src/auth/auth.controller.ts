@@ -7,7 +7,6 @@ import {
 	Post,
 	Req,
 	Res,
-	UseGuards,
 } from '@nestjs/common'
 import type { Request, Response } from 'express'
 
@@ -24,7 +23,7 @@ import {
 } from '@nestjs/swagger'
 import { LoginRequestDto } from './dto/login.dto'
 import { AuthResponse } from './dto/auth.dto'
-import { AuthGuard } from '@nestjs/passport'
+import { Authorization } from './decorators/authorization.decorator'
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -135,7 +134,7 @@ export class AuthController {
 		return this.authService.logout(res)
 	}
 
-	@UseGuards(AuthGuard('jwt'))
+	@Authorization()
 	@Get('me')
 	@HttpCode(HttpStatus.OK)
 	async me(@Req() req: Request) {
