@@ -24,6 +24,8 @@ import {
 import { LoginRequestDto } from './dto/login.dto'
 import { AuthResponse } from './dto/auth.dto'
 import { Authorization } from './decorators/authorization.decorator'
+import { User } from 'generated/prisma/client'
+import { Authorized } from './decorators/authorized.decorator'
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -137,7 +139,13 @@ export class AuthController {
 	@Authorization()
 	@Get('me')
 	@HttpCode(HttpStatus.OK)
-	async me(@Req() req: Request) {
-		return req.user
+	async me(@Authorized() userInfo: User) {
+		return {
+			id: userInfo.id,
+			email: userInfo.email,
+			name: userInfo.name,
+			createdAt: userInfo.createdAt,
+			updatedAt: userInfo.updatedAt,
+		}
 	}
 }
