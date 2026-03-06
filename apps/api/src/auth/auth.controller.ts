@@ -1,5 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Res } from '@nestjs/common'
-import type { Response } from 'express'
+import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res } from '@nestjs/common'
+import type { Request, Response } from 'express'
 
 import { AuthService } from './auth.service'
 import { RegisterRequestDto } from './dto/register.dto'
@@ -30,5 +30,14 @@ export class AuthController {
 	@ApiResponse({ status: 400, description: 'Некорректные данные' })
 	async login(@Res({ passthrough: true }) res: Response, @Body() dto: LoginRequestDto) {
 		return this.authService.login(res, dto)
+	}
+
+	@Post('refresh')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Обновление токена' })
+	@ApiResponse({ status: 200, description: 'Токен успешно обновлен' })
+	@ApiResponse({ status: 400, description: 'Некорректные данные' })
+	async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+		return this.authService.refresh(req, res)
 	}
 }
