@@ -12,6 +12,7 @@ import {
 	DropdownMenuTrigger,
 	Input,
 } from '@repo/ui'
+import { Bell } from '@repo/ui/icons'
 
 import { MobileSidebarTrigger } from './mobile-sidebar-trigger'
 import { SidebarToggle } from './sidebar-toggle'
@@ -42,32 +43,43 @@ const Header = () => (
 			/>
 		</div>
 
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant='ghost' className='h-9 gap-2 px-2'>
-					<Avatar size='sm'>
-						<AvatarFallback>{currentUser.avatar}</AvatarFallback>
-					</Avatar>
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align='end' className='w-48'>
-				<DropdownMenuLabel className='py-2'>
-					<div className='flex items-center gap-2'>
+		<div className='flex items-center gap-2'>
+			<Button
+				variant='ghost'
+				size='icon-sm'
+				type='button'
+				aria-label='Уведомления (заглушка)'
+			>
+				<Bell className='size-4' />
+			</Button>
+
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button variant='ghost' className='h-9 gap-2 px-2'>
 						<Avatar size='sm'>
 							<AvatarFallback>{currentUser.avatar}</AvatarFallback>
 						</Avatar>
-						<span className='text-sm font-medium text-foreground'>
-							{currentUser.name}
-						</span>
-					</div>
-				</DropdownMenuLabel>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem>Профиль</DropdownMenuItem>
-				<DropdownMenuItem>Настройки</DropdownMenuItem>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem variant='destructive'>Выйти</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align='end' className='w-48'>
+					<DropdownMenuLabel className='py-2'>
+						<div className='flex items-center gap-2'>
+							<Avatar size='sm'>
+								<AvatarFallback>{currentUser.avatar}</AvatarFallback>
+							</Avatar>
+							<span className='text-sm font-medium text-foreground'>
+								{currentUser.name}
+							</span>
+						</div>
+					</DropdownMenuLabel>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem>Профиль</DropdownMenuItem>
+					<DropdownMenuItem>Настройки</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem variant='destructive'>Выйти</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</div>
 	</div>
 )
 
