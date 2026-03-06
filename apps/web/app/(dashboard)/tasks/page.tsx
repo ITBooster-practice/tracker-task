@@ -3,9 +3,9 @@ import { notFound } from 'next/navigation'
 
 import { Button } from '@repo/ui'
 
-const tasks = [
+const mockTasks = [
 	{
-		key: 'TT-1',
+		id: 'TT-1',
 		title: 'Реализовать систему авторизации',
 		type: 'Эпик',
 		status: 'В работе',
@@ -13,7 +13,7 @@ const tasks = [
 		assignee: 'Алексей',
 	},
 	{
-		key: 'TT-2',
+		id: 'TT-2',
 		title: 'Kanban доска с drag & drop',
 		type: 'Стори',
 		status: 'В работе',
@@ -21,7 +21,7 @@ const tasks = [
 		assignee: 'Мария',
 	},
 	{
-		key: 'TT-3',
+		id: 'TT-3',
 		title: 'Фильтры и поиск задач',
 		type: 'Стори',
 		status: 'К выполнению',
@@ -29,7 +29,7 @@ const tasks = [
 		assignee: 'Дмитрий',
 	},
 	{
-		key: 'TT-4',
+		id: 'TT-4',
 		title: 'Исправить баг с отображением аватаров',
 		type: 'Баг',
 		status: 'Ревью',
@@ -37,7 +37,7 @@ const tasks = [
 		assignee: 'Елена',
 	},
 	{
-		key: 'TT-5',
+		id: 'TT-5',
 		title: 'Настроить CI/CD pipeline',
 		type: 'Тех. долг',
 		status: 'Готово',
@@ -46,17 +46,21 @@ const tasks = [
 	},
 ] as const
 
-const typeBadgeClassName: Record<(typeof tasks)[number]['type'], string> = {
+const typeBadgeClassName: Record<(typeof mockTasks)[number]['type'], string> = {
 	Эпик: 'bg-violet-500/20 text-violet-300',
 	Стори: 'bg-blue-500/20 text-blue-300',
 	Баг: 'bg-red-500/20 text-red-300',
 	'Тех. долг': 'bg-amber-500/20 text-amber-300',
 }
 
-export default function TasksPage() {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export default async function TasksPage() {
 	if (!FEATURES.TASKS) {
 		notFound()
 	}
+
+	await sleep(1000)
 
 	return (
 		<div className='bg-background text-foreground w-full h-full'>
@@ -101,12 +105,12 @@ export default function TasksPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{tasks.map((task) => (
-								<tr key={task.key} className='border-b border-border last:border-b-0'>
+							{mockTasks?.map((task) => (
+								<tr key={task.id} className='border-b border-border last:border-b-0'>
 									<td className='px-4 py-3'>
 										<span className='block h-5 w-5 rounded-md border-2 border-primary' />
 									</td>
-									<td className='px-3 py-3 text-xl text-muted-foreground'>{task.key}</td>
+									<td className='px-3 py-3 text-xl text-muted-foreground'>{task.id}</td>
 									<td className='px-3 py-3 text-xl font-medium text-foreground'>
 										{task.title}
 									</td>
