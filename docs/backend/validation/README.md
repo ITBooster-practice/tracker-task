@@ -1,16 +1,28 @@
 # Backend Валидация (NestJS + Zod)
 
-## 📚 Документация
+## Документация
 
-- [Настройка валидации](../../validation/setup.md) - Полная инструкция
-- [Кастомные ошибки](./custom-errors.md) - Формат ошибок
-- [Общая валидация](../../validation/README.md) - Концепция Zod
+- [Настройка валидации](../../validation/setup.md) — полная инструкция
+- [Кастомные ошибки](./custom-errors.md) — формат ответов 400
+- [Общая валидация](../../validation/README.md) — концепция Zod
 
 ---
 
-## Обзор
+## Архитектура
 
-Валидация на бекенде реализована через интеграцию **NestJS** и **nestjs-zod**.
+```
+packages/types/src/auth/
+  register.dto.ts          # Zod-схема (общая, используется везде)
+  login.dto.ts
+
+apps/api/src/
+  app.module.ts            # Регистрация CustomZodValidationPipe глобально
+  auth/dto/
+    register.dto.ts        # DTO класс NestJS (createZodDto + @ApiProperty)
+    login.dto.ts
+  common/providers/
+    zod-validation.provider.ts  # Кастомный pipe (кастомный формат ошибок)
+```
 
 ## Установка
 
@@ -19,62 +31,57 @@ cd apps/api
 pnpm add nestjs-zod zod
 ```
 
-## Архитектура
-
-```
-packages/api/src/auth/dto/
-  register.dto.ts          ← Zod схема (общая)
-
-apps/api/src/
-  app.module.ts            ← Регистрация валидации
-  auth/dto/
-    register.dto.ts        ← DTO класс для NestJS
-  common/providers/
-    zod-validation.provider.ts  ← Кастомный pipe
-```
-
-## Настройка
-
-### 1. Создание схемы (packages/api)
+## Шаг 1: Zod-схема в `packages/types`
 
 ```typescript
-// packages/api/src/auth/dto/register.dto.ts
+// packages/types/src/auth/register.dto.ts
 import { z } from 'zod'
 
 export const registerRequestSchema = z.object({
+	name: z.string({ message: 'Имя должно быть строкой' }),
 	email: z.email({ error: 'Email некорректный' }),
-	password: z
-		.string({ message: 'Пароль должен быть строкой' })
-		.min(6, { message: 'Минимум 6 символов' }),
+	password: z.string().min(6, { message: 'Минимум 6 символов' }),
 })
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>
 ```
 
-### 2. Создание DTO класса (apps/api)
+## Шаг 2: DTO класс в `apps/api`
 
 ```typescript
 // apps/api/src/auth/dto/register.dto.ts
 import { createZodDto } from 'nestjs-zod'
-
+import { ApiProperty } from '@nestjs/swagger'
 import { registerRequestSchema } from '@repo/types'
 
-export class RegisterRequestDto extends createZodDto(registerRequestSchema) {}
-```
-
-### 3. Использование в контроллере
-
-```typescript
-@Post('register')
-async register(@Body() dto: RegisterRequestDto) {
-  // dto уже провалидирован автоматически!
-  return this.authService.register(dto)
+export class RegisterRequestDto extends createZodDto(registerRequestSchema) {
+	@ApiProperty({ example: 'Иван Иванов' }) name: string
+	@ApiProperty({ example: 'user@example.com' }) email: string
+	@ApiProperty({ example: '123456' }) password: string
 }
 ```
 
-### 4. Регистрация глобально (app.module.ts)
+## Шаг 3: Кастомный pipe (CustomZodValidationPipe)
 
 ```typescript
+// apps/api/src/common/providers/zod-validation.provider.ts
+import { BadRequestException } from '@nestjs/common'
+import { createZodValidationPipe } from 'nestjs-zod'
+
+export const CustomZodValidationPipe = createZodValidationPipe({
+	createValidationException: (error) => {
+		const paths = error.issues.map((e) => e.path.join('.'))
+		const messages = error.issues.map((e) => e.message)
+		return new BadRequestException({ statusCode: 400, path: paths, message: messages })
+	},
+})
+```
+
+## Шаг 4: Регистрация в `app.module.ts`
+
+```typescript
+import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core'
+import { ZodSerializerInterceptor } from 'nestjs-zod'
 import { CustomZodValidationPipe } from './common/providers/zod-validation.provider'
 
 @Module({
@@ -88,18 +95,6 @@ export class AppModule {}
 
 ## Формат ошибок
 
-### Запрос с ошибками
-
-```json
-POST /auth/register
-{
-  "email": "invalid",
-  "password": "123"
-}
-```
-
-### Ответ
-
 ```json
 {
 	"statusCode": 400,
@@ -108,23 +103,4 @@ POST /auth/register
 }
 ```
 
-## Кастомизация
-
-Кастомный формат ошибок настраивается в:
-
-```
-apps/api/src/common/providers/zod-validation.provider.ts
-```
-
-Подробнее: [custom-errors.md](./custom-errors.md)
-
-## Интеграция со Swagger
-
-DTO классы автоматически генерируют OpenAPI схемы.
-
-Подробнее: [../swagger/README.md](../swagger/README.md)
-
-## Полезные ссылки
-
-- [nestjs-zod документация](https://github.com/risenforces/nestjs-zod)
-- [Общая валидация](../../validation/README.md)
+Индексы `path[i]` и `message[i]` всегда соответствуют друг другу.

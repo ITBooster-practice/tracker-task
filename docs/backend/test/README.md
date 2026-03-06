@@ -9,8 +9,11 @@
 
 ```
 apps/api/test/
-├── mocks/                 # Общие моки (argon2 и др.)
-├── helpers/               # Фабрики моков и фикстуры
+├── mocks/
+│   └── argon2.ts              # vi.fn() заглушки для hash / verify
+├── helpers/
+│   └── auth.helpers.ts        # Фабрики: createPrismaMock, createJwtMock,
+│                              #          createConfigMock, makeTokens
 ├── unit/
 │   └── auth/
 │       └── auth.service.spec.ts
@@ -21,7 +24,18 @@ apps/api/test/
 ## Команды
 
 ```bash
-pnpm test              # unit-тесты + coverage
-pnpm test:e2e          # e2e (требует запущенную БД)
-pnpm test:watch        # watch-режим
+# unit-тесты + coverage
+pnpm test
+
+# e2e (требует запущенную БД)
+pnpm test:e2e
+
+# watch-режим для разработки
+pnpm test:watch
 ```
+
+## Конфигурация
+
+- `vitest.config.ts` — конфиг для unit-тестов
+- `vitest.config.e2e.ts` — конфиг для e2e (include: `test/e2e/**`)
+- `vitest.setup.ts` — глобальные настройки Vitest

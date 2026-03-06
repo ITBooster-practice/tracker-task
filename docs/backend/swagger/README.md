@@ -2,109 +2,135 @@
 
 ## Быстрый старт
 
-Swagger API документация доступна по адресу:
+| URL                                | Описание     |
+| ---------------------------------- | ------------ |
+| http://localhost:4000/api/docs     | Swagger UI   |
+| http://localhost:4000/swagger.json | OpenAPI JSON |
+| http://localhost:4000/swagger.yaml | OpenAPI YAML |
 
-```
-http://localhost:4000/api/docs
-```
-
-## Установка
-
-Для установки Swagger в NestJS проекте используйте команду:
+## Установка зависимостей
 
 ```bash
 cd apps/api
 pnpm add @nestjs/swagger nestjs-zod
 ```
 
-или установить все зависимости проекта (установит только те которые ещё не установлены):
+## Архитектура Swagger
 
-```bash
-pnpm install
+Swagger разбит на два файла:
+
+```
+src/
+├── utils/swagger.util.ts       # setupSwagger(app) — вызывается в main.ts
+└── auth/config/swagger.config.ts  # getSwaggerConfig() — DocumentBuilder
 ```
 
-## Настройка
-
-Swagger настраивается в файле `apps/api/src/main.ts`:
+### `swagger.config.ts`
 
 ```typescript
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { cleanupOpenApiDoc } from 'nestjs-zod'
+import { DocumentBuilder } from '@nestjs/swagger'
 
-const config = new DocumentBuilder()
-	.setTitle('Tracker Task API')
-	.setDescription('API для управления проектами и задачами')
-	.setVersion('1.0.0')
-	.addBearerAuth()
-	.build()
-
-const document = SwaggerModule.createDocument(app, config)
-
-// Очистка для корректной работы с Zod схемами
-SwaggerModule.setup('api/docs', app, cleanupOpenApiDoc(document))
-```
-
-## Интеграция с Zod
-
-### Автоматическая генерация схем
-
-DTO классы, созданные через `createZodDto`, автоматически генерируют OpenAPI схемы:
-
-```typescript
-// packages/api/src/auth/dto/register.dto.ts
-export const registerRequestSchema = z.object({
-	email: z.email({ error: 'Email некорректный' }),
-	password: z.string().min(6),
-})
-
-// apps/api/src/auth/dto/register.dto.ts
-export class RegisterRequestDto extends createZodDto(registerRequestSchema) {}
-```
-
-Swagger автоматически покажет:
-
-- Тип поля (`string`, `number`, и т.д.)
-- Валидационные правила (`minLength`, `format: email`)
-- Обязательность полей
-- Примеры значений
-
-### Документирование эндпоинтов
-
-```typescript
-@ApiTags('auth')
-@Controller('auth')
-export class AuthController {
-	@Post('register')
-	@ApiOperation({ summary: 'Регистрация нового пользователя' })
-	@ApiResponse({ status: 201, description: 'Успешная регистрация' })
-	@ApiResponse({ status: 400, description: 'Ошибка валидации' })
-	async register(@Body() dto: RegisterRequestDto) {
-		return this.authService.register(dto)
-	}
+export function getSwaggerConfig() {
+	return new DocumentBuilder()
+		.setTitle('Tracker Task API')
+		.setDescription('API для управления проектами и задачами')
+		.setVersion('1.0.0')
+		.addBearerAuth() // Включает поле для JWT в Swagger UI
+		.build()
 }
 ```
 
-### cleanupOpenApiDoc
-
-**Важно!** Функция `cleanupOpenApiDoc` необходима для корректной работы Zod схем в Swagger:
+### `swagger.util.ts`
 
 ```typescript
-SwaggerModule.setup('api/docs', app, cleanupOpenApiDoc(document))
+import { SwaggerModule } from '@nestjs/swagger'
+import { cleanupOpenApiDoc } from 'nestjs-zod'
+import { getSwaggerConfig } from 'src/auth/config/swagger.config'
+
+export function setupSwagger(app: INestApplication) {
+	const config = getSwaggerConfig()
+	const document = SwaggerModule.createDocument(app, config)
+	SwaggerModule.setup('api/docs', app, cleanupOpenApiDoc(document), {
+		jsonDocumentUrl: '/swagger.json',
+		yamlDocumentUrl: '/swagger.yaml',
+		swaggerOptions: { withCredentials: true }, // Передаёт cookie (refreshToken)
+	})
+}
 ```
 
-Без неё Swagger может показывать некорректные схемы.
+### `main.ts`
 
-## Что это дает?
+```typescript
+import { setupSwagger } from './utils/swagger.util'
 
-- 📝 Автоматическая генерация документации из Zod схем
-- 🧪 Возможность тестировать эндпоинты прямо из браузера
-- 🔒 Поддержка Bearer Auth токенов
-- 📊 Интерактивная документация с примерами запросов и ответов
-- ✅ Синхронизация валидации и документации
+const app = await NestFactory.create(AppModule)
+setupSwagger(app)
+```
 
-## Полезные ссылки
+## Интеграция с Zod (nestjs-zod)
 
-- [Официальная документация NestJS Swagger](https://docs.nestjs.com/openapi/introduction)
-- [nestjs-zod OpenAPI поддержка](https://github.com/risenforces/nestjs-zod#openapi-support-swagger)
-- [Swagger UI](https://swagger.io/tools/swagger-ui/)
-- [Валидация в проекте](../validation/README.md)
+DTO-классы наследуются от `createZodDto()` — схемы генерируются автоматически.
+
+```typescript
+// packages/types/src/auth/...
+export const registerRequestSchema = z.object({
+	name: z.string(),
+	email: z.email({ error: 'Email некорректный' }),
+	password: z.string().min(6, { message: 'Минимум 6 символов' }),
+})
+
+// apps/api/src/auth/dto/register.dto.ts
+export class RegisterRequestDto extends createZodDto(registerRequestSchema) {
+	@ApiProperty({ example: 'Иван Иванов' }) name: string
+	@ApiProperty({ example: 'user@example.com' }) email: string
+	@ApiProperty({ example: '123456' }) password: string
+}
+```
+
+**Важно:** `cleanupOpenApiDoc(document)` — обязательно, без него Zod-схемы
+не корректно отображаются в Swagger UI.
+
+## Документирование эндпоинтов
+
+```typescript
+@ApiTags('Auth')
+@Controller('auth')
+export class AuthController {
+
+    @ApiOperation({ summary: 'Регистрация аккаунта' })
+    @ApiOkResponse({ type: AuthResponse })
+    @ApiConflictResponse({ description: 'Email уже занят' })
+    @ApiBadRequestResponse({ description: 'Ошибка валидации' })
+    @Post('register')
+    async register(@Body() dto: RegisterRequestDto) { ... }
+
+    // Защищённый маршрут — кнопка Authorize в UI
+    @Authorization()
+    @ApiBearerAuth()
+    @Get('me')
+    async me(@Authorized() user: User) { ... }
+}
+```
+
+### Декораторы ответов
+
+| Декоратор                  | HTTP код | Когда использовать     |
+| -------------------------- | -------- | ---------------------- |
+| `@ApiOkResponse`           | 200      | Успешный ответ         |
+| `@ApiCreatedResponse`      | 201      | Ресурс создан          |
+| `@ApiBadRequestResponse`   | 400      | Ошибка валидации       |
+| `@ApiUnauthorizedResponse` | 401      | Не авторизован         |
+| `@ApiNotFoundResponse`     | 404      | Ресурс не найден       |
+| `@ApiConflictResponse`     | 409      | Конфликт (дубль email) |
+
+## AuthResponse DTO
+
+```typescript
+// src/auth/dto/auth.dto.ts
+export class AuthResponse {
+	@ApiProperty({ description: 'JWT access токен', example: 'eyJ...' })
+	accessToken: string
+}
+```
+
+`refreshToken` не возвращается в теле — он устанавливается как HTTP-only cookie.
