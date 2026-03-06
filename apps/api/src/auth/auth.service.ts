@@ -114,6 +114,12 @@ export class AuthService {
 		}
 	}
 
+	async logout(res: Response) {
+		this.setCookie(res, 'refreshToken', new Date(0))
+
+		return { message: 'Пользователь успешно вышел', success: true }
+	}
+
 	private auth(res: Response, userId: string) {
 		const { accessToken, refreshToken } = this.generateTokens(userId)
 
