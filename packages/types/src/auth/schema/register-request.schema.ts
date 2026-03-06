@@ -15,3 +15,16 @@ export const registerRequestSchema = z.object({
 })
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>
+
+export const registerRequestWithConfirmPasswordSchema = registerRequestSchema
+	.extend({
+		confirmPassword: registerRequestSchema.shape.password,
+	})
+	.refine((data) => data.password === data.confirmPassword, {
+		message: 'Пароли не совпадают.',
+		path: ['confirmPassword'],
+	})
+
+export type RegisterRequestWithConfirmPassword = z.infer<
+	typeof registerRequestWithConfirmPasswordSchema
+>
