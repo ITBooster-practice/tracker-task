@@ -1,8 +1,13 @@
 import { hash, verify } from 'argon2'
 import { ConfigService } from '@nestjs/config'
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import {
+	ConflictException,
+	Injectable,
+	NotFoundException,
+	UnauthorizedException,
+} from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import type { Response } from 'express'
+import type { Request, Response } from 'express'
 
 import { RegisterRequestDto } from './dto/register.dto'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -82,6 +87,39 @@ export class AuthService {
 		return this.auth(res, user.id)
 	}
 
+	async refresh(req: Request, res: Response) {
+		const refreshToken: string = req.cookies['refreshToken']
+
+		if (!refreshToken) {
+			throw new UnauthorizedException('Недействительный refresh-токен')
+		}
+
+		const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken)
+
+		if (payload) {
+			const user = await this.prismaService.user.findUnique({
+				where: {
+					id: payload.id,
+				},
+				select: {
+					id: true,
+				},
+			})
+
+			if (!user) {
+				throw new NotFoundException('Пользователь не найден')
+			}
+
+			return this.auth(res, user.id)
+		}
+	}
+
+	async logout(res: Response) {
+		this.setCookie(res, 'refreshToken', new Date(0))
+
+		return { message: 'Пользователь успешно вышел', success: true }
+	}
+
 	private auth(res: Response, userId: string) {
 		const { accessToken, refreshToken } = this.generateTokens(userId)
 
@@ -107,6 +145,7 @@ export class AuthService {
 
 		return { accessToken, refreshToken }
 	}
+
 	private setCookie(res: Response, value: string, expires: Date) {
 		res.cookie('refreshToken', value, {
 			httpOnly: true,
