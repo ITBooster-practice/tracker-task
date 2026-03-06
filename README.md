@@ -58,6 +58,7 @@ tracker-task/
 ### **Стек**
 
 - [Next.js](https://nextjs.org/docs) - для создания серверного рендеринга и статической генерации страниц
+  - [Next.js с Нуля - полный курс для начинающих (2025)](https://www.youtube.com/watch?v=KZb53sf-PEg)
 - [TypeScript](https://www.typescriptlang.org/docs/) - для статической типизации
   - [TypeScript ФУНДАМЕНТАЛЬНЫЙ КУРС от А до Я. Вся теория + практика](https://www.youtube.com/watch?v=LWtHl__oEWc&t=3720s)
 - [TanStack Query](https://tanstack.com/query/latest/docs/framework/react/overview) - для управления серверным состоянием и кэшированием данных
@@ -95,8 +96,6 @@ tracker-task/
 - Обязателен CI пайплайн
   - [CI CD наглядные примеры](https://www.youtube.com/watch?v=ANj7qUgzNq4&pp=ygUNdWxiaSB0diBjaSBjZA%3D%3D)
 
-===
-
 ## [**Backend**](https://itbooster.ru/roadmap/4/)
 
 ### **Стек**
@@ -120,6 +119,8 @@ tracker-task/
 - [BullMQ](https://docs.bullmq.io/readme-1) - для управления очередями задач
   - [BullMQ](https://itbooster.ru/roadmap/4/?nodeId=08380761-24eb-42b8-9f9b-522bc5f6ee8b)
 - [OpenAI Node.js](https://github.com/openai/openai-node#readme) - для интеграции с OpenAI API
+- [Passport.js](https://www.passportjs.org/) - для аутентификации
+  - [Интеграция Passport.js с NestJS](https://docs.nestjs.com/recipes/passport) - интеграция Passport.js с NestJS
 
 ### **Инструменты**
 
@@ -149,7 +150,7 @@ tracker-task/
 
 ## **Общее**
 
-- **[CI_CD]**(https://itbooster.ru/roadmap/2/?nodeId=4318d274-56ee-4161-ab9f-4ed89f574870) - для автоматизации сборки, тестирования и деплоя приложения
+- **[CI_CD](https://itbooster.ru/roadmap/2/?nodeId=4318d274-56ee-4161-ab9f-4ed89f574870)** - для автоматизации сборки, тестирования и деплоя приложения
 - Обязательно на каждый пул реквест прогоняем линтеры, тесты, билд проекта, typecheck через ts.
 - Релизы через отведение ветки + нажатие кнопки release в github.
 - Пуш в dev/trunk/master - запрещен напрямую, только через ПР с код ревью
