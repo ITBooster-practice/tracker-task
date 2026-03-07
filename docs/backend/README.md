@@ -15,6 +15,10 @@
 
 - [Prisma](./prisma/README.md) — ORM и миграции
 
+### Кеш и хранилище
+
+- [Redis](./redis/README.md) — Хранение refresh-токенов с TTL, отладка
+
 ### Тестирование
 
 - [Обзор](./test/README.md) — Структура, команды
@@ -25,9 +29,10 @@
 
 ## Быстрый старт
 
-1. **Настройка валидации** — [validation/setup](../validation/setup.md)
-2. **Swagger** — http://localhost:4000/api/docs
-3. **Prisma Studio** — `pnpm prisma:studio`
+1. **Запустить Redis** — `pnpm docker:redis-up`
+2. **Настройка валидации** — [validation/setup](../validation/setup.md)
+3. **Swagger** — http://localhost:4000/api/docs
+4. **Prisma Studio** — `pnpm prisma:studio`
 
 ## Реализованные эндпоинты
 
@@ -36,7 +41,7 @@
 ### Аутентификация (JWT + Cookie)
 
 - `accessToken` — Bearer-токен, передаётся в `Authorization: Bearer <token>`
-- `refreshToken` — HTTP-only cookie, управляется сервером автоматически
+- `refreshToken` — HTTP-only cookie, управляется сервером автоматически; хранится в Redis с TTL
 - Защищённые маршруты: декоратор `@Authorization()` (= `@UseGuards(JwtGuard)`)
 - `@Authorized()` — param-декоратор для получения объекта пользователя из запроса
 
@@ -75,8 +80,13 @@ apps/api/
     │   │   └── auth.dto.ts         # AuthResponse
     │   └── interfaces/
     │       └── jwt.interface.ts    # JwtPayload { id }
-    ├── common/providers/
-    │   └── zod-validation.provider.ts  # Кастомный ValidationPipe
+    ├── common/
+    │   ├── providers/
+    │   │   └── zod-validation.provider.ts  # Кастомный ValidationPipe
+    │   └── redis/
+    │       ├── redis.constants.ts  # REDIS_CLIENT токен
+    │       ├── redis.module.ts     # @Global() модуль, создаёт ioredis-клиент
+    │       └── redis.service.ts    # setRefreshToken / getRefreshToken / deleteRefreshToken
     ├── guards/
     │   └── auth.guard.ts       # JwtGuard extends AuthGuard('jwt')
     ├── strategies/
@@ -97,5 +107,6 @@ apps/api/
 | Cookies    | cookie-parser                                 |
 | Validation | Zod + nestjs-zod                              |
 | Database   | PostgreSQL + Prisma 7.x                       |
+| Cache      | Redis 7 + ioredis                             |
 | API Docs   | @nestjs/swagger                               |
 | Testing    | Vitest                                        |
