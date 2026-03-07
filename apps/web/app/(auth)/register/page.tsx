@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { Button, Form } from '@repo/ui'
 
 import { AuthFormLayout } from '../auth-form-layout'
@@ -29,7 +31,18 @@ export default function RegisterPage() {
 						</Button>
 					}
 				>
-					<RegisterForm />
+					<div className='space-y-4'>
+						<RegisterForm />
+						<p className='text-center text-sm text-muted-foreground'>
+							Уже есть аккаунт?{' '}
+							<Link
+								href='/login'
+								className='font-medium text-primary transition-opacity hover:opacity-80'
+							>
+								Войти
+							</Link>
+						</p>
+					</div>
 				</AuthFormLayout>
 			</form>
 		</Form>

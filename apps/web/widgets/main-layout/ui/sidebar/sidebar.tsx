@@ -1,6 +1,7 @@
 'use client'
 
 import { ThemeToggle } from '@/features/theme'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import React from 'react'
 
@@ -55,12 +56,16 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 				className,
 			)}
 		>
-			<div className='mb-2 flex h-9 items-center gap-2 px-2'>
+			<Link
+				href='/'
+				onClick={onNavigate}
+				className='mb-2 flex h-9 items-center gap-2 rounded-md px-2 transition-colors hover:bg-sidebar-accent/50'
+			>
 				<div className='flex size-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground'>
 					TT
 				</div>
 				{isOpen && <span className='truncate text-sm font-semibold'>Tracker Task</span>}
-			</div>
+			</Link>
 
 			<nav className='flex flex-1 flex-col gap-1'>
 				{sidebarItems.map((item) => (
@@ -72,7 +77,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 						isOpen={isOpen}
 						isActive={
 							item.href !== '#' &&
-							(pathname === item.href || pathname.startsWith(`${item.href}/`))
+							(pathname === item.href || pathname?.startsWith(`${item.href}/`))
 						}
 						onNavigate={onNavigate}
 					/>
