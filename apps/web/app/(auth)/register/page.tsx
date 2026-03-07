@@ -1,8 +1,10 @@
 'use client'
 
+import { useRegister } from '@/hooks/api/use-auth'
+import { isApiError } from '@/lib/api/utils'
 import Link from 'next/link'
 
-import { Button, Form } from '@repo/ui'
+import { Button, Form, toast } from '@repo/ui'
 
 import { AuthFormLayout } from '../auth-form-layout'
 import { RegisterForm } from './register-form'
@@ -11,8 +13,18 @@ import { RegisterFormValues, useRegisterForm } from './use-register-form'
 export default function RegisterPage() {
 	const form = useRegisterForm()
 
+	const registerMutation = useRegister()
+
 	const onSubmit = async (data: RegisterFormValues) => {
-		console.log(data)
+		try {
+			await registerMutation.mutateAsync(data)
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+			} else {
+				throw error
+			}
+		}
 	}
 
 	return (
