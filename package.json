@@ -6,7 +6,7 @@
 	"author": "",
 	"license": "UNLICENSED",
 	"scripts": {
-		"dev": "turbo run dev",
+		"dev": "docker compose up redis -d && turbo run dev",
 		"build": "turbo run build",
 		"test": "turbo run test",
 		"test:e2e": "turbo run test:e2e",
