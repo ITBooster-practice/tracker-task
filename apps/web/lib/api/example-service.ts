@@ -5,7 +5,6 @@
 
 import { client } from './client'
 import {
-	ApiResponse,
 	BaseEntity,
 	CreateDto,
 	PaginatedResponse,
@@ -35,18 +34,18 @@ export const exampleService = {
 	},
 
 	getById: async (id: string): Promise<Example> => {
-		const response = await client.get<ApiResponse<Example>>(`${ENDPOINT}/${id}`)
-		return response.data.data
+		const response = await client.get<Example>(`${ENDPOINT}/${id}`)
+		return response.data
 	},
 
 	create: async (data: CreateExampleDto): Promise<Example> => {
-		const response = await client.post<ApiResponse<Example>>(ENDPOINT, data)
-		return response.data.data
+		const response = await client.post<Example>(ENDPOINT, data)
+		return response.data
 	},
 
 	update: async (id: string, data: UpdateExampleDto): Promise<Example> => {
-		const response = await client.patch<ApiResponse<Example>>(`${ENDPOINT}/${id}`, data)
-		return response.data.data
+		const response = await client.patch<Example>(`${ENDPOINT}/${id}`, data)
+		return response.data
 	},
 
 	delete: async (id: string): Promise<void> => {

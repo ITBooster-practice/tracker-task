@@ -1,15 +1,14 @@
+import { AxiosResponse } from 'axios'
+
 // Базовый тип ошибки API
 export interface ApiError {
 	message: string
 	statusCode: number
-	error: string
+	error?: string
 }
 
 // Обёртка для одиночного ответа
-export interface ApiResponse<T> {
-	data: T
-	message?: string
-}
+export type ApiResponse<T> = AxiosResponse<T>
 
 // Пагинированный ответ
 export interface PaginatedResponse<T> {

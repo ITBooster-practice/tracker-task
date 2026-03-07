@@ -9,3 +9,5 @@ export type {
 } from './auth/schema/register-request.schema'
 export { loginRequestSchema } from './auth/schema/login-request.schema'
 export type { LoginRequest } from './auth/schema/login-request.schema'
+export { authResponseSchema } from './auth/schema/auth-response.schema'
+export type { AuthResponse } from './auth/schema/auth-response.schema'
