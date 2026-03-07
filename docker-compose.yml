@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.9'
 
 services:
   redis:
@@ -6,10 +6,13 @@ services:
     container_name: tracker_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server
+
+# Заменить для включения режима сохранения данных на диск
+# command: redis-server --appendonly yes
 
 volumes:
   redis_data:
