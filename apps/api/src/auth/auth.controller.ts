@@ -133,8 +133,8 @@ export class AuthController {
 	@ApiOkResponse({ description: 'Пользователь успешно вышел' })
 	@Post('logout')
 	@HttpCode(HttpStatus.OK)
-	async logout(@Res({ passthrough: true }) res: Response) {
-		return this.authService.logout(res)
+	async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+		return this.authService.logout(req, res)
 	}
 
 	@ApiOperation({
