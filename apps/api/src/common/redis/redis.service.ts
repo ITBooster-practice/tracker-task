@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Redis } from 'ioredis'
-import { REDIS_CLIENT } from './redis.module'
+import { REDIS_CLIENT } from './redis.constants'
 import { parseTTLToMs } from 'src/utils/ms.util'
 
 @Injectable()

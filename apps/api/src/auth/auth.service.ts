@@ -15,6 +15,7 @@ import type { JwtPayload } from './interfaces/jwt.interface'
 import { LoginRequestDto } from './dto/login.dto'
 import { isDev } from 'src/utils/is-dev.util'
 import { parseTTLToMs } from 'src/utils/ms.util'
+import { RedisService } from 'src/common/redis/redis.service'
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
 		private readonly prismaService: PrismaService,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService,
+		private readonly redisService: RedisService,
 	) {
 		this.JWT_ACCESS_TOKEN_TTL =
 			this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_TTL')
@@ -58,7 +60,7 @@ export class AuthService {
 			},
 		})
 
-		return this.auth(res, user.id)
+		return await this.auth(res, user.id)
 	}
 
 	async login(res: Response, dto: LoginRequestDto) {
@@ -84,7 +86,7 @@ export class AuthService {
 			throw new NotFoundException('Пользователь не найден')
 		}
 
-		return this.auth(res, user.id)
+		return await this.auth(res, user.id)
 	}
 
 	async refresh(req: Request, res: Response) {
@@ -95,6 +97,12 @@ export class AuthService {
 		}
 
 		const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken)
+
+		const storedRefreshToken = await this.redisService.getRefreshToken(payload.id)
+
+		if (!storedRefreshToken || storedRefreshToken !== refreshToken) {
+			throw new UnauthorizedException('Недействительный refresh-токен')
+		}
 
 		if (payload) {
 			const user = await this.prismaService.user.findUnique({
@@ -110,11 +118,20 @@ export class AuthService {
 				throw new NotFoundException('Пользователь не найден')
 			}
 
-			return this.auth(res, user.id)
+			return await this.auth(res, user.id)
 		}
 	}
 
-	async logout(res: Response) {
+	async logout(req: Request, res: Response) {
+		const refreshToken: string = req.cookies['refreshToken']
+
+		if (refreshToken) {
+			const payload: JwtPayload = this.jwtService.decode(refreshToken)
+			if (payload?.id) {
+				await this.redisService.deleteRefreshToken(payload.id)
+			}
+		}
+
 		this.setCookie(res, 'refreshToken', new Date(0))
 
 		return { message: 'Пользователь успешно вышел', success: true }
@@ -134,8 +151,10 @@ export class AuthService {
 		return user
 	}
 
-	private auth(res: Response, userId: string) {
+	private async auth(res: Response, userId: string) {
 		const { accessToken, refreshToken } = this.generateTokens(userId)
+
+		await this.redisService.setRefreshToken(userId, refreshToken)
 
 		this.setCookie(
 			res,
