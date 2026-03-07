@@ -13,7 +13,7 @@ export default function AuthLayout({ children }: Props) {
 	}
 
 	return (
-		<HStack align='center' justify='center' className='min-h-screen bg-foreground'>
+		<HStack align='center' justify='center' className='min-h-screen bg-background'>
 			{children}
 		</HStack>
 	)
