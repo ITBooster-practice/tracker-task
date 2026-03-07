@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 
 import '@repo/ui/globals.css'
 
+import { Toaster } from '@repo/ui'
+
 import { Providers } from './providers'
 
 export const metadata: Metadata = {
@@ -19,6 +21,7 @@ export default function RootLayout({
 		<html lang='ru'>
 			<body>
 				<Providers>{children}</Providers>
+				<Toaster />
 			</body>
 		</html>
 	)
