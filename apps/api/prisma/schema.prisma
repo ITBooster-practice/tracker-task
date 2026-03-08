@@ -27,15 +27,71 @@ enum Priority {
   CRITICAL
 }
 
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
+  id              String           @id @default(uuid())
+  email           String           @unique
   name            String?
   password        String
   createdProjects Project[]
   assignedTasks   Task[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  teamMemberships TeamMember[]
+  sentInvitations TeamInvitation[] @relation("SentInvitations")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Team {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  avatarUrl   String?
+  members     TeamMember[]
+  invitations TeamInvitation[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+model TeamInvitation {
+  id          String           @id @default(uuid())
+  teamId      String
+  team        Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedById String
+  invitedBy   User             @relation("SentInvitations", fields: [invitedById], references: [id])
+  email       String
+  role        TeamRole         @default(MEMBER)
+  status      InvitationStatus @default(PENDING)
+  token       String           @unique
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([email])
+  @@index([token])
 }
 
 model Project {
