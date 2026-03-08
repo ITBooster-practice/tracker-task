@@ -77,7 +77,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 						isOpen={isOpen}
 						isActive={
 							item.href !== '#' &&
-							(pathname === item.href || pathname.startsWith(`${item.href}/`))
+							(pathname === item.href || pathname?.startsWith(`${item.href}/`))
 						}
 						onNavigate={onNavigate}
 					/>
