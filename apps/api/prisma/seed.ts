@@ -159,6 +159,52 @@ async function main() {
 
 	console.log(`✅ Создано задач: 8`)
 
+	// Создание тестовой команды
+	console.log('👥 Создание команды...')
+	const team = await prisma.team.create({
+		data: {
+			name: 'Команда разработки',
+			description: 'Основная команда разработчиков трекера задач',
+		},
+	})
+
+	// Добавление участников команды
+	await prisma.teamMember.createMany({
+		data: [
+			{
+				teamId: team.id,
+				userId: user1.id,
+				role: 'OWNER',
+			},
+			{
+				teamId: team.id,
+				userId: user2.id,
+				role: 'MEMBER',
+			},
+			{
+				teamId: team.id,
+				userId: user3.id,
+				role: 'ADMIN',
+			},
+		],
+	})
+
+	console.log(`✅ Создана команда "${team.name}" с 3 участниками`)
+
+	// Создание тестового приглашения
+	await prisma.teamInvitation.create({
+		data: {
+			teamId: team.id,
+			invitedById: user1.id,
+			email: 'newmember@example.com',
+			role: 'MEMBER',
+			token: 'test-invitation-token-00000000-0000-0000-0000-000000000001',
+			expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // +48 часов
+		},
+	})
+
+	console.log('✅ Создано тестовое приглашение')
+
 	console.log('✨ Заполнение базы данных завершено успешно!')
 }
 
