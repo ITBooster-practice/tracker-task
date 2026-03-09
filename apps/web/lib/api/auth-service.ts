@@ -3,9 +3,11 @@ import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@repo/ty
 import { client } from './client'
 import { ApiResponse } from './types'
 
-type RegisterResponse = AuthResponse
-type LoginResponse = AuthResponse
-type RefreshResponse = AuthResponse
+export type { AuthResponse, LoginRequest, RegisterRequest, User }
+
+export type RegisterResponse = AuthResponse
+export type LoginResponse = AuthResponse
+export type RefreshResponse = AuthResponse
 
 const ENDPOINT = '/auth'
 
