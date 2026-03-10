@@ -1,19 +1,11 @@
+import { jwtDecode } from 'jwt-decode'
+
+const decodeToken = <T = any>(token: string): T => jwtDecode<T>(token)
+
 const getTokenExpiration = (token: string) => {
 	try {
-		const [, payload] = token.split('.')
-
-		if (!payload) {
-			return null
-		}
-
-		const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/')
-		const paddedPayload = normalizedPayload.padEnd(
-			normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
-			'=',
-		)
-		const decodedPayload = JSON.parse(atob(paddedPayload)) as { exp?: number }
-
-		return decodedPayload.exp ?? null
+		const { exp } = decodeToken<{ exp?: number }>(token)
+		return exp ?? null
 	} catch {
 		return null
 	}
@@ -29,4 +21,4 @@ const isTokenExpiredSoon = (token: string, leewayInSeconds = 30) => {
 	return expiration - leewayInSeconds <= Math.floor(Date.now() / 1000)
 }
 
-export { getTokenExpiration, isTokenExpiredSoon }
+export { isTokenExpiredSoon }
