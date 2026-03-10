@@ -17,3 +17,9 @@ export { createTeamSchema } from './teams/create-team.schema'
 export type { CreateTeam } from './teams/create-team.schema'
 export { updateTeamSchema } from './teams/update-team.schema'
 export type { UpdateTeam } from './teams/update-team.schema'
+export type {
+	Team,
+	TeamListItem,
+	TeamMember,
+	DeleteTeamResponse,
+} from './teams/team.types'
