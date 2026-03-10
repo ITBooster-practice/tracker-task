@@ -31,7 +31,7 @@ export class TeamResponse {
 	@ApiPropertyOptional({ example: 'Наша крутая команда' })
 	description: string | null
 
-	@ApiPropertyOptional({ example: 'https://example.com/avatar.png' })
+	@ApiPropertyOptional({ example: null, nullable: true })
 	avatarUrl: string | null
 
 	@ApiProperty({ type: [TeamMemberResponse] })
@@ -54,7 +54,7 @@ export class TeamListItemResponse {
 	@ApiPropertyOptional({ example: 'Наша крутая команда' })
 	description: string | null
 
-	@ApiPropertyOptional({ example: 'https://example.com/avatar.png' })
+	@ApiPropertyOptional({ example: null, nullable: true })
 	avatarUrl: string | null
 
 	@ApiProperty({ example: 3, description: 'Количество участников' })

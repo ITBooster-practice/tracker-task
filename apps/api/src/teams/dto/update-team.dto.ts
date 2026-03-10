@@ -13,8 +13,10 @@ export class UpdateTeamDto extends createZodDto(updateTeamSchema) {
 	description?: string
 
 	@ApiPropertyOptional({
-		example: 'https://example.com/avatar.png',
-		description: 'Новый URL аватара',
+		example: null,
+		nullable: true,
+		description:
+			'Новый URL аватара. Если не указан — на клиенте используются инициалы названия',
 	})
 	avatarUrl?: string
 }
