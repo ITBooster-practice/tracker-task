@@ -19,7 +19,11 @@ const SessionProvider = ({ children }: Props) => {
 	}, [initSession])
 
 	if (status === 'unknown') {
-		return <Loader className='animate-spin' />
+		return (
+			<div className='h-screen flex items-center justify-center'>
+				<Loader className='animate-spin' />
+			</div>
+		)
 	}
 
 	return children
