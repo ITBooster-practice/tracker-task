@@ -15,6 +15,7 @@
 		"@repo/ui": "workspace:*",
 		"@tanstack/react-query": "^5.90.21",
 		"axios": "^1.13.5",
+		"jwt-decode": "^4.0.0",
 		"next": "16.1.6",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
@@ -22,8 +23,8 @@
 		"zustand": "^5.0.11"
 	},
 	"devDependencies": {
-		"@repo/types": "workspace:*",
 		"@repo/eslint-config": "workspace:*",
+		"@repo/types": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
 		"@tailwindcss/postcss": "^4.2.0",
 		"@tanstack/react-query-devtools": "^5.91.3",
