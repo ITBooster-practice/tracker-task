@@ -2,6 +2,7 @@
 
 import { useLogin } from '@/hooks/api/use-auth'
 import { isApiError } from '@/lib/api/utils'
+import { useSessionStore } from '@/lib/session'
 import Link from 'next/link'
 
 import { Button, Form, toast } from '@repo/ui'
@@ -14,10 +15,12 @@ export default function LoginPage() {
 	const form = useLoginForm()
 
 	const loginMutation = useLogin()
+	const session = useSessionStore()
 
 	const onSubmit = async (data: LoginFormValues) => {
 		try {
-			await loginMutation.mutateAsync(data)
+			const { accessToken } = await loginMutation.mutateAsync(data)
+			session.setAuthenticated(accessToken)
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)
