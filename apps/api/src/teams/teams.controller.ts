@@ -38,7 +38,7 @@ export class TeamsController {
 	@ApiOperation({ summary: 'Создать команду' })
 	@ApiCreatedResponse({ type: TeamResponse, description: 'Команда успешно создана' })
 	@ApiBadRequestResponse({ description: 'Некорректные данные' })
-	@Post()
+	@Post('new')
 	@HttpCode(HttpStatus.CREATED)
 	createTeam(@Authorized('id') userId: string, @Body() dto: CreateTeamDto) {
 		return this.teamsService.createTeam(userId, dto)
