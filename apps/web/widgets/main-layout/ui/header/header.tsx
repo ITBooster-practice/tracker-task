@@ -1,26 +1,11 @@
 import React from 'react'
 
-import {
-	Avatar,
-	AvatarFallback,
-	Button,
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-	Input,
-} from '@repo/ui'
+import { Button, Input } from '@repo/ui'
 import { Bell } from '@repo/ui/icons'
 
 import { MobileSidebarTrigger } from './mobile-sidebar-trigger'
+import { ProfileMenu } from './profile-menu'
 import { SidebarToggle } from './sidebar-toggle'
-
-const currentUser = {
-	name: 'Имя',
-	avatar: 'AL',
-}
 
 const Header = () => (
 	<div className='flex h-14 items-center justify-between bg-background px-3 text-foreground'>
@@ -52,33 +37,7 @@ const Header = () => (
 			>
 				<Bell className='size-4' />
 			</Button>
-
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button variant='ghost' className='h-9 gap-2 px-2'>
-						<Avatar size='sm'>
-							<AvatarFallback>{currentUser.avatar}</AvatarFallback>
-						</Avatar>
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align='end' className='w-48'>
-					<DropdownMenuLabel className='py-2'>
-						<div className='flex items-center gap-2'>
-							<Avatar size='sm'>
-								<AvatarFallback>{currentUser.avatar}</AvatarFallback>
-							</Avatar>
-							<span className='text-sm font-medium text-foreground'>
-								{currentUser.name}
-							</span>
-						</div>
-					</DropdownMenuLabel>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem>Профиль</DropdownMenuItem>
-					<DropdownMenuItem>Настройки</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem variant='destructive'>Выйти</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+			<ProfileMenu />
 		</div>
 	</div>
 )
