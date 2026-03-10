@@ -7,7 +7,7 @@ export const createTeamSchema = z.object({
 		.max(50, { message: 'Название должно быть не длиннее 50 символов' }),
 	description: z
 		.string({ message: 'Описание должно быть строкой' })
-		.max(500, { message: 'Описание должно быть не длиннее 500 символов' })
+		.max(100, { message: 'Описание должно быть не длиннее 100 символов' })
 		.optional(),
 	avatarUrl: z.url({ message: 'Некорректный URL аватара' }).optional(),
 })

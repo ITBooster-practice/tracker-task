@@ -8,7 +8,7 @@ export class UpdateTeamDto extends createZodDto(updateTeamSchema) {
 
 	@ApiPropertyOptional({
 		example: 'Новое описание',
-		description: 'Новое описание команды',
+		description: 'Новое описание команды (до 100 символов)',
 	})
 	description?: string
 
