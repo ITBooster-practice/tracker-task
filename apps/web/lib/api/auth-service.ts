@@ -1,7 +1,7 @@
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@repo/types'
 
 import { client } from './client'
-import { ApiResponse } from './types'
+import { publicClient } from './public-client'
 
 export type { AuthResponse, LoginRequest, RegisterRequest, User }
 
@@ -13,33 +13,28 @@ const ENDPOINT = '/auth'
 
 export const authService = {
 	register: async (body: RegisterRequest): Promise<RegisterResponse> => {
-		const response = await client.post<
-			RegisterResponse,
-			ApiResponse<RegisterResponse>,
-			RegisterRequest
-		>(`${ENDPOINT}/register`, body)
+		const response = await publicClient.post<RegisterResponse>(
+			`${ENDPOINT}/register`,
+			body,
+		)
 
 		return response.data
 	},
 
 	login: async (body: LoginRequest): Promise<LoginResponse> => {
-		const response = await client.post<
-			LoginResponse,
-			ApiResponse<LoginResponse>,
-			LoginRequest
-		>(`${ENDPOINT}/login`, body)
+		const response = await publicClient.post<LoginResponse>(`${ENDPOINT}/login`, body)
 
 		return response.data
 	},
 
 	refresh: async (): Promise<RefreshResponse> => {
-		const response = await client.post<RefreshResponse>(`${ENDPOINT}/refresh`)
+		const response = await publicClient.post<RefreshResponse>(`${ENDPOINT}/refresh`)
 
 		return response.data
 	},
 
 	logout: async () => {
-		return await client.post(`${ENDPOINT}/logout`)
+		await publicClient.post(`${ENDPOINT}/logout`)
 	},
 
 	getMe: async (): Promise<User> => {

@@ -1,40 +1,22 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
+import { axiosConfig } from './axios-config'
 import { ApiError } from './types'
+import { toApiError } from './utils'
 
-const client = axios.create({
-	baseURL: process.env.NEXT_PUBLIC_API_URL,
-	headers: {
-		'Content-Type': 'application/json',
-	},
-	timeout: 10000,
-	withCredentials: true,
-})
+const client = axios.create(axiosConfig)
 
-// Request interceptor
 client.interceptors.request.use(
-	(config: InternalAxiosRequestConfig) => {
-		// Здесь можно добавить токен авторизации
-		// const token = getAuthToken()
-		// if (token) {
-		//   config.headers.Authorization = `Bearer ${token}`
-		// }
-		return config
+	async (request: InternalAxiosRequestConfig) => {
+		return request
 	},
 	(error: AxiosError) => Promise.reject(error),
 )
 
-// Response interceptor
 client.interceptors.response.use(
 	(response) => response,
-	(error: AxiosError<ApiError>) => {
-		const apiError: ApiError = {
-			message: error.response?.data?.message || error.message || 'Unknown error',
-			statusCode: error.response?.status || 500,
-			error: error.response?.data?.error || 'Error',
-		}
-
-		return Promise.reject(apiError)
+	async (error: AxiosError<ApiError>) => {
+		return Promise.reject(toApiError(error))
 	},
 )
 
