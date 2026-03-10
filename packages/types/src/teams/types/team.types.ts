@@ -1,4 +1,4 @@
-import type { TeamRole } from './team-role.constants'
+import type { TeamRole } from '../constants/team-role.constants'
 
 export interface TeamMember {
 	id: string
