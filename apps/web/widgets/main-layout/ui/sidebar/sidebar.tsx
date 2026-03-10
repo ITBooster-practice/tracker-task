@@ -6,33 +6,17 @@ import { usePathname } from 'next/navigation'
 import React from 'react'
 
 import { Avatar, AvatarFallback, cn } from '@repo/ui'
-import { FolderKanban, ListTodo, Rocket, Settings } from '@repo/ui/icons'
+import { KanbanSquare } from '@repo/ui/icons'
 
-import { useSideBarStore } from '../../model/sidebar'
+import {
+	sidebarCurrentUser,
+	sidebarProjects,
+	sidebarSections,
+	sidebarWorkspace,
+	useSideBarStore,
+} from '../../model/sidebar'
 import { SidebarMenuItem } from './sidebar-menu-item'
-
-const sidebarItems = [
-	{
-		title: 'Проекты',
-		href: '/projects',
-		icon: <FolderKanban className='size-4' />,
-	},
-	{
-		title: 'Задачи',
-		href: '/tasks',
-		icon: <ListTodo className='size-4' />,
-	},
-	{
-		title: 'Спринты',
-		href: '/sprints',
-		icon: <Rocket className='size-4' />,
-	},
-	{
-		title: 'Настройки',
-		href: '#',
-		icon: <Settings className='size-4' />,
-	},
-]
+import { SidebarProjectItem } from './sidebar-project-item'
 
 interface Props {
 	className?: string
@@ -44,11 +28,14 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
 	const isOpen = forceOpen ?? isDesktopOpen
+	const workSection = sidebarSections[0]
+	const otherSections = sidebarSections.slice(1)
+	const collapsedItems = sidebarSections.flatMap((section) => section.items)
 
 	return (
 		<div
 			className={cn(
-				'flex h-full flex-col gap-1 overflow-hidden bg-sidebar p-2 text-sidebar-foreground transition-all duration-200',
+				'flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground transition-all duration-200',
 				{
 					'w-56': isOpen,
 					'w-12': !isOpen,
@@ -56,57 +43,156 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 				className,
 			)}
 		>
-			<Link
-				href='/'
-				onClick={onNavigate}
-				className='mb-2 flex h-9 items-center gap-2 rounded-md px-2 transition-colors hover:bg-sidebar-accent/50'
-			>
-				<div className='flex size-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground'>
-					TT
-				</div>
-				{isOpen && <span className='truncate text-sm font-semibold'>Tracker Task</span>}
-			</Link>
-
-			<nav className='flex flex-1 flex-col gap-1'>
-				{sidebarItems.map((item) => (
-					<SidebarMenuItem
-						key={item.title}
-						icon={item.icon}
-						title={item.title}
-						href={item.href}
-						isOpen={isOpen}
-						isActive={
-							item.href !== '#' &&
-							(pathname === item.href || pathname?.startsWith(`${item.href}/`))
-						}
-						onNavigate={onNavigate}
-					/>
-				))}
-			</nav>
-
-			<div className='mt-auto border-t border-sidebar-border pt-2'>
-				<div
-					className={cn('mb-4 flex items-center', {
-						'justify-start px-2': isOpen,
-						'justify-center': !isOpen,
-					})}
-				>
-					<ThemeToggle />
-				</div>
-
-				<div
+			<div className='h-14 border-b border-sidebar-border px-3'>
+				<Link
+					href='/'
+					onClick={onNavigate}
 					className={cn(
-						'flex h-9 items-center rounded-md bg-sidebar-accent/50 text-sidebar-accent-foreground',
+						'flex h-full items-center transition-colors hover:text-sidebar-accent-foreground',
 						{
-							'justify-start gap-2 px-2': isOpen,
 							'justify-center': !isOpen,
+							'gap-3': isOpen,
 						},
 					)}
 				>
-					<Avatar size='sm'>
-						<AvatarFallback>AL</AvatarFallback>
-					</Avatar>
-					{isOpen && <span className='truncate text-sm font-medium'>Alex</span>}
+					<div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground'>
+						<KanbanSquare className='size-4' />
+					</div>
+					{isOpen && (
+						<div className='min-w-0'>
+							<div className='truncate text-sm font-semibold leading-5'>
+								{sidebarWorkspace.title}
+							</div>
+							<div className='truncate text-xs text-muted-foreground'>
+								{sidebarWorkspace.subtitle}
+							</div>
+						</div>
+					)}
+				</Link>
+			</div>
+
+			<div className='flex flex-1 flex-col overflow-hidden'>
+				<div className='flex-1 overflow-y-auto px-3 py-4'>
+					{isOpen && workSection ? (
+						<div className='space-y-5'>
+							<section>
+								<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
+									{workSection.title}
+								</div>
+								<nav className='space-y-1'>
+									{workSection.items.map((item) => (
+										<SidebarMenuItem
+											key={item.title}
+											{...item}
+											isOpen={isOpen}
+											isActive={
+												item.href !== '#' &&
+												(pathname === item.href || pathname?.startsWith(`${item.href}/`))
+											}
+											onNavigate={onNavigate}
+										/>
+									))}
+								</nav>
+							</section>
+
+							<section>
+								<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
+									Проекты
+								</div>
+								<div className='space-y-1'>
+									{sidebarProjects.map((project) => (
+										<SidebarProjectItem
+											key={project.title}
+											{...project}
+											isOpen={isOpen}
+										/>
+									))}
+								</div>
+							</section>
+
+							{otherSections.map((section) => (
+								<section key={section.title}>
+									<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
+										{section.title}
+									</div>
+									<nav className='space-y-1'>
+										{section.items.map((item) => (
+											<SidebarMenuItem
+												key={`${section.title}-${item.title}`}
+												{...item}
+												isOpen={isOpen}
+												isActive={
+													item.href !== '#' &&
+													(pathname === item.href ||
+														pathname?.startsWith(`${item.href}/`))
+												}
+												onNavigate={onNavigate}
+											/>
+										))}
+									</nav>
+								</section>
+							))}
+						</div>
+					) : (
+						<nav className='space-y-1'>
+							{collapsedItems.map((item) => (
+								<SidebarMenuItem
+									key={item.title}
+									{...item}
+									isOpen={isOpen}
+									isActive={
+										item.href !== '#' &&
+										(pathname === item.href || pathname?.startsWith(`${item.href}/`))
+									}
+									onNavigate={onNavigate}
+								/>
+							))}
+						</nav>
+					)}
+				</div>
+
+				<div className='mt-auto border-t border-sidebar-border px-3 py-3'>
+					<div
+						className={cn('flex items-center', {
+							'justify-center': !isOpen,
+							'gap-2': isOpen,
+						})}
+					>
+						<div
+							className={cn(
+								'flex rounded-xl text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/35',
+								{
+									'h-8 items-center justify-center': !isOpen,
+									'min-w-0 flex-1 items-center gap-2 px-1.5 py-1': isOpen,
+								},
+							)}
+						>
+							<Avatar className='size-6'>
+								<AvatarFallback className='bg-sidebar-primary text-xs text-sidebar-primary-foreground'>
+									{sidebarCurrentUser.initials}
+								</AvatarFallback>
+							</Avatar>
+							{isOpen && (
+								<div className='min-w-0'>
+									<div className='truncate text-[12px] font-medium leading-tight'>
+										{sidebarCurrentUser.name}
+									</div>
+									<div className='truncate text-[10px] text-muted-foreground'>
+										{sidebarCurrentUser.role}
+									</div>
+								</div>
+							)}
+						</div>
+
+						{isOpen && (
+							<ThemeToggle
+								size='icon-sm'
+								iconClassName='size-4'
+								className='shrink-0 border-sidebar-border bg-sidebar-accent/35 hover:bg-sidebar-accent/55'
+							/>
+						)}
+						{!isOpen && <ThemeToggle size='icon-sm' iconClassName='size-4' />}
+					</div>
 				</div>
 			</div>
 		</div>

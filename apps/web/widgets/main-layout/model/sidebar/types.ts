@@ -1,3 +1,5 @@
+import type { LucideIcon } from '@repo/ui/icons'
+
 type SideBarStoreState = {
 	isOpen: boolean
 }
@@ -9,3 +11,31 @@ type SideBarStoreActions = {
 }
 
 export type SideBarStore = SideBarStoreState & SideBarStoreActions
+
+export type SidebarNavItem = {
+	title: string
+	href: string
+	icon: LucideIcon
+	iconClassName?: string
+}
+
+export type SidebarNavSection = {
+	title: string
+	items: SidebarNavItem[]
+}
+
+export type SidebarProjectItem = {
+	shortName: string
+	title: string
+}
+
+export type SidebarWorkspace = {
+	title: string
+	subtitle: string
+}
+
+export type SidebarUserCard = {
+	initials: string
+	name: string
+	role: string
+}

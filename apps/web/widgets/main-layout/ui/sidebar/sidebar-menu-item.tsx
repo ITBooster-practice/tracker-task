@@ -3,17 +3,24 @@ import React from 'react'
 
 import { cn } from '@repo/ui'
 
-interface Props {
-	icon: React.ReactNode
-	title: string
-	href: string
+import type { SidebarNavItem } from '../../model/sidebar'
+
+interface Props extends SidebarNavItem {
 	isOpen: boolean
 	isActive?: boolean
 	onNavigate?: () => void
 }
 
 const SidebarMenuItem = (props: Props) => {
-	const { href, title, icon, isOpen, isActive = false, onNavigate } = props
+	const {
+		href,
+		title,
+		icon: Icon,
+		iconClassName,
+		isOpen,
+		isActive = false,
+		onNavigate,
+	} = props
 
 	const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
 		if (href === '#') {
@@ -28,16 +35,21 @@ const SidebarMenuItem = (props: Props) => {
 			href={href}
 			title={!isOpen ? title : undefined}
 			onClick={handleClick}
-			className={cn(
-				'flex h-9 items-center rounded-md px-2 text-sm transition-colors justify-start gap-2',
-				{
-					'bg-sidebar-accent text-sidebar-accent-foreground': isActive,
-					'text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground':
-						!isActive,
-				},
-			)}
+			className={cn('flex items-center text-[14px] transition-colors', {
+				'h-10 justify-center rounded-lg': !isOpen,
+				'h-10 justify-start gap-3 rounded-[16px] px-3.5': isOpen,
+				'bg-sidebar-accent/80 font-medium text-sidebar-primary': isActive,
+				'text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground':
+					!isActive,
+			})}
 		>
-			<span className='shrink-0'>{icon}</span>
+			<Icon
+				className={cn(
+					'size-4 shrink-0',
+					isActive ? 'text-sidebar-primary' : 'text-sidebar-foreground/90',
+					iconClassName,
+				)}
+			/>
 			{isOpen && <span className='truncate'>{title}</span>}
 		</Link>
 	)
