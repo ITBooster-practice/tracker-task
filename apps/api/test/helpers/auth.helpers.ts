@@ -1,8 +1,10 @@
 import { vi } from 'vitest'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
+import type { Response } from 'express'
 
-import { PrismaService } from '../../src/prisma/prisma.service'
+import { PrismaService } from '../../prisma/prisma.service'
+import { RedisService } from '../../src/common/redis/redis.service'
 
 // ── Token fixtures ─────────────────────────────────────────────────────────────
 export const ACCESS_TOKEN = 'access.token'
@@ -10,7 +12,6 @@ export const REFRESH_TOKEN = 'refresh.token'
 
 export const makeTokens = () => ({
 	accessToken: ACCESS_TOKEN,
-	refreshToken: REFRESH_TOKEN,
 })
 
 // ── Mock factories ─────────────────────────────────────────────────────────────
@@ -36,12 +37,24 @@ export function createJwtMock() {
 export function createConfigMock() {
 	return {
 		getOrThrow: vi.fn((key: string) => {
-			const map: Record<string, string> = {
-				JWT_SECRET: 'test_secret',
-				JWT_ACCESS_TOKEN_TTL: '15m',
-				JWT_REFRESH_TOKEN_TTL: '7d',
-			}
-			return map[key]
+			const value = process.env[key]
+			if (!value)
+				throw new Error(`Переменная окружения "${key}" не найдена в тестовом окружении`)
+			return value
 		}),
 	} as unknown as ConfigService
+}
+
+export function createRedisMock() {
+	return {
+		setRefreshToken: vi.fn().mockResolvedValue(undefined),
+		deleteRefreshToken: vi.fn().mockResolvedValue(undefined),
+		getRefreshToken: vi.fn(),
+	} as unknown as RedisService
+}
+
+export function createResMock() {
+	return {
+		cookie: vi.fn(),
+	} as unknown as Response
 }

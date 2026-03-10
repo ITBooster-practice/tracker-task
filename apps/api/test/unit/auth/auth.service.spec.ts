@@ -5,6 +5,8 @@ import { AuthService } from '../../../src/auth/auth.service'
 import {
 	createConfigMock,
 	createJwtMock,
+	createRedisMock,
+	createResMock,
 	createPrismaMock,
 	makeTokens,
 } from '../../helpers/auth.helpers'
@@ -32,16 +34,19 @@ const STORED_USER = { id: 'user-id-1', password: 'hashed_password' }
 describe('AuthService', () => {
 	let service: AuthService
 	let prisma: ReturnType<typeof createPrismaMock>
+	let res: ReturnType<typeof createResMock>
 
 	beforeEach(() => {
 		vi.clearAllMocks()
 		vi.mocked(hash).mockResolvedValue('hashed_password' as never)
 
 		prisma = createPrismaMock()
+		res = createResMock()
 		const jwt = createJwtMock()
 		const config = createConfigMock()
+		const redis = createRedisMock()
 
-		service = new AuthService(prisma, config, jwt)
+		service = new AuthService(prisma, config, jwt, redis)
 	})
 
 	// ── register ──────────────────────────────────────────────────────────────
@@ -50,7 +55,7 @@ describe('AuthService', () => {
 			prisma.user.findUnique.mockResolvedValue(null)
 			prisma.user.create.mockResolvedValue({ id: 'user-id-1' })
 
-			const result = await service.register(REGISTER_DTO)
+			const result = await service.register(res, REGISTER_DTO)
 
 			expect(prisma.user.findUnique).toHaveBeenCalledOnce()
 			expect(prisma.user.findUnique).toHaveBeenCalledWith({
@@ -77,8 +82,8 @@ describe('AuthService', () => {
 				email: REGISTER_DTO.email,
 			})
 
-			await expect(service.register(REGISTER_DTO)).rejects.toThrow(ConflictException)
-			await expect(service.register(REGISTER_DTO)).rejects.toThrow(
+			await expect(service.register(res, REGISTER_DTO)).rejects.toThrow(ConflictException)
+			await expect(service.register(res, REGISTER_DTO)).rejects.toThrow(
 				'Пользователь с таким email уже существует',
 			)
 
@@ -92,7 +97,7 @@ describe('AuthService', () => {
 			prisma.user.findUnique.mockResolvedValue(STORED_USER)
 			vi.mocked(verify).mockResolvedValue(true as never)
 
-			const result = await service.login(LOGIN_DTO)
+			const result = await service.login(res, LOGIN_DTO)
 
 			expect(prisma.user.findUnique).toHaveBeenCalledOnce()
 			expect(prisma.user.findUnique).toHaveBeenCalledWith({
@@ -107,8 +112,10 @@ describe('AuthService', () => {
 		it('должен выбросить NotFoundException, если пользователь с указанным email не найден', async () => {
 			prisma.user.findUnique.mockResolvedValue(null)
 
-			await expect(service.login(LOGIN_DTO)).rejects.toThrow(NotFoundException)
-			await expect(service.login(LOGIN_DTO)).rejects.toThrow('Пользователь не найден')
+			await expect(service.login(res, LOGIN_DTO)).rejects.toThrow(NotFoundException)
+			await expect(service.login(res, LOGIN_DTO)).rejects.toThrow(
+				'Пользователь не найден',
+			)
 
 			expect(verify).not.toHaveBeenCalled()
 		})
@@ -117,8 +124,10 @@ describe('AuthService', () => {
 			prisma.user.findUnique.mockResolvedValue(STORED_USER)
 			vi.mocked(verify).mockResolvedValue(false as never)
 
-			await expect(service.login(LOGIN_DTO)).rejects.toThrow(NotFoundException)
-			await expect(service.login(LOGIN_DTO)).rejects.toThrow('Пользователь не найден')
+			await expect(service.login(res, LOGIN_DTO)).rejects.toThrow(NotFoundException)
+			await expect(service.login(res, LOGIN_DTO)).rejects.toThrow(
+				'Пользователь не найден',
+			)
 		})
 	})
 })

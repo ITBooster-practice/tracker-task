@@ -8,6 +8,7 @@ import { AppController } from './app.controller'
 import { ConfigModule } from '@nestjs/config'
 import { PrismaModule } from '../prisma/prisma.module'
 import { AuthModule } from './auth/auth.module'
+import { TeamsModule } from './teams/teams.module'
 import { CustomZodValidationPipe } from './common/providers/zod-validation.provider'
 import { RedisModule } from './common/redis/redis.module'
 
@@ -17,6 +18,7 @@ import { RedisModule } from './common/redis/redis.module'
 		PrismaModule,
 		RedisModule,
 		AuthModule,
+		TeamsModule,
 	],
 	controllers: [AppController],
 	providers: [
