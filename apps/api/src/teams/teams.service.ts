@@ -122,5 +122,7 @@ export class TeamsService {
 		}
 
 		await this.prisma.team.delete({ where: { id: teamId } })
+
+		return { message: 'Команда успешно удалена', success: true }
 	}
 }

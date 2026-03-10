@@ -12,7 +12,6 @@ import {
 import {
 	ApiBearerAuth,
 	ApiCreatedResponse,
-	ApiNoContentResponse,
 	ApiNotFoundResponse,
 	ApiForbiddenResponse,
 	ApiBadRequestResponse,
@@ -75,11 +74,13 @@ export class TeamsController {
 	}
 
 	@ApiOperation({ summary: 'Удалить команду (только OWNER)' })
-	@ApiNoContentResponse({ description: 'Команда удалена' })
+	@ApiOkResponse({
+		description: 'Команда удалена',
+		schema: { example: { message: 'Команда успешно удалена', success: true } },
+	})
 	@ApiForbiddenResponse({ description: 'Только владелец может удалить команду' })
 	@ApiNotFoundResponse({ description: 'Команда не найдена' })
 	@Delete(':id')
-	@HttpCode(HttpStatus.NO_CONTENT)
 	deleteTeam(@Param('id') teamId: string, @Authorized('id') userId: string) {
 		return this.teamsService.deleteTeam(teamId, userId)
 	}
