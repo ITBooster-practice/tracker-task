@@ -14,7 +14,7 @@ function Layout({ header, sidebar, children }: Props) {
 			</aside>
 			<div className='flex flex-col min-h-0 flex-1 overflow-hidden'>
 				<header className='border-b border-b-sidebar-border bg-sidebar '>{header}</header>
-				<main className='flex-1 overflow-auto bg-slate-950'>{children}</main>
+				<main className='flex-1 overflow-auto bg-background'>{children}</main>
 			</div>
 		</div>
 	)
