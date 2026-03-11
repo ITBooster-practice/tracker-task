@@ -1,3 +1,5 @@
+import { FEATURES } from '@/hooks/use-feature-flag'
+
 import {
 	Bell,
 	FolderKanban,
@@ -67,15 +69,24 @@ export const sidebarSections: SidebarNavSection[] = [
 		title: 'Управление',
 		items: [
 			{
-				title: 'Команда',
+				title: 'Команды',
 				href: '/teams',
 				icon: Users,
+				match: (pathname) => pathname === '/teams' || pathname === '/teams/new',
 			},
-			{
-				title: 'Настройки',
-				href: '/settings',
-				icon: Settings,
-			},
+			...(FEATURES.TEAM_SETTINGS
+				? [
+						{
+							title: 'Настройки',
+							href: '/teams/product-team/settings',
+							icon: Settings,
+							match: (pathname?: string) =>
+								Boolean(
+									pathname?.startsWith('/teams/') && pathname?.endsWith('/settings'),
+								),
+						},
+					]
+				: []),
 		],
 	},
 ]

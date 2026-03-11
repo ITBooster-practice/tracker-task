@@ -17,6 +17,7 @@ export type SidebarNavItem = {
 	href: string
 	icon: LucideIcon
 	iconClassName?: string
+	match?: (pathname?: string) => boolean
 }
 
 export type SidebarNavSection = {
