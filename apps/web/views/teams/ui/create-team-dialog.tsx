@@ -15,6 +15,17 @@ import {
 	Label,
 } from '@repo/ui'
 
+import {
+	teamDialogContentClassName,
+	teamDialogFooterClassName,
+	teamDialogFormClassName,
+	teamDialogHeaderClassName,
+	teamDialogInputClassName,
+	teamDialogLabelClassName,
+	teamDialogPrimaryButtonClassName,
+	teamDialogSecondaryButtonClassName,
+	teamDialogTitleClassName,
+} from '../lib/styles'
 import { useTeamsStore } from '../model/store'
 
 function CreateTeamDialog() {
@@ -26,7 +37,9 @@ function CreateTeamDialog() {
 		router.replace('/teams')
 	}
 
-	const handleCreate = () => {
+	const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+
 		const team = createTeam(newName)
 
 		if (!team) {
@@ -39,35 +52,51 @@ function CreateTeamDialog() {
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && closeDialog()}>
-			<DialogContent className='border-border bg-card sm:max-w-[420px]'>
-				<DialogHeader>
-					<DialogTitle>Создать команду</DialogTitle>
-					<DialogDescription>
-						Добавьте новую команду для работы над отдельным направлением.
-					</DialogDescription>
-				</DialogHeader>
+			<DialogContent className={teamDialogContentClassName}>
+				<form onSubmit={handleCreate} className={teamDialogFormClassName}>
+					<DialogHeader className={teamDialogHeaderClassName}>
+						<DialogTitle className={teamDialogTitleClassName}>
+							Создать команду
+						</DialogTitle>
+						<DialogDescription>
+							Добавьте новую команду для работы над отдельным направлением.
+						</DialogDescription>
+					</DialogHeader>
 
-				<div className='space-y-4 py-2'>
-					<div className='space-y-2'>
-						<Label htmlFor='team-name'>Название команды</Label>
-						<Input
-							id='team-name'
-							placeholder='Например: Product Team'
-							value={newName}
-							onChange={(event) => setNewName(event.target.value)}
-							autoFocus
-						/>
+					<div className='space-y-4'>
+						<div className='space-y-1.5'>
+							<Label htmlFor='team-name' className={teamDialogLabelClassName}>
+								Название команды
+							</Label>
+							<Input
+								id='team-name'
+								placeholder='Например: Product Team'
+								value={newName}
+								onChange={(event) => setNewName(event.target.value)}
+								autoFocus
+								className={teamDialogInputClassName}
+							/>
+						</div>
 					</div>
-				</div>
 
-				<DialogFooter>
-					<Button variant='outline' onClick={closeDialog}>
-						Отмена
-					</Button>
-					<Button onClick={handleCreate} disabled={!newName.trim()}>
-						Создать
-					</Button>
-				</DialogFooter>
+					<DialogFooter className={teamDialogFooterClassName}>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={closeDialog}
+							className={teamDialogSecondaryButtonClassName}
+						>
+							Отмена
+						</Button>
+						<Button
+							type='submit'
+							disabled={!newName.trim()}
+							className={teamDialogPrimaryButtonClassName}
+						>
+							Создать
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	)

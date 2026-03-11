@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest, type ProxyConfig } from 'next/server'
 
 const AUTH_ROUTES = ['/login', '/register']
-const PROTECTED_ROUTES = ['/tasks', '/projects', '/settings']
+const PROTECTED_ROUTES = ['/teams', '/tasks', '/projects', '/sprints']
 
 export function proxy(request: NextRequest) {
 	const { pathname, search } = request.nextUrl
 	const refreshToken = !!request.cookies.get('refreshToken')?.value
 
-	const isAuthRoute = pathname === '/' || AUTH_ROUTES.includes(pathname)
+	const isAuthRoute = AUTH_ROUTES.includes(pathname)
 	const isProtectedRoute = PROTECTED_ROUTES.some(
 		(route) => pathname === route || pathname.startsWith(`${route}/`),
 	)
@@ -19,7 +19,7 @@ export function proxy(request: NextRequest) {
 	}
 
 	if (refreshToken && isAuthRoute) {
-		return NextResponse.redirect(new URL('/projects', request.url))
+		return NextResponse.redirect(new URL('/teams', request.url))
 	}
 
 	return NextResponse.next()

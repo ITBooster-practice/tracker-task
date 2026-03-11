@@ -32,6 +32,18 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const otherSections = sidebarSections.slice(1)
 	const collapsedItems = sidebarSections.flatMap((section) => section.items)
 
+	const isItemActive = (href: string, match?: (pathname?: string) => boolean) => {
+		if (href === '#') {
+			return false
+		}
+
+		if (match) {
+			return match(pathname)
+		}
+
+		return pathname === href || pathname?.startsWith(`${href}/`)
+	}
+
 	return (
 		<div
 			className={cn(
@@ -85,10 +97,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 											key={item.title}
 											{...item}
 											isOpen={isOpen}
-											isActive={
-												item.href !== '#' &&
-												(pathname === item.href || pathname?.startsWith(`${item.href}/`))
-											}
+											isActive={isItemActive(item.href, item.match)}
 											onNavigate={onNavigate}
 										/>
 									))}
@@ -121,11 +130,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 												key={`${section.title}-${item.title}`}
 												{...item}
 												isOpen={isOpen}
-												isActive={
-													item.href !== '#' &&
-													(pathname === item.href ||
-														pathname?.startsWith(`${item.href}/`))
-												}
+												isActive={isItemActive(item.href, item.match)}
 												onNavigate={onNavigate}
 											/>
 										))}
@@ -140,10 +145,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									key={item.title}
 									{...item}
 									isOpen={isOpen}
-									isActive={
-										item.href !== '#' &&
-										(pathname === item.href || pathname?.startsWith(`${item.href}/`))
-									}
+									isActive={isItemActive(item.href, item.match)}
 									onNavigate={onNavigate}
 								/>
 							))}

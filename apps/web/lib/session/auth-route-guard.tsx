@@ -15,7 +15,7 @@ const AuthRouteGuard = ({ children }: Props) => {
 
 	useEffect(() => {
 		if (status === 'authenticated') {
-			router.replace('/projects')
+			router.replace('/teams')
 		}
 	}, [router, status])
 

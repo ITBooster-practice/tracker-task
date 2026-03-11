@@ -8,19 +8,12 @@ import { ProfileMenu } from './profile-menu'
 import { SidebarToggle } from './sidebar-toggle'
 
 const Header = () => (
-	<div className='flex h-14 items-center justify-between bg-background px-3 text-foreground'>
+	<div className='flex h-14 items-center justify-between bg-sidebar px-3 text-sidebar-foreground'>
 		<div className='flex min-w-0 items-center gap-2'>
 			<div className='hidden md:block'>
 				<SidebarToggle />
 			</div>
-			<nav
-				aria-label='Breadcrumb'
-				className='hidden items-center gap-2 text-sm text-muted-foreground md:flex'
-			>
-				<span>Главная</span>
-				<span>/</span>
-				<span className='text-foreground'>Раздел</span>
-			</nav>
+
 			<MobileSidebarTrigger />
 			<Input
 				placeholder='Поиск (пока не реализовано)'
