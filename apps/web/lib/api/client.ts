@@ -1,40 +1,51 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
+import { isTokenExpiredSoon, refreshSessionToken, useSessionStore } from '../session'
+import { axiosConfig } from './axios-config'
 import { ApiError } from './types'
+import { toApiError } from './utils'
 
-const client = axios.create({
-	baseURL: process.env.NEXT_PUBLIC_API_URL,
-	headers: {
-		'Content-Type': 'application/json',
-	},
-	timeout: 10000,
-	withCredentials: true,
-})
+type RetryableConfig = InternalAxiosRequestConfig & {
+	_retry?: boolean
+}
 
-// Request interceptor
+const client = axios.create(axiosConfig)
+
 client.interceptors.request.use(
-	(config: InternalAxiosRequestConfig) => {
-		// Здесь можно добавить токен авторизации
-		// const token = getAuthToken()
-		// if (token) {
-		//   config.headers.Authorization = `Bearer ${token}`
-		// }
-		return config
+	async (request: InternalAxiosRequestConfig) => {
+		let token = useSessionStore.getState().accessToken
+
+		if (token && isTokenExpiredSoon(token)) {
+			token = await refreshSessionToken()
+		}
+
+		if (token) {
+			request.headers.set('Authorization', `Bearer ${token}`)
+		}
+
+		return request
 	},
 	(error: AxiosError) => Promise.reject(error),
 )
 
-// Response interceptor
 client.interceptors.response.use(
 	(response) => response,
-	(error: AxiosError<ApiError>) => {
-		const apiError: ApiError = {
-			message: error.response?.data?.message || error.message || 'Unknown error',
-			statusCode: error.response?.status || 500,
-			error: error.response?.data?.error || 'Error',
+	async (error: AxiosError<ApiError>) => {
+		const originalRequest = error.config as RetryableConfig | undefined
+
+		if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+			originalRequest._retry = true
+
+			const token = await refreshSessionToken()
+
+			if (token) {
+				originalRequest.headers.set('Authorization', `Bearer ${token}`)
+
+				return client(originalRequest)
+			}
 		}
 
-		return Promise.reject(apiError)
+		return Promise.reject(toApiError(error))
 	},
 )
 

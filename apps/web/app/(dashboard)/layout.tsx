@@ -1,3 +1,4 @@
+import { ProtectedRouteGuard } from '@/lib/session/protected-route-guard'
 import { MainLayout } from '@/widgets/main-layout'
 
 interface Props {
@@ -7,9 +8,9 @@ interface Props {
 
 export default function DashboardLayout({ children, modal }: Props) {
 	return (
-		<>
+		<ProtectedRouteGuard>
 			<MainLayout>{children}</MainLayout>
 			{modal}
-		</>
+		</ProtectedRouteGuard>
 	)
 }
