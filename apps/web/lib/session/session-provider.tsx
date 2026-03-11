@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 
-import { Loader } from '@repo/ui/icons'
+import { LoaderCircle } from '@repo/ui/icons'
 
 import { initSession } from './session-init'
 import { useSessionStore } from './session-store'
@@ -16,12 +16,12 @@ const SessionProvider = ({ children }: Props) => {
 
 	useEffect(() => {
 		initSession()
-	}, [initSession])
+	}, [])
 
-	if (status === 'unknown') {
+	if (status === 'authenticated') {
 		return (
 			<div className='h-screen flex items-center justify-center'>
-				<Loader className='animate-spin' />
+				<LoaderCircle className='animate-spin' />
 			</div>
 		)
 	}
