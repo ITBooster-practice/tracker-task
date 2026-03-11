@@ -12,11 +12,9 @@ function Layout({ header, sidebar, children }: Props) {
 			<aside className='hidden shrink-0 border-r border-r-sidebar-border bg-sidebar text-sidebar-foreground md:block'>
 				{sidebar}
 			</aside>
-			<div className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
-				<header className='border-b border-b-sidebar-border bg-sidebar'>{header}</header>
-				<main className='flex min-h-0 flex-1 flex-col overflow-auto bg-background'>
-					{children}
-				</main>
+			<div className='flex flex-col min-h-0 flex-1 overflow-hidden'>
+				<header className='border-b border-b-sidebar-border bg-sidebar '>{header}</header>
+				<main className='flex-1 overflow-auto bg-slate-950'>{children}</main>
 			</div>
 		</div>
 	)
