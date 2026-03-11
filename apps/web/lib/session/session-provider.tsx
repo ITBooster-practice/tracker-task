@@ -18,7 +18,7 @@ const SessionProvider = ({ children }: Props) => {
 		initSession()
 	}, [])
 
-	if (status === 'authenticated') {
+	if (status === 'unknown') {
 		return (
 			<div className='h-screen flex items-center justify-center'>
 				<LoaderCircle className='animate-spin' />
