@@ -1,5 +1,10 @@
-import { TeamsNewPageView } from '@/views/teams'
+import { CreateTeamDialog, TeamsPageView } from '@/views/teams'
 
 export default function TeamNewPage() {
-	return <TeamsNewPageView />
+	return (
+		<>
+			<TeamsPageView />
+			<CreateTeamDialog />
+		</>
+	)
 }
