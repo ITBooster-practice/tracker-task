@@ -24,10 +24,18 @@ export const ThemeToggle = ({
 		return null
 	}
 
-	const Icon = theme === 'light' ? SunIcon : MoonIcon
+	const Icon = theme === 'dark' ? SunIcon : MoonIcon
+	const nextThemeLabel = theme === 'dark' ? 'Светлая тема' : 'Темная тема'
 
 	return (
-		<Button onClick={toggleTheme} variant='outline' size={size} className={className}>
+		<Button
+			onClick={toggleTheme}
+			variant='outline'
+			size={size}
+			className={className}
+			aria-label={nextThemeLabel}
+			title={nextThemeLabel}
+		>
 			<Icon className={cn('size-5', iconClassName)} />
 		</Button>
 	)
