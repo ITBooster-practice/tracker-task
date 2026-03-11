@@ -29,7 +29,7 @@ export const heroBadge = {
 export const heroActions = {
 	primary: {
 		label: 'Попробовать демо',
-		href: '/projects',
+		href: '/teams',
 	},
 	secondary: {
 		label: 'Развернуть',
