@@ -1,10 +1,8 @@
 import { jwtDecode } from 'jwt-decode'
 
-const decodeToken = <T = any>(token: string): T => jwtDecode<T>(token)
-
 const getTokenExpiration = (token: string) => {
 	try {
-		const { exp } = decodeToken<{ exp?: number }>(token)
+		const { exp } = jwtDecode(token)
 		return exp ?? null
 	} catch {
 		return null
