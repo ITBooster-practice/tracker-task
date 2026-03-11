@@ -1,17 +1,18 @@
 'use client'
 
 import { ThemeToggle } from '@/features/theme'
+import { useTeamsList } from '@/hooks/api/use-teams'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import React from 'react'
+import React, { useMemo } from 'react'
 
 import { Avatar, AvatarFallback, cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
 import {
+	getSidebarSections,
 	sidebarCurrentUser,
 	sidebarProjects,
-	sidebarSections,
 	sidebarWorkspace,
 	useSideBarStore,
 } from '../../model/sidebar'
@@ -27,7 +28,16 @@ interface Props {
 const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
+	const { data: teams } = useTeamsList()
 	const isOpen = forceOpen ?? isDesktopOpen
+	const currentPathTeamId = useMemo(() => {
+		const match = pathname?.match(/^\/teams\/([^/]+)\/(projects|settings)(?:\/|$)/)
+
+		return match?.[1] ? decodeURIComponent(match[1]) : null
+	}, [pathname])
+	const activeTeamId = currentPathTeamId ?? teams?.[0]?.id ?? null
+	const currentTeam = teams?.find((team) => team.id === activeTeamId) ?? null
+	const sidebarSections = useMemo(() => getSidebarSections(activeTeamId), [activeTeamId])
 	const workSection = sidebarSections[0]
 	const otherSections = sidebarSections.slice(1)
 	const collapsedItems = sidebarSections.flatMap((section) => section.items)
@@ -76,7 +86,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 								{sidebarWorkspace.title}
 							</div>
 							<div className='truncate text-xs text-muted-foreground'>
-								{sidebarWorkspace.subtitle}
+								{currentTeam?.name ?? sidebarWorkspace.subtitle}
 							</div>
 						</div>
 					)}

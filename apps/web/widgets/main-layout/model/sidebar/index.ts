@@ -1,8 +1,8 @@
 export { useSideBarStore } from './store'
 export {
 	sidebarCurrentUser,
+	getSidebarSections,
 	sidebarProjects,
-	sidebarSections,
 	sidebarWorkspace,
 } from './navigation'
 export type {
