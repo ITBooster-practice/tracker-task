@@ -2,6 +2,7 @@
 
 import { ThemeToggle } from '@/features/theme'
 import { useTeamsList } from '@/hooks/api/use-teams'
+import { buildTeamProjectHref } from '@/lib/projects/catalog'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import React, { useMemo } from 'react'
@@ -32,6 +33,11 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const isOpen = forceOpen ?? isDesktopOpen
 	const currentPathTeamId = useMemo(() => {
 		const match = pathname?.match(/^\/teams\/([^/]+)\/(projects|settings)(?:\/|$)/)
+
+		return match?.[1] ? decodeURIComponent(match[1]) : null
+	}, [pathname])
+	const currentPathProjectId = useMemo(() => {
+		const match = pathname?.match(/^\/teams\/[^/]+\/projects\/([^/]+)(?:\/|$)/)
 
 		return match?.[1] ? decodeURIComponent(match[1]) : null
 	}, [pathname])
@@ -121,9 +127,12 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 								<div className='space-y-1'>
 									{sidebarProjects.map((project) => (
 										<SidebarProjectItem
-											key={project.title}
+											key={project.id}
 											{...project}
+											href={buildTeamProjectHref(activeTeamId, project.id)}
+											isActive={currentPathProjectId === project.id}
 											isOpen={isOpen}
+											onNavigate={onNavigate}
 										/>
 									))}
 								</div>
