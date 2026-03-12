@@ -1,4 +1,5 @@
 import { FEATURES } from '@/hooks/use-feature-flag'
+import { projectCatalog } from '@/lib/projects/catalog'
 
 import {
 	Bell,
@@ -44,7 +45,7 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 					href: getTeamScopedHref(activeTeamId, 'projects'),
 					icon: FolderKanban,
 					match: (pathname?: string) =>
-						Boolean(pathname?.startsWith('/teams/') && pathname?.endsWith('/projects')),
+						Boolean(pathname?.match(/^\/teams\/[^/]+\/projects(?:\/[^/]+)?\/?$/)),
 				},
 				{
 					title: 'Доска',
@@ -107,10 +108,11 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 }
 
 export const sidebarProjects: SidebarProjectItem[] = [
-	{
-		shortName: 'TT',
-		title: 'Tracker Task',
-	},
+	...projectCatalog.map((project) => ({
+		id: project.id,
+		shortName: project.code,
+		title: project.name,
+	})),
 ]
 
 export const sidebarCurrentUser: SidebarUserCard = {
