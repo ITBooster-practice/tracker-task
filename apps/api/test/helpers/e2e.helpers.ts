@@ -5,14 +5,17 @@ import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core'
 import { ZodSerializerInterceptor } from 'nestjs-zod'
 import cookieParser from 'cookie-parser'
 import request from 'supertest'
+import type { Redis } from 'ioredis'
 
 import { AppModule } from '../../src/app.module'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CustomZodValidationPipe } from '../../src/common/providers/zod-validation.provider'
+import { REDIS_CLIENT } from '../../src/common/redis/redis.constants'
 
 export async function createTestApp(): Promise<{
 	app: INestApplication
 	prisma: PrismaService
+	redisClient: Redis
 }> {
 	const moduleFixture: TestingModule = await Test.createTestingModule({
 		imports: [AppModule],
@@ -27,8 +30,9 @@ export async function createTestApp(): Promise<{
 	await app.init()
 
 	const prisma = moduleFixture.get<PrismaService>(PrismaService)
+	const redisClient = moduleFixture.get<Redis>(REDIS_CLIENT)
 
-	return { app, prisma }
+	return { app, prisma, redisClient }
 }
 
 // Регистрирует пользователя и возвращает accessToken + cookie

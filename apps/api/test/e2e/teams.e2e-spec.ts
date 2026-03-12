@@ -2,6 +2,7 @@ import type { Server } from 'http'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { INestApplication } from '@nestjs/common'
 import request from 'supertest'
+import type { Redis } from 'ioredis'
 
 import { PrismaService } from '../../prisma/prisma.service'
 import { createTestApp, registerAndLogin } from '../helpers/e2e.helpers'
@@ -10,6 +11,7 @@ describe('Teams (e2e)', () => {
 	let app: INestApplication
 	let server: Server
 	let prisma: PrismaService
+	let redisClient: Redis
 
 	// Токены двух разных пользователей
 	let ownerToken: string
@@ -20,18 +22,21 @@ describe('Teams (e2e)', () => {
 		app = testApp.app
 		server = app.getHttpServer() as Server
 		prisma = testApp.prisma
+		redisClient = testApp.redisClient
 	})
 
 	afterAll(async () => {
+		await redisClient.flushall()
 		await prisma.$disconnect()
 		await app.close()
 	})
 
 	beforeEach(async () => {
-		// Чистим таблицы перед каждым тестом чтобы не было конфликтов
+		// Чистим таблицы и Redis перед каждым тестом чтобы не было конфликтов
 		await prisma.teamMember.deleteMany()
 		await prisma.team.deleteMany()
 		await prisma.user.deleteMany()
+		await redisClient.flushall()
 
 		// Создаём двух пользователей
 		const owner = await registerAndLogin(app, 'owner@example.com')
