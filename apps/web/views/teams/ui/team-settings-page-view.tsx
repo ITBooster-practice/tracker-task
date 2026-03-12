@@ -1,9 +1,10 @@
 'use client'
 
+import { useTeamDetail } from '@/hooks/api/use-teams'
 import { useParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
-import { TEAM_ROLES, type TeamRole } from '@repo/types'
+import { TEAM_ROLES, type TeamMember, type TeamRole } from '@repo/types'
 import {
 	Avatar,
 	AvatarFallback,
@@ -12,9 +13,11 @@ import {
 	cn,
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	EmptyState,
 	Input,
 	Label,
 	Select,
@@ -40,7 +43,6 @@ import {
 	teamPageSubtitleClassName,
 	teamPageTitleClassName,
 } from '../lib/styles'
-import { getMockTeamSettings, type TeamSettingsMember } from '../model/mock-team-settings'
 
 const roleOptions = [
 	{
@@ -68,22 +70,12 @@ const roleOptions = [
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function getInitials(name: string) {
-	return name
+function getInitials(name?: string | null) {
+	return (name ?? '')
 		.split(/\s+/)
 		.slice(0, 2)
 		.map((part) => part[0]?.toUpperCase() ?? '')
 		.join('')
-}
-
-function getNameFromEmail(email: string) {
-	const [localPart = 'Новый участник'] = email.split('@')
-
-	return localPart
-		.split(/[._-]+/)
-		.filter(Boolean)
-		.map((part) => part[0]?.toUpperCase() + part.slice(1))
-		.join(' ')
 }
 
 function getRoleBadgeClassName(role: TeamRole) {
@@ -97,23 +89,34 @@ function getRoleBadgeClassName(role: TeamRole) {
 	}
 }
 
+function getNameFromEmail(email: string) {
+	const [localPart = 'Новый участник'] = email.split('@')
+
+	return localPart
+		.split(/[._-]+/)
+		.filter(Boolean)
+		.map((part) => part[0]?.toUpperCase() + part.slice(1))
+		.join(' ')
+}
+
 function TeamSettingsPageView() {
 	const params = useParams<{ id: string }>()
 	const teamId = params.id
-	const teamSettings = useMemo(() => getMockTeamSettings(teamId), [teamId])
-	const [members, setMembers] = useState<TeamSettingsMember[]>(teamSettings.members)
+	const { data: team, isPending, isError, refetch } = useTeamDetail(teamId)
+	const [members, setMembers] = useState<TeamMember[]>([])
 	const [inviteOpen, setInviteOpen] = useState(false)
 	const [inviteEmail, setInviteEmail] = useState('')
 	const [inviteRole, setInviteRole] = useState<TeamRole>(TEAM_ROLES.MEMBER)
 
 	useEffect(() => {
-		setMembers(teamSettings.members)
-	}, [teamSettings])
+		setMembers(team?.members ?? [])
+	}, [team])
 
+	const normalizedInviteEmail = inviteEmail.trim().toLowerCase()
 	const isInviteDisabled =
-		!inviteEmail.trim() ||
-		!emailPattern.test(inviteEmail) ||
-		members.some((member) => member.email.toLowerCase() === inviteEmail.toLowerCase())
+		!normalizedInviteEmail ||
+		!emailPattern.test(normalizedInviteEmail) ||
+		members.some((member) => member.email.toLowerCase() === normalizedInviteEmail)
 
 	const handleRoleChange = (memberId: string, nextRole: string) => {
 		setMembers((currentMembers) =>
@@ -136,15 +139,15 @@ function TeamSettingsPageView() {
 			return
 		}
 
-		const normalizedEmail = inviteEmail.trim().toLowerCase()
-
 		setMembers((currentMembers) => [
 			...currentMembers,
 			{
-				id: normalizedEmail,
-				email: normalizedEmail,
-				name: getNameFromEmail(normalizedEmail),
+				id: normalizedInviteEmail,
+				userId: '',
+				name: getNameFromEmail(normalizedInviteEmail),
+				email: normalizedInviteEmail,
 				role: inviteRole,
+				joinedAt: new Date().toISOString(),
 			},
 		])
 		setInviteOpen(false)
@@ -158,7 +161,9 @@ function TeamSettingsPageView() {
 				<header className={teamPageHeaderClassName}>
 					<div>
 						<h1 className={teamPageTitleClassName}>Настройки команды</h1>
-						<p className={teamPageSubtitleClassName}>{teamSettings.name}</p>
+						<p className={teamPageSubtitleClassName}>
+							{team?.name ?? 'Загрузка команды'}
+						</p>
 					</div>
 
 					<Button
@@ -198,87 +203,113 @@ function TeamSettingsPageView() {
 						</div>
 					</section>
 
-					<section className='overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
-						<div className='border-b border-border px-4 py-3.5'>
-							<h2 className='text-[16px] font-semibold tracking-tight'>
-								Участники ({members.length})
-							</h2>
+					{isPending ? (
+						<div className='flex justify-center py-16 text-sm text-muted-foreground'>
+							Загрузка участников...
 						</div>
-
-						<div>
-							{members.map((member) => {
-								const isOwner = member.role === TEAM_ROLES.OWNER
-
-								return (
-									<div
-										key={member.id}
-										className='flex flex-col gap-2.5 border-b border-border px-4 py-2.5 last:border-b-0 lg:min-h-[56px] lg:flex-row lg:items-center lg:justify-between'
+					) : isError || !team ? (
+						<div className='flex justify-center py-16'>
+							<EmptyState
+								icon={<Users className='size-7' />}
+								title='Не удалось загрузить команду'
+								description='Попробуйте повторить запрос ещё раз.'
+								action={
+									<button
+										type='button'
+										onClick={() => void refetch()}
+										className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
 									>
-										<div className='flex min-w-0 items-center gap-3'>
-											<Avatar className='size-9 border border-border/80'>
-												<AvatarFallback className='bg-surface-2 text-[13px] font-medium text-muted-foreground'>
-													{getInitials(member.name)}
-												</AvatarFallback>
-											</Avatar>
+										Повторить
+									</button>
+								}
+								className='max-w-[420px] border-border bg-card'
+							/>
+						</div>
+					) : (
+						<section className='overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
+							<div className='border-b border-border px-4 py-3.5'>
+								<h2 className='text-[16px] font-semibold tracking-tight'>
+									Участники ({members.length})
+								</h2>
+							</div>
 
-											<div className='min-w-0'>
-												<div className='truncate text-[15px] font-medium leading-tight'>
-													{member.name}
-												</div>
-												<div className='truncate text-[12px] leading-4 text-muted-foreground'>
-													{member.email}
+							<div>
+								{members.map((member) => {
+									const memberName = member.name ?? member.email
+									const isOwner = member.role === TEAM_ROLES.OWNER
+									return (
+										<div
+											key={member.id}
+											className='flex flex-col gap-2.5 border-b border-border px-4 py-2.5 last:border-b-0 lg:min-h-[56px] lg:flex-row lg:items-center lg:justify-between'
+										>
+											<div className='flex min-w-0 items-center gap-3'>
+												<Avatar className='size-9 border border-border/80'>
+													<AvatarFallback className='bg-surface-2 text-[13px] font-medium text-muted-foreground'>
+														{getInitials(memberName)}
+													</AvatarFallback>
+												</Avatar>
+
+												<div className='min-w-0'>
+													<div className='truncate text-[15px] font-medium leading-tight'>
+														{memberName}
+													</div>
+													<div className='truncate text-[12px] leading-4 text-muted-foreground'>
+														{member.email}
+													</div>
 												</div>
 											</div>
-										</div>
 
-										<div className='flex flex-wrap items-center gap-2.5 lg:justify-end'>
-											<Badge
-												variant='outline'
-												className={cn(
-													'h-6 rounded-full border px-3 text-[12px] font-medium',
-													getRoleBadgeClassName(member.role),
+											<div className='flex flex-wrap items-center gap-2.5 lg:justify-end'>
+												<Badge
+													variant='outline'
+													className={cn(
+														'h-6 rounded-full border px-3 text-[12px] font-medium',
+														getRoleBadgeClassName(member.role),
+													)}
+												>
+													{roleOptions.find((role) => role.value === member.role)?.label}
+												</Badge>
+
+												{isOwner ? null : (
+													<>
+														<Select
+															value={member.role}
+															onValueChange={(value) =>
+																handleRoleChange(member.id, value)
+															}
+														>
+															<SelectTrigger className='h-9 w-[136px] rounded-[12px] border-border bg-background px-3.5 text-[14px] shadow-none'>
+																<SelectValue placeholder='Выберите роль' />
+															</SelectTrigger>
+															<SelectContent className='border-border bg-popover'>
+																{roleOptions
+																	.filter((role) => role.value !== TEAM_ROLES.OWNER)
+																	.map((role) => (
+																		<SelectItem key={role.value} value={role.value}>
+																			{role.label}
+																		</SelectItem>
+																	))}
+															</SelectContent>
+														</Select>
+
+														<Button
+															variant='ghost'
+															size='icon-sm'
+															onClick={() => handleDeleteMember(member.id)}
+															className='size-8 text-destructive hover:bg-destructive/10 hover:text-destructive'
+															aria-label={`Удалить ${memberName}`}
+														>
+															<Trash2 className='size-[15px]' />
+														</Button>
+													</>
 												)}
-											>
-												{roleOptions.find((role) => role.value === member.role)?.label}
-											</Badge>
-
-											{isOwner ? null : (
-												<>
-													<Select
-														value={member.role}
-														onValueChange={(value) => handleRoleChange(member.id, value)}
-													>
-														<SelectTrigger className='h-9 w-[136px] rounded-[12px] border-border bg-background px-3.5 text-[14px] shadow-none'>
-															<SelectValue placeholder='Выберите роль' />
-														</SelectTrigger>
-														<SelectContent className='border-border bg-popover'>
-															{roleOptions
-																.filter((role) => role.value !== TEAM_ROLES.OWNER)
-																.map((role) => (
-																	<SelectItem key={role.value} value={role.value}>
-																		{role.label}
-																	</SelectItem>
-																))}
-														</SelectContent>
-													</Select>
-
-													<Button
-														variant='ghost'
-														size='icon-sm'
-														onClick={() => handleDeleteMember(member.id)}
-														className='size-8 text-destructive hover:bg-destructive/10 hover:text-destructive'
-														aria-label={`Удалить ${member.name}`}
-													>
-														<Trash2 className='size-[15px]' />
-													</Button>
-												</>
-											)}
+											</div>
 										</div>
-									</div>
-								)
-							})}
-						</div>
-					</section>
+									)
+								})}
+							</div>
+						</section>
+					)}
 				</div>
 			</div>
 
@@ -289,6 +320,10 @@ function TeamSettingsPageView() {
 							<DialogTitle className={teamDialogTitleClassName}>
 								Пригласить участника
 							</DialogTitle>
+							<DialogDescription>
+								Модалка работает локально. Отправка приглашений на сервер будет подключена
+								позже.
+							</DialogDescription>
 						</DialogHeader>
 
 						<div className='space-y-4'>
@@ -351,7 +386,7 @@ function TeamSettingsPageView() {
 								disabled={isInviteDisabled}
 								className={teamDialogPrimaryButtonClassName}
 							>
-								Отправить приглашение
+								Добавить участника
 							</Button>
 						</DialogFooter>
 					</form>
