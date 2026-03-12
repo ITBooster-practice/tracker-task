@@ -40,6 +40,12 @@ docker exec tracker_redis redis-cli PING
 # ответ: PONG
 ```
 
+## Очистить все данные
+
+```bash
+docker exec tracker_redis redis-cli FLUSHALL
+```
+
 ## Структура ключей
 
 | Ключ               | Значение          | TTL                            |
