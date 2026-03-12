@@ -1,33 +1,36 @@
 'use client'
 
+import { useTeamsList } from '@/hooks/api/use-teams'
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 
 import { Button, EmptyState } from '@repo/ui'
 import { Plus, Users } from '@repo/ui/icons'
 
+import { mapTeamListItemToTeamCardModel } from '../lib/mappers'
 import {
 	teamPageHeaderClassName,
 	teamPagePrimaryButtonClassName,
 	teamPageSubtitleClassName,
 	teamPageTitleClassName,
 } from '../lib/styles'
-import { useTeamsStore } from '../model/store'
 import type { TeamCardModel } from '../model/types'
 import { TeamCard } from './team-card'
 
 function TeamsPageView() {
 	const router = useRouter()
-	const teams = useTeamsStore((state) => state.teams)
+	const { data, isPending, isError, refetch } = useTeamsList()
 
 	const sortedTeams = useMemo(
 		() =>
-			[...teams].sort((first, second) => second.members.length - first.members.length),
-		[teams],
+			(data ?? [])
+				.map(mapTeamListItemToTeamCardModel)
+				.sort((first, second) => second.members.length - first.members.length),
+		[data],
 	)
 
 	const handleOpenTeam = (team: TeamCardModel) => {
-		router.push(`/projects?team=${encodeURIComponent(team.id)}`)
+		router.push(`/teams/${encodeURIComponent(team.id)}/projects`)
 	}
 
 	return (
@@ -50,7 +53,28 @@ function TeamsPageView() {
 					</Button>
 				</header>
 
-				{sortedTeams.length === 0 ? (
+				{isPending ? (
+					<div className='flex justify-center py-16 text-sm text-muted-foreground'>
+						Загрузка команд...
+					</div>
+				) : isError ? (
+					<div className='flex justify-center py-16'>
+						<EmptyState
+							icon={<Users className='size-7' />}
+							title='Не удалось загрузить команды'
+							description='Попробуйте повторить запрос ещё раз.'
+							action={
+								<Button
+									onClick={() => void refetch()}
+									className={teamPagePrimaryButtonClassName}
+								>
+									Повторить
+								</Button>
+							}
+							className='max-w-[420px] border-border bg-card'
+						/>
+					</div>
+				) : sortedTeams.length === 0 ? (
 					<div className='flex justify-center py-16'>
 						<EmptyState
 							icon={<Users className='size-7' />}

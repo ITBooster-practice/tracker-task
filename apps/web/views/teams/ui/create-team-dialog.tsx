@@ -1,5 +1,7 @@
 'use client'
 
+import { useCreateTeam } from '@/hooks/api/use-teams'
+import { isApiError } from '@/lib/api/utils'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -13,6 +15,7 @@ import {
 	DialogTitle,
 	Input,
 	Label,
+	toast,
 } from '@repo/ui'
 
 import {
@@ -26,28 +29,37 @@ import {
 	teamDialogSecondaryButtonClassName,
 	teamDialogTitleClassName,
 } from '../lib/styles'
-import { useTeamsStore } from '../model/store'
 
 function CreateTeamDialog() {
 	const router = useRouter()
-	const createTeam = useTeamsStore((state) => state.createTeam)
+	const createTeamMutation = useCreateTeam()
 	const [newName, setNewName] = useState('')
 
 	const closeDialog = () => {
 		router.replace('/teams')
 	}
 
-	const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
+	const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 
-		const team = createTeam(newName)
+		const trimmedName = newName.trim()
 
-		if (!team) {
+		if (!trimmedName) {
 			return
 		}
 
-		setNewName('')
-		router.replace('/teams')
+		try {
+			await createTeamMutation.mutateAsync({ name: trimmedName })
+			setNewName('')
+			router.replace('/teams')
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+
+			throw error
+		}
 	}
 
 	return (
@@ -90,10 +102,10 @@ function CreateTeamDialog() {
 						</Button>
 						<Button
 							type='submit'
-							disabled={!newName.trim()}
+							disabled={!newName.trim() || createTeamMutation.isPending}
 							className={teamDialogPrimaryButtonClassName}
 						>
-							Создать
+							{createTeamMutation.isPending ? 'Создание...' : 'Создать'}
 						</Button>
 					</DialogFooter>
 				</form>
