@@ -1,6 +1,6 @@
 import { FEATURES } from '@/hooks/use-feature-flag'
 import { projectCatalog } from '@/lib/projects/catalog'
-import { ROUTES, teamRoutes } from '@/shared/config/routes'
+import { ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config/routes'
 
 import {
 	Bell,
@@ -44,19 +44,19 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 				{
 					title: 'Проекты',
 					href: getTeamScopedHref(activeTeamId, 'projects'),
-					routeId: 'team.projects' as const,
+					routeId: SIDEBAR_ROUTE_IDS.teamProjects,
 					icon: FolderKanban,
 				},
 				{
 					title: 'Доска',
 					href: ROUTES.sprints,
-					routeId: 'sprints' as const,
+					routeId: SIDEBAR_ROUTE_IDS.sprints,
 					icon: KanbanSquare,
 				},
 				{
 					title: 'Задачи',
 					href: ROUTES.tasks,
-					routeId: 'tasks' as const,
+					routeId: SIDEBAR_ROUTE_IDS.tasks,
 					icon: ListTodo,
 				},
 				{
@@ -88,7 +88,7 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 				{
 					title: 'Команды',
 					href: ROUTES.teams,
-					routeId: 'teams' as const,
+					routeId: SIDEBAR_ROUTE_IDS.teams,
 					icon: Users,
 				},
 				...(FEATURES.TEAM_SETTINGS
@@ -96,7 +96,7 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 							{
 								title: 'Настройки',
 								href: getTeamScopedHref(activeTeamId, 'settings'),
-								routeId: 'team.settings' as const,
+								routeId: SIDEBAR_ROUTE_IDS.teamSettings,
 								icon: Settings,
 							},
 						]

@@ -2,6 +2,7 @@
 
 import { useTeamDetail } from '@/hooks/api/use-teams'
 import { formatProjectNameFromId, getProjectById } from '@/lib/projects/catalog'
+import { teamRoutes } from '@/shared/config/routes'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
@@ -57,7 +58,7 @@ function ProjectDetailPageView() {
 			<div className='mx-auto max-w-[960px] px-6 py-5'>
 				<nav className='mb-3 flex flex-wrap items-center gap-2 text-[14px] text-muted-foreground'>
 					<Link
-						href={`/teams/${encodeURIComponent(teamId)}/projects`}
+						href={teamRoutes.projects(teamId)}
 						className='transition-colors hover:text-foreground'
 					>
 						{team?.name ?? 'Команда'}

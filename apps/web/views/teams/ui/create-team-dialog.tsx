@@ -2,6 +2,7 @@
 
 import { useCreateTeam } from '@/hooks/api/use-teams'
 import { isApiError } from '@/lib/api/utils'
+import { ROUTES } from '@/shared/config/routes'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -36,7 +37,7 @@ function CreateTeamDialog() {
 	const [newName, setNewName] = useState('')
 
 	const closeDialog = () => {
-		router.replace('/teams')
+		router.replace(ROUTES.teams)
 	}
 
 	const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -51,7 +52,7 @@ function CreateTeamDialog() {
 		try {
 			await createTeamMutation.mutateAsync({ name: trimmedName })
 			setNewName('')
-			router.replace('/teams')
+			router.replace(ROUTES.teams)
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)

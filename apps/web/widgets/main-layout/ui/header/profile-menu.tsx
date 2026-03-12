@@ -2,6 +2,7 @@
 
 import { useLogout } from '@/hooks/api/use-auth'
 import { useSessionStore } from '@/lib/session'
+import { ROUTES } from '@/shared/config/routes'
 import { useRouter } from 'next/navigation'
 import React from 'react'
 
@@ -32,7 +33,7 @@ const ProfileMenu = () => {
 
 		session.clear()
 
-		router.push('/login')
+		router.push(ROUTES.login)
 	}
 
 	return (

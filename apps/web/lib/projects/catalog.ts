@@ -1,3 +1,5 @@
+import { teamRoutes } from '@/shared/config/routes'
+
 export type ProjectCatalogItem = {
 	id: string
 	code: string
@@ -211,7 +213,7 @@ export function buildTeamProjectHref(
 		return '#'
 	}
 
-	return `/teams/${encodeURIComponent(teamId)}/projects/${encodeURIComponent(projectId)}`
+	return teamRoutes.project(teamId, projectId)
 }
 
 export function getProjectById(projectId: string) {

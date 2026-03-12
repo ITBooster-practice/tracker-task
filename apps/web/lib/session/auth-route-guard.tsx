@@ -1,5 +1,6 @@
 'use client'
 
+import { ROUTES } from '@/shared/config/routes'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
@@ -15,7 +16,7 @@ const AuthRouteGuard = ({ children }: Props) => {
 
 	useEffect(() => {
 		if (status === 'authenticated') {
-			router.replace('/teams')
+			router.replace(ROUTES.teams)
 		}
 	}, [router, status])
 

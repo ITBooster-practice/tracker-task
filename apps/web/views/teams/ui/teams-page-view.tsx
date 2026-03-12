@@ -1,6 +1,7 @@
 'use client'
 
 import { useTeamsList } from '@/hooks/api/use-teams'
+import { ROUTES, teamRoutes } from '@/shared/config/routes'
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 
@@ -30,7 +31,7 @@ function TeamsPageView() {
 	)
 
 	const handleOpenTeam = (team: TeamCardModel) => {
-		router.push(`/teams/${encodeURIComponent(team.id)}/projects`)
+		router.push(teamRoutes.projects(team.id))
 	}
 
 	return (
@@ -45,7 +46,7 @@ function TeamsPageView() {
 					</div>
 
 					<Button
-						onClick={() => router.push('/teams/new')}
+						onClick={() => router.push(ROUTES.teamsNew)}
 						className={teamPagePrimaryButtonClassName}
 					>
 						<Plus className='mr-2 size-4' />
@@ -82,7 +83,7 @@ function TeamsPageView() {
 							description='Создайте первую команду, чтобы начать работу.'
 							action={
 								<Button
-									onClick={() => router.push('/teams/new')}
+									onClick={() => router.push(ROUTES.teamsNew)}
 									className={teamPagePrimaryButtonClassName}
 								>
 									<Plus className='mr-2 size-4' />

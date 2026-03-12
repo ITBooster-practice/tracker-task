@@ -1,5 +1,6 @@
 'use client'
 
+import { buildLoginHref } from '@/shared/config/routes'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
@@ -16,7 +17,7 @@ const ProtectedRouteGuard = ({ children }: Props) => {
 
 	useEffect(() => {
 		if (status === 'guest') {
-			router.replace(`/login?from=${encodeURIComponent(pathname)}`)
+			router.replace(buildLoginHref(pathname))
 		}
 	}, [pathname, router, status])
 

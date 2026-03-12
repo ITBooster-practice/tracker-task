@@ -1,5 +1,6 @@
 'use client'
 
+import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
 import { useEffect } from 'react'
 
@@ -30,7 +31,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
 							variant='ghost'
 							className='border border-slate-700 !bg-slate-800 !text-slate-100 hover:!bg-slate-700 hover:!text-white'
 						>
-							<Link href='/'>На главную</Link>
+							<Link href={ROUTES.home}>На главную</Link>
 						</Button>
 					</div>
 				}
