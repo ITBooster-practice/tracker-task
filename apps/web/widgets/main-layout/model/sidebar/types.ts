@@ -1,3 +1,5 @@
+import type { SidebarRouteId } from '@/shared/config/routes'
+
 import type { LucideIcon } from '@repo/ui/icons'
 
 type SideBarStoreState = {
@@ -16,8 +18,8 @@ export type SidebarNavItem = {
 	title: string
 	href: string
 	icon: LucideIcon
+	routeId?: SidebarRouteId
 	iconClassName?: string
-	match?: (pathname?: string) => boolean
 }
 
 export type SidebarNavSection = {

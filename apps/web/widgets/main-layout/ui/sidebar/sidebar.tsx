@@ -3,9 +3,10 @@
 import { ThemeToggle } from '@/features/theme'
 import { useTeamsList } from '@/hooks/api/use-teams'
 import { buildTeamProjectHref } from '@/lib/projects/catalog'
+import { getSidebarRouteId, ROUTES, type SidebarRouteId } from '@/shared/config/routes'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import React, { useMemo } from 'react'
+import { useParams, usePathname } from 'next/navigation'
+import React from 'react'
 
 import { Avatar, AvatarFallback, cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
@@ -29,35 +30,23 @@ interface Props {
 const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
+	const params = useParams<{ id?: string; projectId?: string }>()
 	const { data: teams } = useTeamsList()
 	const isOpen = forceOpen ?? isDesktopOpen
-	const currentPathTeamId = useMemo(() => {
-		const match = pathname?.match(/^\/teams\/([^/]+)\/(projects|settings)(?:\/|$)/)
+	const teamId = typeof params.id === 'string' ? params.id : (teams?.[0]?.id ?? null)
+	const projectId = typeof params.projectId === 'string' ? params.projectId : null
+	const currentTeam = teams?.find((team) => team.id === teamId) ?? null
+	const activeRouteId = getSidebarRouteId(pathname)
+	const sections = getSidebarSections(teamId)
+	const [workSection, ...otherSections] = sections
+	const collapsedItems = sections.flatMap((section) => section.items)
 
-		return match?.[1] ? decodeURIComponent(match[1]) : null
-	}, [pathname])
-	const currentPathProjectId = useMemo(() => {
-		const match = pathname?.match(/^\/teams\/[^/]+\/projects\/([^/]+)(?:\/|$)/)
-
-		return match?.[1] ? decodeURIComponent(match[1]) : null
-	}, [pathname])
-	const activeTeamId = currentPathTeamId ?? teams?.[0]?.id ?? null
-	const currentTeam = teams?.find((team) => team.id === activeTeamId) ?? null
-	const sidebarSections = useMemo(() => getSidebarSections(activeTeamId), [activeTeamId])
-	const workSection = sidebarSections[0]
-	const otherSections = sidebarSections.slice(1)
-	const collapsedItems = sidebarSections.flatMap((section) => section.items)
-
-	const isItemActive = (href: string, match?: (pathname?: string) => boolean) => {
-		if (href === '#') {
+	const isItemActive = (href: string, routeId?: SidebarRouteId) => {
+		if (href === '#' || !routeId || !activeRouteId) {
 			return false
 		}
 
-		if (match) {
-			return match(pathname)
-		}
-
-		return pathname === href || pathname?.startsWith(`${href}/`)
+		return routeId === activeRouteId
 	}
 
 	return (
@@ -73,7 +62,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 		>
 			<div className='h-14 border-b border-sidebar-border px-3'>
 				<Link
-					href='/'
+					href={ROUTES.home}
 					onClick={onNavigate}
 					className={cn(
 						'flex h-full items-center transition-colors hover:text-sidebar-accent-foreground',
@@ -113,7 +102,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 											key={item.title}
 											{...item}
 											isOpen={isOpen}
-											isActive={isItemActive(item.href, item.match)}
+											isActive={isItemActive(item.href, item.routeId)}
 											onNavigate={onNavigate}
 										/>
 									))}
@@ -129,8 +118,8 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 										<SidebarProjectItem
 											key={project.id}
 											{...project}
-											href={buildTeamProjectHref(activeTeamId, project.id)}
-											isActive={currentPathProjectId === project.id}
+											href={buildTeamProjectHref(teamId, project.id)}
+											isActive={projectId === project.id}
 											isOpen={isOpen}
 											onNavigate={onNavigate}
 										/>
@@ -149,7 +138,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 												key={`${section.title}-${item.title}`}
 												{...item}
 												isOpen={isOpen}
-												isActive={isItemActive(item.href, item.match)}
+												isActive={isItemActive(item.href, item.routeId)}
 												onNavigate={onNavigate}
 											/>
 										))}
@@ -164,7 +153,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									key={item.title}
 									{...item}
 									isOpen={isOpen}
-									isActive={isItemActive(item.href, item.match)}
+									isActive={isItemActive(item.href, item.routeId)}
 									onNavigate={onNavigate}
 								/>
 							))}

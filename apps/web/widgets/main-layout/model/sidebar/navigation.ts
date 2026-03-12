@@ -1,5 +1,6 @@
 import { FEATURES } from '@/hooks/use-feature-flag'
 import { projectCatalog } from '@/lib/projects/catalog'
+import { ROUTES, teamRoutes } from '@/shared/config/routes'
 
 import {
 	Bell,
@@ -27,7 +28,7 @@ function getTeamScopedHref(
 		return '#'
 	}
 
-	return `/teams/${encodeURIComponent(teamId)}/${route}`
+	return teamRoutes[route](teamId)
 }
 
 export const sidebarWorkspace: SidebarWorkspace = {
@@ -43,18 +44,19 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 				{
 					title: 'Проекты',
 					href: getTeamScopedHref(activeTeamId, 'projects'),
+					routeId: 'team.projects' as const,
 					icon: FolderKanban,
-					match: (pathname?: string) =>
-						Boolean(pathname?.match(/^\/teams\/[^/]+\/projects(?:\/[^/]+)?\/?$/)),
 				},
 				{
 					title: 'Доска',
-					href: '/sprints',
+					href: ROUTES.sprints,
+					routeId: 'sprints' as const,
 					icon: KanbanSquare,
 				},
 				{
 					title: 'Задачи',
-					href: '/tasks',
+					href: ROUTES.tasks,
+					routeId: 'tasks' as const,
 					icon: ListTodo,
 				},
 				{
@@ -85,20 +87,17 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 			items: [
 				{
 					title: 'Команды',
-					href: '/teams',
+					href: ROUTES.teams,
+					routeId: 'teams' as const,
 					icon: Users,
-					match: (pathname) => pathname === '/teams' || pathname === '/teams/new',
 				},
 				...(FEATURES.TEAM_SETTINGS
 					? [
 							{
 								title: 'Настройки',
 								href: getTeamScopedHref(activeTeamId, 'settings'),
+								routeId: 'team.settings' as const,
 								icon: Settings,
-								match: (pathname?: string) =>
-									Boolean(
-										pathname?.startsWith('/teams/') && pathname?.endsWith('/settings'),
-									),
 							},
 						]
 					: []),
