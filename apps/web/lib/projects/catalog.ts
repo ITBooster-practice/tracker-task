@@ -5,6 +5,17 @@ export type ProjectCatalogItem = {
 	description: string
 	boardsCount: number
 	tasksCount: number
+	boards: Array<{
+		id: string
+		name: string
+		columnCount: number
+	}>
+	recentTasks: Array<{
+		id: string
+		key: string
+		title: string
+		assigneeInitials: string
+	}>
 }
 
 export const projectCatalog: ProjectCatalogItem[] = [
@@ -15,6 +26,44 @@ export const projectCatalog: ProjectCatalogItem[] = [
 		description: 'Основной продукт — трекер задач',
 		boardsCount: 2,
 		tasksCount: 24,
+		boards: [
+			{
+				id: 'sprint-board',
+				name: 'Sprint Board',
+				columnCount: 5,
+			},
+			{
+				id: 'bug-tracking',
+				name: 'Bug Tracking',
+				columnCount: 5,
+			},
+		],
+		recentTasks: [
+			{
+				id: 'tt-1',
+				key: 'TT-1',
+				title: 'Реализовать систему авторизации',
+				assigneeInitials: 'AI',
+			},
+			{
+				id: 'tt-2',
+				key: 'TT-2',
+				title: 'Kanban доска с drag & drop',
+				assigneeInitials: 'МП',
+			},
+			{
+				id: 'tt-3',
+				key: 'TT-3',
+				title: 'Фильтры и поиск задач',
+				assigneeInitials: 'ДК',
+			},
+			{
+				id: 'tt-4',
+				key: 'TT-4',
+				title: 'Исправить баг с отображением аватаров',
+				assigneeInitials: 'ЕС',
+			},
+		],
 	},
 	{
 		id: 'marketing-site',
@@ -23,6 +72,33 @@ export const projectCatalog: ProjectCatalogItem[] = [
 		description: 'Лендинг и маркетинговые страницы',
 		boardsCount: 1,
 		tasksCount: 12,
+		boards: [
+			{
+				id: 'content-board',
+				name: 'Content Board',
+				columnCount: 4,
+			},
+		],
+		recentTasks: [
+			{
+				id: 'ms-1',
+				key: 'MS-1',
+				title: 'Подготовить hero-блок лендинга',
+				assigneeInitials: 'АЛ',
+			},
+			{
+				id: 'ms-2',
+				key: 'MS-2',
+				title: 'Обновить SEO-метаданные',
+				assigneeInitials: 'ЕК',
+			},
+			{
+				id: 'ms-3',
+				key: 'MS-3',
+				title: 'Сверстать страницу тарифа',
+				assigneeInitials: 'МН',
+			},
+		],
 	},
 	{
 		id: 'mobile-app',
@@ -31,6 +107,27 @@ export const projectCatalog: ProjectCatalogItem[] = [
 		description: 'Мобильное приложение трекера',
 		boardsCount: 1,
 		tasksCount: 8,
+		boards: [
+			{
+				id: 'mobile-roadmap',
+				name: 'Mobile Roadmap',
+				columnCount: 4,
+			},
+		],
+		recentTasks: [
+			{
+				id: 'ma-1',
+				key: 'MA-1',
+				title: 'Собрать экран onboarding',
+				assigneeInitials: 'ИЛ',
+			},
+			{
+				id: 'ma-2',
+				key: 'MA-2',
+				title: 'Настроить пуш-уведомления',
+				assigneeInitials: 'ПН',
+			},
+		],
 	},
 ]
 

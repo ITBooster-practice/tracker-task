@@ -57,6 +57,8 @@ function ProjectsPageView() {
 			description: 'Новый проект команды',
 			boardsCount: 0,
 			tasksCount: 0,
+			boards: [],
+			recentTasks: [],
 		}
 
 		setProjects((currentProjects) => [nextProject, ...currentProjects])
