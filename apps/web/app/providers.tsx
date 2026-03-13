@@ -5,7 +5,6 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import { queryClient } from '../lib/query-client'
-import { SessionProvider } from '../lib/session'
 
 interface Props {
 	children: React.ReactNode
@@ -14,7 +13,7 @@ interface Props {
 const Providers = ({ children }: Props) => (
 	<QueryClientProvider client={queryClient}>
 		<ThemeSync />
-		<SessionProvider>{children}</SessionProvider>
+		{children}
 		<ReactQueryDevtools initialIsOpen={false} />
 	</QueryClientProvider>
 )
