@@ -68,9 +68,10 @@ const sprintColumns: Array<{
 ]
 
 const typeClassName: Record<SprintTask['type'], string> = {
-	Эпик: 'bg-violet-500/20 text-violet-300',
-	Стори: 'bg-blue-500/20 text-blue-300',
-	Баг: 'bg-red-500/20 text-red-300',
+	Эпик: 'border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/20 dark:text-violet-200',
+	Стори:
+		'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/25 dark:bg-sky-500/20 dark:text-sky-200',
+	Баг: 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/20 dark:text-rose-200',
 }
 
 export default function SprintsPage() {
@@ -81,17 +82,17 @@ export default function SprintsPage() {
 	return (
 		<div className='bg-background text-foreground w-full h-full'>
 			<div className='mx-auto flex w-full max-w-[1700px] flex-col gap-4 px-3 py-4 md:px-5'>
-				<header className='rounded-lg border border-border bg-card px-3 py-2.5'>
+				<header className='rounded-[var(--radius-surface)] border border-border bg-card px-3 py-2.5'>
 					<div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
 						<div>
 							<h1 className='text-2xl font-semibold tracking-tight'>Sprint Board</h1>
 							<p className='text-sm text-foreground'>Tracker Task</p>
 						</div>
 						<div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
-							<select className='h-9 rounded-md border border-border bg-background px-2.5 text-sm text-foreground'>
+							<select className='h-10 rounded-[var(--radius-control)] border border-border bg-background px-2.5 text-sm text-foreground'>
 								<option>Все типы</option>
 							</select>
-							<select className='h-9 rounded-md border border-border bg-background px-2.5 text-sm text-foreground'>
+							<select className='h-10 rounded-[var(--radius-control)] border border-border bg-background px-2.5 text-sm text-foreground'>
 								<option>Все</option>
 							</select>
 						</div>
@@ -102,7 +103,7 @@ export default function SprintsPage() {
 					{sprintColumns.map((column) => (
 						<div
 							key={column.name}
-							className='rounded-lg border border-border bg-background p-2.5'
+							className='rounded-[var(--radius-surface)] border border-border bg-background p-2.5'
 						>
 							<div className='mb-2.5 flex items-center justify-between'>
 								<h2 className='text-lg font-semibold text-foreground'>
@@ -113,7 +114,7 @@ export default function SprintsPage() {
 								</h2>
 								<button
 									type='button'
-									className='h-6 rounded-md border border-border px-2 text-xs text-foreground'
+									className='h-6 rounded-[var(--radius-control)] border border-border px-2 text-xs text-foreground'
 								>
 									Добавить
 								</button>
@@ -123,7 +124,7 @@ export default function SprintsPage() {
 								{column.tasks.map((task) => (
 									<Card
 										key={task.id}
-										className='gap-2 rounded-lg border-border bg-card py-0'
+										className='gap-2 rounded-[var(--radius-surface)] border-border bg-card py-0'
 									>
 										<CardContent className='space-y-2.5 px-3 py-3 text-foreground'>
 											<div className='flex items-center gap-2'>
@@ -143,7 +144,7 @@ export default function SprintsPage() {
 												{task.tags.map((tag) => (
 													<span
 														key={tag}
-														className='rounded-md bg-muted px-1.5 py-0.5 text-xs text-foreground'
+														className='rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 dark:border-border dark:bg-muted dark:text-muted-foreground'
 													>
 														{tag}
 													</span>

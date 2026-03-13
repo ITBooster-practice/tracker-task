@@ -80,10 +80,10 @@ function ProjectDetailPageView() {
 							<button
 								key={card.id}
 								type='button'
-								className='flex h-[112px] w-full flex-col rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/30'
+								className='flex h-[112px] w-full flex-col justify-center gap-3 rounded-[var(--radius-surface)] border border-border bg-card p-5 text-left transition-colors hover:border-primary/30'
 							>
-								<div className='mb-4 flex size-8 items-center justify-center rounded-md bg-primary/10'>
-									<Icon className={cn('size-4', card.iconClassName)} />
+								<div className='flex size-5 items-center justify-center'>
+									<Icon className={cn('size-5', card.iconClassName)} />
 								</div>
 								<div className='text-[16px] font-semibold leading-5 tracking-tight'>
 									{card.title}
@@ -104,10 +104,10 @@ function ProjectDetailPageView() {
 								<button
 									key={board.id}
 									type='button'
-									className='flex h-[88px] w-full items-center gap-4 rounded-lg border border-border bg-card px-5 text-left transition-colors hover:border-primary/30'
+									className='flex h-[88px] w-full items-center gap-4 rounded-[var(--radius-surface)] border border-border bg-card px-5 py-4 text-left transition-colors hover:border-primary/30'
 								>
-									<div className='flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
-										<KanbanSquare className='size-4' />
+									<div className='flex size-5 shrink-0 items-center justify-center text-primary'>
+										<KanbanSquare className='size-5' />
 									</div>
 									<div className='min-w-0'>
 										<div className='truncate text-[16px] font-semibold tracking-tight'>
@@ -120,7 +120,7 @@ function ProjectDetailPageView() {
 								</button>
 							))
 						) : (
-							<div className='rounded-lg border border-dashed border-border bg-card px-5 py-8 text-[14px] text-muted-foreground sm:col-span-2'>
+							<div className='rounded-[var(--radius-surface)] border border-dashed border-border bg-card px-5 py-8 text-[14px] text-muted-foreground sm:col-span-2'>
 								Пока нет досок. Создайте первую доску для проекта.
 							</div>
 						)}
@@ -133,7 +133,7 @@ function ProjectDetailPageView() {
 						<h2 className='text-[20px] font-semibold tracking-tight'>Последние задачи</h2>
 					</div>
 
-					<div className='overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
+					<div className='overflow-hidden rounded-[var(--radius-surface)] border border-border bg-card shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
 						{recentTasks.length > 0 ? (
 							recentTasks.map((task) => (
 								<div
