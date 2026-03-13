@@ -1,3 +1,4 @@
+import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
 
 import { Button } from '@repo/ui'
@@ -40,7 +41,7 @@ function HomeHeader() {
 						</a>
 					</Button>
 					<Button size='sm' className='h-9 px-4 text-sm font-medium' asChild>
-						<Link href='/login'>Войти</Link>
+						<Link href={ROUTES.login}>Войти</Link>
 					</Button>
 				</div>
 			</div>

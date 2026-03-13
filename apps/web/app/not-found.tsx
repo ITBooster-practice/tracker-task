@@ -1,3 +1,4 @@
+import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
 
 import { Button, EmptyState } from '@repo/ui'
@@ -12,7 +13,7 @@ export default function GlobalNotFound() {
 				description='Проверьте адрес страницы или вернитесь на главную.'
 				action={
 					<Button asChild>
-						<Link href='/'>На главную</Link>
+						<Link href={ROUTES.home}>На главную</Link>
 					</Button>
 				}
 			/>
