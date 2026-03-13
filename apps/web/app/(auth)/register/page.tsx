@@ -3,6 +3,7 @@
 import { useRegister } from '@/hooks/api/use-auth'
 import { isApiError } from '@/lib/api/utils'
 import { useSessionStore } from '@/lib/session'
+import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
 
 import { Button, Form, toast } from '@repo/ui'
@@ -51,7 +52,7 @@ export default function RegisterPage() {
 						<p className='text-center text-sm text-muted-foreground'>
 							Уже есть аккаунт?{' '}
 							<Link
-								href='/login'
+								href={ROUTES.login}
 								className='font-medium text-primary transition-opacity hover:opacity-80'
 							>
 								Войти

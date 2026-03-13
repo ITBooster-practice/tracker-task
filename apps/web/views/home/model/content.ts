@@ -1,3 +1,4 @@
+import { ROUTES } from '@/shared/config/routes'
 import type { ComponentType, SVGProps } from 'react'
 
 import {
@@ -29,7 +30,7 @@ export const heroBadge = {
 export const heroActions = {
 	primary: {
 		label: 'Попробовать демо',
-		href: '/teams',
+		href: ROUTES.teams,
 	},
 	secondary: {
 		label: 'Развернуть',
