@@ -81,11 +81,11 @@ function getInitials(name?: string | null) {
 function getRoleBadgeClassName(role: TeamRole) {
 	switch (role) {
 		case TEAM_ROLES.OWNER:
-			return 'border-amber-400/15 bg-amber-400/10 text-amber-300'
+			return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/15 dark:bg-amber-400/10 dark:text-amber-300'
 		case TEAM_ROLES.ADMIN:
-			return 'border-primary/15 bg-primary/10 text-primary'
+			return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-primary/15 dark:bg-primary/10 dark:text-primary'
 		default:
-			return 'border-border/60 bg-surface-2 text-muted-foreground'
+			return 'border-slate-200 bg-slate-50 text-slate-700 dark:border-border/60 dark:bg-surface-2 dark:text-muted-foreground'
 	}
 }
 
@@ -176,9 +176,9 @@ function TeamSettingsPageView() {
 				</header>
 
 				<div className='space-y-5'>
-					<section className='rounded-lg border border-border bg-card p-3.5 shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
+					<section className='rounded-[var(--radius-surface)] border border-border bg-card p-4 shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
 						<div className='mb-3 flex items-center gap-2'>
-							<div className='flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary'>
+							<div className='flex size-7 items-center justify-center rounded-[calc(var(--radius-control)-2px)] bg-primary/10 text-primary'>
 								<Settings2 className='size-4' />
 							</div>
 							<h2 className='text-[14px] font-semibold tracking-tight'>Роли</h2>
@@ -226,7 +226,7 @@ function TeamSettingsPageView() {
 							/>
 						</div>
 					) : (
-						<section className='overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
+						<section className='overflow-hidden rounded-[var(--radius-surface)] border border-border bg-card shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
 							<div className='border-b border-border px-4 py-3.5'>
 								<h2 className='text-[16px] font-semibold tracking-tight'>
 									Участники ({members.length})
@@ -278,7 +278,7 @@ function TeamSettingsPageView() {
 																handleRoleChange(member.id, value)
 															}
 														>
-															<SelectTrigger className='h-9 w-[136px] rounded-[12px] border-border bg-background px-3.5 text-[14px] shadow-none'>
+															<SelectTrigger className='h-10 w-full sm:w-[136px] rounded-[var(--radius-control)] border-border bg-background px-3.5 text-[14px] shadow-none'>
 																<SelectValue placeholder='Выберите роль' />
 															</SelectTrigger>
 															<SelectContent className='border-border bg-popover'>
@@ -355,7 +355,7 @@ function TeamSettingsPageView() {
 								>
 									<SelectTrigger
 										id='invite-role'
-										className={cn(teamDialogInputClassName, 'px-3.5')}
+										className={cn(teamDialogInputClassName, 'w-full px-3.5')}
 									>
 										<SelectValue placeholder='Выберите роль' />
 									</SelectTrigger>

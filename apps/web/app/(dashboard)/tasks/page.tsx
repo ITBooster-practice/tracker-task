@@ -47,10 +47,12 @@ const mockTasks = [
 ] as const
 
 const typeBadgeClassName: Record<(typeof mockTasks)[number]['type'], string> = {
-	Эпик: 'bg-violet-500/20 text-violet-300',
-	Стори: 'bg-blue-500/20 text-blue-300',
-	Баг: 'bg-red-500/20 text-red-300',
-	'Тех. долг': 'bg-amber-500/20 text-amber-300',
+	Эпик: 'border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/20 dark:text-violet-200',
+	Стори:
+		'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/25 dark:bg-sky-500/20 dark:text-sky-200',
+	Баг: 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/20 dark:text-rose-200',
+	'Тех. долг':
+		'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/20 dark:text-amber-200',
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -67,7 +69,7 @@ export default async function TasksPage() {
 			<div className='mx-auto flex w-full max-w-[2100px] flex-col gap-8 px-5 py-8 md:px-8'>
 				<header className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
 					<h1 className='text-3xl font-semibold tracking-tight'>Задачи</h1>
-					<Button className='h-10 rounded-lg bg-primary px-5 text-base font-medium text-primary-foreground hover:bg-primary/90'>
+					<Button className='h-10 rounded-[var(--radius-control)] bg-primary px-5 text-base font-medium text-primary-foreground hover:bg-primary/90'>
 						Создать задачу
 					</Button>
 				</header>
@@ -76,20 +78,20 @@ export default async function TasksPage() {
 					<input
 						type='text'
 						placeholder='Поиск по названию или ключу...'
-						className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+						className='h-10 rounded-[var(--radius-control)] border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 					/>
-					<select className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground'>
+					<select className='h-10 rounded-[var(--radius-control)] border border-border bg-background px-3 text-base text-foreground'>
 						<option>Все типы</option>
 					</select>
-					<select className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground'>
+					<select className='h-10 rounded-[var(--radius-control)] border border-border bg-background px-3 text-base text-foreground'>
 						<option>Все статусы</option>
 					</select>
-					<select className='h-10 rounded-lg border border-border bg-background px-3 text-base text-foreground'>
+					<select className='h-10 rounded-[var(--radius-control)] border border-border bg-background px-3 text-base text-foreground'>
 						<option>Все</option>
 					</select>
 				</section>
 
-				<div className='overflow-x-auto rounded-3xl border border-border bg-card'>
+				<div className='overflow-x-auto rounded-[var(--radius-surface)] border border-border bg-card'>
 					<table className='min-w-full border-collapse'>
 						<thead className='border-b border-border'>
 							<tr className='text-left text-base text-muted-foreground'>
