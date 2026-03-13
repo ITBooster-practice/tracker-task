@@ -67,6 +67,8 @@ body {
 
 :root {
 	--radius: 0.625rem;
+	--radius-control: 14px;
+	--radius-surface: 18px;
 	--background: oklch(0.94 0.006 247.86);
 	--foreground: oklch(0.19 0.014 264.05);
 	--card: oklch(0.968 0.004 255.5);
@@ -105,15 +107,11 @@ body {
 	--sidebar-accent-foreground: oklch(0.21 0.015 262.18);
 	--sidebar-border: oklch(0.8 0.014 255.21);
 	--sidebar-ring: oklch(0.54 0.165 259.12);
-	--shadow-1:
-		0 1px 2px 0 hsl(220 20% 20% / 0.06),
-		0 1px 1px -1px hsl(220 20% 20% / 0.05);
+	--shadow-1: 0 1px 2px 0 hsl(220 20% 20% / 0.06), 0 1px 1px -1px hsl(220 20% 20% / 0.05);
 	--shadow-2:
-		0 8px 20px -12px hsl(220 30% 18% / 0.12),
-		0 3px 8px -4px hsl(220 20% 20% / 0.08);
+		0 8px 20px -12px hsl(220 30% 18% / 0.12), 0 3px 8px -4px hsl(220 20% 20% / 0.08);
 	--shadow-3:
-		0 16px 36px -20px hsl(220 30% 18% / 0.18),
-		0 8px 18px -10px hsl(220 20% 20% / 0.12);
+		0 16px 36px -20px hsl(220 30% 18% / 0.18), 0 8px 18px -10px hsl(220 20% 20% / 0.12);
 }
 
 .dark {
@@ -164,6 +162,9 @@ body {
 	}
 	body {
 		@apply bg-background text-foreground;
+	}
+	select:not(:disabled) {
+		cursor: pointer;
 	}
 }
 
