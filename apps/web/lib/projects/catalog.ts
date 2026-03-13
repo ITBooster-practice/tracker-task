@@ -18,6 +18,78 @@ export type ProjectCatalogItem = {
 	}>
 }
 
+const PROJECT_ID_MAX_LENGTH = 48
+const PROJECT_ID_FALLBACK_PREFIX = 'project'
+const PROJECT_ID_DUPLICATE_SUFFIX_START = 2
+
+function isProjectNameSeparator(char: string) {
+	return char === '-' || char === '_'
+}
+
+function isAllowedProjectIdChar(char: string) {
+	const codePoint = char.codePointAt(0)
+
+	if (codePoint === undefined) {
+		return false
+	}
+
+	const isDigit = codePoint >= 48 && codePoint <= 57
+	const isLatinLowercaseLetter = codePoint >= 97 && codePoint <= 122
+	const isCyrillicLowercaseLetter = codePoint >= 1072 && codePoint <= 1103
+	const isYoLetter = codePoint === 1105
+
+	return isDigit || isLatinLowercaseLetter || isCyrillicLowercaseLetter || isYoLetter
+}
+
+function splitProjectIdParts(projectId: string) {
+	const parts: string[] = []
+	let currentPart = ''
+
+	for (const char of decodeURIComponent(projectId)) {
+		if (isProjectNameSeparator(char)) {
+			if (currentPart) {
+				parts.push(currentPart)
+				currentPart = ''
+			}
+			continue
+		}
+
+		currentPart += char
+	}
+
+	if (currentPart) {
+		parts.push(currentPart)
+	}
+
+	return parts
+}
+
+function normalizeProjectId(name: string) {
+	let normalizedId = ''
+	let hasPendingSeparator = false
+
+	for (const char of name.toLowerCase().trim()) {
+		if (isAllowedProjectIdChar(char)) {
+			normalizedId += char
+			hasPendingSeparator = false
+			continue
+		}
+
+		if (!normalizedId || hasPendingSeparator) {
+			continue
+		}
+
+		normalizedId += '-'
+		hasPendingSeparator = true
+	}
+
+	if (normalizedId.endsWith('-')) {
+		normalizedId = normalizedId.slice(0, -1)
+	}
+
+	return normalizedId.slice(0, PROJECT_ID_MAX_LENGTH)
+}
+
 export const projectCatalog: ProjectCatalogItem[] = [
 	{
 		id: 'tracker-task',
@@ -147,30 +219,23 @@ export function getProjectById(projectId: string) {
 }
 
 export function formatProjectNameFromId(projectId: string) {
-	return decodeURIComponent(projectId)
-		.split(/[-_]+/)
-		.filter(Boolean)
+	return splitProjectIdParts(projectId)
 		.map((part) => part[0]?.toUpperCase() + part.slice(1))
 		.join(' ')
 }
 
 export function createProjectId(name: string, existingIds: string[]) {
-	const baseId = name
-		.toLowerCase()
-		.trim()
-		.replace(/[^a-z0-9а-яё]+/giu, '-')
-		.replace(/^-+|-+$/g, '')
-		.slice(0, 48)
+	const baseId = normalizeProjectId(name)
 
 	if (!baseId) {
-		return `project-${existingIds.length + 1}`
+		return `${PROJECT_ID_FALLBACK_PREFIX}-${existingIds.length + 1}`
 	}
 
 	if (!existingIds.includes(baseId)) {
 		return baseId
 	}
 
-	let suffix = 2
+	let suffix = PROJECT_ID_DUPLICATE_SUFFIX_START
 	let nextId = `${baseId}-${suffix}`
 
 	while (existingIds.includes(nextId)) {

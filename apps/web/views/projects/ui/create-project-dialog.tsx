@@ -1,5 +1,11 @@
 'use client'
 
+import {
+	isValidProjectCode,
+	normalizeProjectCodeInput,
+	PROJECT_CODE_MAX_LENGTH,
+	PROJECT_CODE_MIN_LENGTH,
+} from '@/lib/projects/project-code'
 import { useEffect, useState } from 'react'
 
 import {
@@ -31,8 +37,6 @@ interface CreateProjectDialogProps {
 	onCreate: (payload: { name: string; code: string }) => void
 }
 
-const projectCodePattern = /^[A-ZА-ЯЁ]{2,4}$/u
-
 function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDialogProps) {
 	const [name, setName] = useState('')
 	const [code, setCode] = useState('')
@@ -45,9 +49,9 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 	}, [open])
 
 	const normalizedName = name.trim()
-	const normalizedCode = code.trim().toUpperCase()
+	const normalizedCode = code.trim()
 	const isSubmitDisabled =
-		!normalizedName || !normalizedCode || !projectCodePattern.test(normalizedCode)
+		!normalizedName || !normalizedCode || !isValidProjectCode(normalizedCode)
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
@@ -89,19 +93,14 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 
 						<div className='space-y-1.5'>
 							<Label htmlFor='project-key' className={projectDialogLabelClassName}>
-								Ключ (2-4 буквы)
+								Ключ ({PROJECT_CODE_MIN_LENGTH}-{PROJECT_CODE_MAX_LENGTH} буквы)
 							</Label>
 							<Input
 								id='project-key'
 								placeholder='MP'
 								value={code}
 								onChange={(event) =>
-									setCode(
-										event.target.value
-											.toUpperCase()
-											.replace(/[^A-ZА-ЯЁ]/gu, '')
-											.slice(0, 4),
-									)
+									setCode(normalizeProjectCodeInput(event.target.value))
 								}
 								className={projectDialogInputClassName}
 							/>
