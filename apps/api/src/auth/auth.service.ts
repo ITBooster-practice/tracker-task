@@ -181,11 +181,11 @@ export class AuthService {
 		const payload: JwtPayload = { id: userId }
 
 		const accessToken = this.jwtService.sign(payload, {
-			expiresIn: this.JWT_ACCESS_TOKEN_TTL,
+			expiresIn: parseTTLToMs(this.JWT_ACCESS_TOKEN_TTL) / 1000,
 		})
 
 		const refreshToken = this.jwtService.sign(payload, {
-			expiresIn: this.JWT_REFRESH_TOKEN_TTL,
+			expiresIn: parseTTLToMs(this.JWT_REFRESH_TOKEN_TTL) / 1000,
 		})
 
 		return { accessToken, refreshToken }
