@@ -19,8 +19,8 @@ import { RedisService } from 'src/common/redis/redis.service'
 
 @Injectable()
 export class AuthService {
-	private readonly JWT_ACCESS_TOKEN_TTL
-	private readonly JWT_REFRESH_TOKEN_TTL
+	private readonly JWT_ACCESS_TOKEN_TTL: string
+	private readonly JWT_REFRESH_TOKEN_TTL: string
 	private readonly COOKIE_DOMAIN: string
 	private readonly COOKIE_TTL: string
 
@@ -132,7 +132,8 @@ export class AuthService {
 			}
 		}
 
-		this.setCookie(res, 'refreshToken', new Date(0))
+		this.setCookie(res, 'refreshToken', '', new Date(0), '/auth/refresh')
+		this.setCookie(res, 'accessToken', '', new Date(0), '/')
 
 		return { message: 'Пользователь успешно вышел', success: true }
 	}
@@ -158,10 +159,21 @@ export class AuthService {
 
 		this.setCookie(
 			res,
+			'refreshToken',
 			refreshToken,
 			new Date(Date.now() + parseTTLToMs(this.COOKIE_TTL)),
+			'/auth/refresh',
 		)
 
+		this.setCookie(
+			res,
+			'accessToken',
+			accessToken,
+			new Date(Date.now() + parseTTLToMs(this.JWT_ACCESS_TOKEN_TTL)),
+			'/',
+		)
+
+		// TODO: удалить когда фронтенд перейдёт на cookie-only
 		return { accessToken }
 	}
 
@@ -179,13 +191,20 @@ export class AuthService {
 		return { accessToken, refreshToken }
 	}
 
-	private setCookie(res: Response, value: string, expires: Date) {
-		res.cookie('refreshToken', value, {
+	private setCookie(
+		res: Response,
+		name: string,
+		value: string,
+		expires: Date,
+		path = '/',
+	) {
+		res.cookie(name, value, {
 			httpOnly: true,
 			secure: !isDev(this.configService),
 			sameSite: isDev(this.configService) ? 'lax' : 'strict',
 			domain: this.COOKIE_DOMAIN,
 			expires,
+			path,
 		})
 	}
 }
