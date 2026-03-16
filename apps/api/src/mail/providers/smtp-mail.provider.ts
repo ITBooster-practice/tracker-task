@@ -4,7 +4,7 @@ import type { MailPayload } from '../mail.types'
 import { MailerService } from '@nestjs-modules/mailer'
 
 @Injectable()
-export class BrevoMailProvider implements MailProvider {
+export class SmtpMailProvider implements MailProvider {
 	constructor(private readonly mailerService: MailerService) {}
 
 	async send(payload: MailPayload): Promise<void> {

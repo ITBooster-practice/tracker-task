@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { MailService } from './mail.service'
 import { MAIL_PROVIDER } from './mail.constants'
-import { BrevoMailProvider } from './providers/brevo-mail.provider'
+import { SmtpMailProvider } from './providers/smtp-mail.provider'
 import { MailerModule } from '@nestjs-modules/mailer'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { getMailConfig } from './config/mail.config'
@@ -11,7 +11,7 @@ import { getMailConfig } from './config/mail.config'
 		MailService,
 		{
 			provide: MAIL_PROVIDER,
-			useClass: BrevoMailProvider,
+			useClass: SmtpMailProvider,
 		},
 	],
 	imports: [
