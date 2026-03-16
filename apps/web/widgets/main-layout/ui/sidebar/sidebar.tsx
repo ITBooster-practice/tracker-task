@@ -33,9 +33,12 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const params = useParams<{ id?: string; projectId?: string }>()
 	const { data: teams } = useTeamsList()
 	const isOpen = forceOpen ?? isDesktopOpen
-	const teamId = typeof params.id === 'string' ? params.id : (teams?.[0]?.id ?? null)
+	const selectedTeamId = typeof params.id === 'string' ? params.id : null
+	const teamId = selectedTeamId ?? teams?.[0]?.id ?? null
 	const projectId = typeof params.projectId === 'string' ? params.projectId : null
-	const currentTeam = teams?.find((team) => team.id === teamId) ?? null
+	const currentTeam = selectedTeamId
+		? (teams?.find((team) => team.id === selectedTeamId) ?? null)
+		: null
 	const activeRouteId = getSidebarRouteId(pathname)
 	const sections = getSidebarSections(teamId)
 	const [workSection, ...otherSections] = sections
@@ -80,9 +83,11 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 							<div className='truncate text-sm font-semibold leading-5'>
 								{sidebarWorkspace.title}
 							</div>
-							<div className='truncate text-xs text-muted-foreground'>
-								{currentTeam?.name ?? sidebarWorkspace.subtitle}
-							</div>
+							{currentTeam?.name ? (
+								<div className='truncate text-xs text-muted-foreground'>
+									{currentTeam.name}
+								</div>
+							) : null}
 						</div>
 					)}
 				</Link>
