@@ -8,15 +8,15 @@ import { NextResponse, type NextRequest, type ProxyConfig } from 'next/server'
 
 export function proxy(request: NextRequest) {
 	const { pathname, search } = request.nextUrl
-	const refreshToken = !!request.cookies.get('refreshToken')?.value
+	const accessToken = !!request.cookies.get('accessToken')?.value
 
-	if (!refreshToken && isProtectedRoute(pathname)) {
+	if (!accessToken && isProtectedRoute(pathname)) {
 		const url = new URL(ROUTES.login, request.url)
 		url.searchParams.set(ROUTE_QUERY_PARAMS.from, `${pathname}${search}`)
 		return NextResponse.redirect(url)
 	}
 
-	if (refreshToken && isAuthRoute(pathname)) {
+	if (accessToken && isAuthRoute(pathname)) {
 		return NextResponse.redirect(new URL(ROUTES.teams, request.url))
 	}
 
