@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import {
 	ConflictException,
 	Injectable,
+	Logger,
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common'
@@ -31,6 +32,7 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 		private readonly redisService: RedisService,
 		private readonly mailService: MailService,
+		private readonly logger = new Logger(AuthService.name),
 	) {
 		this.JWT_ACCESS_TOKEN_TTL =
 			this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_TTL')
@@ -65,7 +67,7 @@ export class AuthService {
 		try {
 			await this.mailService.sendWelcomeEmail(user.email)
 		} catch (error) {
-			console.error('Не удалось отправить письмо приветствия', error)
+			this.logger.error('Не удалось отправить письмо приветствия', error)
 		}
 
 		return await this.auth(res, user.id)
