@@ -133,8 +133,8 @@ pnpm dev
 
 Приложение будет доступно:
 
-- Frontend (Web): http://localhost:3000
-- Backend (API): http://localhost:4000
+- Frontend (Web): http://localhost:3001
+- Backend (API): http://localhost:3000
 
 ## Полезные команды
 
