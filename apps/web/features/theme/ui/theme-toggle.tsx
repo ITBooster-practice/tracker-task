@@ -1,8 +1,8 @@
 'use client'
 
-import { useHydratedStore } from '@/shared/hooks'
-
 import { Button, cn, MoonIcon, SunIcon } from '@repo/ui'
+
+import { useHydratedStore } from '@/shared/hooks'
 
 import { useThemeStore } from '../model/store'
 

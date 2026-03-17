@@ -1,6 +1,3 @@
-import { FEATURES, ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config'
-import { projectCatalog } from '@/shared/lib/projects'
-
 import {
 	Bell,
 	FolderKanban,
@@ -11,6 +8,9 @@ import {
 	Sparkles,
 	Users,
 } from '@repo/ui/icons'
+
+import { FEATURES, ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config'
+import { projectCatalog } from '@/shared/lib/projects'
 
 import type {
 	SidebarNavSection,

@@ -1,11 +1,12 @@
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { redirect } from 'next/navigation'
+
+import { MainLayout } from '@/widgets/main-layout'
 import { authKeys } from '@/shared/api/use-auth'
 import { ROUTES } from '@/shared/config'
 import { authService } from '@/shared/lib/api/auth-service'
 import { isApiError } from '@/shared/lib/api/utils'
 import { getQueryClient } from '@/shared/lib/query-client'
-import { MainLayout } from '@/widgets/main-layout'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
-import { redirect } from 'next/navigation'
 
 interface Props {
 	children: React.ReactNode

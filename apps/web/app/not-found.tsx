@@ -1,7 +1,8 @@
-import { ROUTES } from '@/shared/config'
 import Link from 'next/link'
 
 import { Button, EmptyState } from '@repo/ui'
+
+import { ROUTES } from '@/shared/config'
 
 export default function GlobalNotFound() {
 	return (

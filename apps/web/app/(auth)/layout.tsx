@@ -1,6 +1,7 @@
-import { FEATURES, ROUTES } from '@/shared/config'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+
+import { FEATURES, ROUTES } from '@/shared/config'
 
 interface Props {
 	children: React.ReactNode

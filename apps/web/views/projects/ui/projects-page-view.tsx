@@ -1,5 +1,11 @@
 'use client'
 
+import { useParams, useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+import { Button, EmptyState, Input } from '@repo/ui'
+import { FolderKanban, Plus, Search } from '@repo/ui/icons'
+
 import { useTeamDetail } from '@/shared/api/use-teams'
 import {
 	buildTeamProjectHref,
@@ -7,11 +13,6 @@ import {
 	projectCatalog,
 	type ProjectCatalogItem,
 } from '@/shared/lib/projects'
-import { useParams, useRouter } from 'next/navigation'
-import { useState } from 'react'
-
-import { Button, EmptyState, Input } from '@repo/ui'
-import { FolderKanban, Plus, Search } from '@repo/ui/icons'
 
 import {
 	projectPageHeaderClassName,

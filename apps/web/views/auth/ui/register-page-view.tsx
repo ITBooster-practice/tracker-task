@@ -1,12 +1,13 @@
 'use client'
 
-import { useRegister } from '@/shared/api/use-auth'
-import { ROUTES } from '@/shared/config'
-import { isApiError } from '@/shared/lib/api/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { Button, Form, toast } from '@repo/ui'
+
+import { useRegister } from '@/shared/api/use-auth'
+import { ROUTES } from '@/shared/config'
+import { isApiError } from '@/shared/lib/api/utils'
 
 import { useRegisterForm, type RegisterFormValues } from '../model/use-register-form'
 import { AuthFormLayout } from './auth-form-layout'

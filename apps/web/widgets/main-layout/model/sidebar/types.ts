@@ -1,6 +1,6 @@
-import type { SidebarRouteId } from '@/shared/config'
-
 import type { LucideIcon } from '@repo/ui/icons'
+
+import type { SidebarRouteId } from '@/shared/config'
 
 type SideBarStoreState = {
 	isOpen: boolean

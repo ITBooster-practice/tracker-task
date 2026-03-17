@@ -3,6 +3,8 @@
  * Скопируйте его и адаптируйте для своей сущности.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import {
 	CreateExampleDto,
 	Example,
@@ -10,7 +12,6 @@ import {
 	UpdateExampleDto,
 } from '@/shared/lib/api/example-service'
 import { ApiError, PaginationParams } from '@/shared/lib/api/types'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 // Query keys для кэширования
 export const exampleKeys = {

@@ -1,11 +1,5 @@
 'use client'
 
-import {
-	isValidProjectCode,
-	normalizeProjectCodeInput,
-	PROJECT_CODE_MAX_LENGTH,
-	PROJECT_CODE_MIN_LENGTH,
-} from '@/shared/lib/projects'
 import { useEffect, useState } from 'react'
 
 import {
@@ -18,6 +12,13 @@ import {
 	Input,
 	Label,
 } from '@repo/ui'
+
+import {
+	isValidProjectCode,
+	normalizeProjectCodeInput,
+	PROJECT_CODE_MAX_LENGTH,
+	PROJECT_CODE_MIN_LENGTH,
+} from '@/shared/lib/projects'
 
 import {
 	projectDialogContentClassName,

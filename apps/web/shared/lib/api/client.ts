@@ -1,5 +1,6 @@
-import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+
+import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
 
 import { isClientSide, setCookieHeader } from './auth-cookies'
 import { axiosConfig } from './axios-config'

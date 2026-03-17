@@ -1,3 +1,5 @@
+import { NextResponse, type NextRequest, type ProxyConfig } from 'next/server'
+
 import {
 	isAuthRoute,
 	isProtectedRoute,
@@ -10,7 +12,6 @@ import {
 	type AuthRefreshResult,
 } from '@/shared/lib/api/refresh-auth-session'
 import { isTokenExpiredSoon } from '@/shared/lib/session'
-import { NextResponse, type NextRequest, type ProxyConfig } from 'next/server'
 
 const createLoginRedirect = (request: NextRequest) => {
 	const { pathname, search } = request.nextUrl

@@ -1,6 +1,5 @@
 'use client'
 
-import { useTeamDetail } from '@/shared/api/use-teams'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -27,6 +26,8 @@ import {
 	SelectValue,
 } from '@repo/ui'
 import { Crown, Mail, Settings2, Shield, Trash2, UserPlus, Users } from '@repo/ui/icons'
+
+import { useTeamDetail } from '@/shared/api/use-teams'
 
 import {
 	teamDialogContentClassName,

@@ -1,8 +1,5 @@
 'use client'
 
-import { useTeamDetail } from '@/shared/api/use-teams'
-import { teamRoutes } from '@/shared/config'
-import { formatProjectNameFromId, getProjectById } from '@/shared/lib/projects'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
@@ -15,6 +12,10 @@ import {
 	Sparkles,
 	SquareKanban,
 } from '@repo/ui/icons'
+
+import { useTeamDetail } from '@/shared/api/use-teams'
+import { teamRoutes } from '@/shared/config'
+import { formatProjectNameFromId, getProjectById } from '@/shared/lib/projects'
 
 import { projectPageSubtitleClassName, projectPageTitleClassName } from '../lib/styles'
 
