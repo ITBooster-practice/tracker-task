@@ -1,6 +1,6 @@
 'use client'
 
-import type { ProjectCatalogItem } from '@/lib/projects/catalog'
+import type { ProjectCatalogItem } from '@/shared/lib/projects'
 
 import { cn } from '@repo/ui'
 import { ArrowRight, KanbanSquare, ListTodo } from '@repo/ui/icons'

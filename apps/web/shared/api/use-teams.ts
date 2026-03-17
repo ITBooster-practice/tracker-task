@@ -4,8 +4,8 @@ import {
 	type DeleteTeamResponse,
 	type Team,
 	type UpdateTeam,
-} from '@/lib/api/teams-service'
-import type { ApiError } from '@/lib/api/types'
+} from '@/shared/lib/api/teams-service'
+import type { ApiError } from '@/shared/lib/api/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export const teamsKeys = {

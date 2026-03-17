@@ -1,8 +1,8 @@
 'use client'
 
-import { useCreateTeam } from '@/hooks/api/use-teams'
-import { isApiError } from '@/lib/api/utils'
-import { ROUTES } from '@/shared/config/routes'
+import { useCreateTeam } from '@/shared/api/use-teams'
+import { ROUTES } from '@/shared/config'
+import { isApiError } from '@/shared/lib/api/utils'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 

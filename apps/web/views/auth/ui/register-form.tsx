@@ -12,7 +12,7 @@ import {
 	VStack,
 } from '@repo/ui'
 
-import { RegisterFormValues } from './use-register-form'
+import type { RegisterFormValues } from '../model/use-register-form'
 
 const RegisterForm = () => {
 	const { control } = useFormContext<RegisterFormValues>()

@@ -1,5 +1,4 @@
-import { FEATURES } from '@/hooks/use-feature-flag'
-import { ROUTES } from '@/shared/config/routes'
+import { FEATURES, ROUTES } from '@/shared/config'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 

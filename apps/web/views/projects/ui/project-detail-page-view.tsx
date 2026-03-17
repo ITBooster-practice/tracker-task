@@ -1,8 +1,8 @@
 'use client'
 
-import { useTeamDetail } from '@/hooks/api/use-teams'
-import { formatProjectNameFromId, getProjectById } from '@/lib/projects/catalog'
-import { teamRoutes } from '@/shared/config/routes'
+import { useTeamDetail } from '@/shared/api/use-teams'
+import { teamRoutes } from '@/shared/config'
+import { formatProjectNameFromId, getProjectById } from '@/shared/lib/projects'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 

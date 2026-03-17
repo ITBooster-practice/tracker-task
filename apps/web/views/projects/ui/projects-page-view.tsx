@@ -1,12 +1,12 @@
 'use client'
 
-import { useTeamDetail } from '@/hooks/api/use-teams'
+import { useTeamDetail } from '@/shared/api/use-teams'
 import {
 	buildTeamProjectHref,
 	createProjectId,
 	projectCatalog,
 	type ProjectCatalogItem,
-} from '@/lib/projects/catalog'
+} from '@/shared/lib/projects'
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 

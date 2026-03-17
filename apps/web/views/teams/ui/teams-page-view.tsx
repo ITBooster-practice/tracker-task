@@ -1,7 +1,7 @@
 'use client'
 
-import { useTeamsList } from '@/hooks/api/use-teams'
-import { ROUTES, teamRoutes } from '@/shared/config/routes'
+import { useTeamsList } from '@/shared/api/use-teams'
+import { ROUTES, teamRoutes } from '@/shared/config'
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 

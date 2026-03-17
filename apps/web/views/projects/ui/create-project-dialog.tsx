@@ -5,7 +5,7 @@ import {
 	normalizeProjectCodeInput,
 	PROJECT_CODE_MAX_LENGTH,
 	PROJECT_CODE_MIN_LENGTH,
-} from '@/lib/projects/project-code'
+} from '@/shared/lib/projects'
 import { useEffect, useState } from 'react'
 
 import {

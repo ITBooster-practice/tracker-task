@@ -1,4 +1,4 @@
-import type { SidebarRouteId } from '@/shared/config/routes'
+import type { SidebarRouteId } from '@/shared/config'
 
 import type { LucideIcon } from '@repo/ui/icons'
 

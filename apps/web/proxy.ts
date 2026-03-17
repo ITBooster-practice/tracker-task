@@ -3,15 +3,14 @@ import {
 	isProtectedRoute,
 	ROUTE_QUERY_PARAMS,
 	ROUTES,
-} from '@/shared/config/routes'
-import { NextResponse, type NextRequest, type ProxyConfig } from 'next/server'
-
-import { appendSetCookieHeaders, clearAuthCookies } from './lib/api/auth-cookies'
+} from '@/shared/config'
+import { appendSetCookieHeaders, clearAuthCookies } from '@/shared/lib/api/auth-cookies'
 import {
 	refreshAuthSession,
 	type AuthRefreshResult,
-} from './lib/api/refresh-auth-session'
-import { isTokenExpiredSoon } from './lib/session'
+} from '@/shared/lib/api/refresh-auth-session'
+import { isTokenExpiredSoon } from '@/shared/lib/session'
+import { NextResponse, type NextRequest, type ProxyConfig } from 'next/server'
 
 const createLoginRedirect = (request: NextRequest) => {
 	const { pathname, search } = request.nextUrl

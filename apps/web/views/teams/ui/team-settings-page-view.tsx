@@ -1,6 +1,6 @@
 'use client'
 
-import { useTeamDetail } from '@/hooks/api/use-teams'
+import { useTeamDetail } from '@/shared/api/use-teams'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 

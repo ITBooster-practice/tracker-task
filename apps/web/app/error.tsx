@@ -1,6 +1,6 @@
 'use client'
 
-import { ROUTES } from '@/shared/config/routes'
+import { ROUTES } from '@/shared/config'
 import Link from 'next/link'
 import { useEffect } from 'react'
 

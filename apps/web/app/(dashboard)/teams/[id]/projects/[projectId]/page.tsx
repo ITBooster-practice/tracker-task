@@ -1,4 +1,4 @@
-import { FEATURES } from '@/hooks/use-feature-flag'
+import { FEATURES } from '@/shared/config'
 import { ProjectDetailPageView } from '@/views/projects'
 import { notFound } from 'next/navigation'
 

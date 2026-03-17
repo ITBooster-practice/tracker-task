@@ -1,4 +1,4 @@
-import { ROUTES } from '@/shared/config/routes'
+import { ROUTES } from '@/shared/config'
 import Link from 'next/link'
 
 import { Button } from '@repo/ui'

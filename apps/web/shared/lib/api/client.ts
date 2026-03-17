@@ -1,10 +1,10 @@
-import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config/routes'
+import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 import { isClientSide, setCookieHeader } from './auth-cookies'
 import { axiosConfig } from './axios-config'
 import { refreshAuthSession } from './refresh-auth-session'
-import { ApiError } from './types'
+import type { ApiError } from './types'
 import { toApiError } from './utils'
 
 type RetryableConfig = InternalAxiosRequestConfig & {

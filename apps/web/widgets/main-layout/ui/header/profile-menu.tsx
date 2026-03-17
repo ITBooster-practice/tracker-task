@@ -1,7 +1,7 @@
 'use client'
 
-import { useLogout, useMe } from '@/hooks/api/use-auth'
-import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config/routes'
+import { useLogout, useMe } from '@/shared/api/use-auth'
+import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
 import React from 'react'
 
 import {

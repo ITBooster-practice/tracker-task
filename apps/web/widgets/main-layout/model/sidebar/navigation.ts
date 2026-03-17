@@ -1,6 +1,5 @@
-import { FEATURES } from '@/hooks/use-feature-flag'
-import { projectCatalog } from '@/lib/projects/catalog'
-import { ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config/routes'
+import { FEATURES, ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config'
+import { projectCatalog } from '@/shared/lib/projects'
 
 import {
 	Bell,

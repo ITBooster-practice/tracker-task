@@ -1,8 +1,8 @@
 'use client'
 
+import { useHydratedStore } from '@/shared/hooks'
 import { useEffect } from 'react'
 
-import { useHydratedStore } from '../../../shared/hooks'
 import { useThemeStore } from '../model/store'
 
 function ThemeSync() {
