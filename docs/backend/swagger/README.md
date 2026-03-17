@@ -4,9 +4,9 @@
 
 | URL                                | Описание     |
 | ---------------------------------- | ------------ |
-| http://localhost:4000/api/docs     | Swagger UI   |
-| http://localhost:4000/swagger.json | OpenAPI JSON |
-| http://localhost:4000/swagger.yaml | OpenAPI YAML |
+| http://localhost:3000/api/docs     | Swagger UI   |
+| http://localhost:3000/swagger.json | OpenAPI JSON |
+| http://localhost:3000/swagger.yaml | OpenAPI YAML |
 
 ## Установка зависимостей
 

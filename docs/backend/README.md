@@ -31,12 +31,12 @@
 
 1. **Запустить Redis** — `pnpm docker:redis-up`
 2. **Настройка валидации** — [validation/setup](../validation/setup.md)
-3. **Swagger** — http://localhost:4000/api/docs
+3. **Swagger** — http://localhost:3000/api/docs
 4. **Prisma Studio** — `pnpm prisma:studio`
 
 ## Реализованные эндпоинты
 
-Актуальный список с описанием запросов/ответов — в Swagger: http://localhost:4000/api/docs
+Актуальный список с описанием запросов/ответов — в Swagger: http://localhost:3000/api/docs
 
 ### Аутентификация (JWT + Cookie)
 
