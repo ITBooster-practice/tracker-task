@@ -1,17 +1,12 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 
-import { FEATURES, ROUTES } from '@/shared/config'
+import { ROUTES } from '@/shared/config'
 
 interface Props {
 	children: React.ReactNode
 }
 
 export default function AuthLayout({ children }: Props) {
-	if (!FEATURES.AUTH) {
-		notFound()
-	}
-
 	return (
 		<div className='relative min-h-screen overflow-hidden bg-background text-foreground'>
 			<div className='pointer-events-none absolute inset-0'>
