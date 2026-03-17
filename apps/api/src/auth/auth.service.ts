@@ -132,7 +132,7 @@ export class AuthService {
 			}
 		}
 
-		this.setCookie(res, 'refreshToken', '', new Date(0), '/auth/refresh')
+		this.setCookie(res, 'refreshToken', '', new Date(0), '/')
 		this.setCookie(res, 'accessToken', '', new Date(0), '/')
 
 		return { message: 'Пользователь успешно вышел', success: true }
@@ -162,7 +162,7 @@ export class AuthService {
 			'refreshToken',
 			refreshToken,
 			new Date(Date.now() + parseTTLToMs(this.COOKIE_TTL)),
-			'/auth/refresh',
+			'/',
 		)
 
 		this.setCookie(
