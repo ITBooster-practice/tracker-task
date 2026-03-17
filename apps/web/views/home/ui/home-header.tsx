@@ -1,8 +1,9 @@
-import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
 
 import { Button } from '@repo/ui'
 import { Github, KanbanSquare } from '@repo/ui/icons'
+
+import { ROUTES } from '@/shared/config'
 
 import { navigationItems } from '../model/content'
 

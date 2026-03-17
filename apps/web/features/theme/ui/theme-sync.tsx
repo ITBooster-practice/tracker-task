@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react'
 
-import { useHydratedStore } from '../../../shared/hooks'
+import { useHydratedStore } from '@/shared/hooks'
+
 import { useThemeStore } from '../model/store'
 
 function ThemeSync() {

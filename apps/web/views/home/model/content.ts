@@ -1,4 +1,3 @@
-import { ROUTES } from '@/shared/config/routes'
 import type { ComponentType, SVGProps } from 'react'
 
 import {
@@ -13,6 +12,8 @@ import {
 	Users,
 	Zap,
 } from '@repo/ui/icons'
+
+import { ROUTES } from '@/shared/config'
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>
 

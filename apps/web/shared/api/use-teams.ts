@@ -1,12 +1,13 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import {
 	teamsService,
 	type CreateTeam,
 	type DeleteTeamResponse,
 	type Team,
 	type UpdateTeam,
-} from '@/lib/api/teams-service'
-import type { ApiError } from '@/lib/api/types'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+} from '@/shared/lib/api/teams-service'
+import type { ApiError } from '@/shared/lib/api/types'
 
 export const teamsKeys = {
 	all: ['teams'] as const,

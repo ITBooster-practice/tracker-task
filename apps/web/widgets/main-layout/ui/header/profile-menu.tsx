@@ -1,8 +1,5 @@
 'use client'
 
-import { useLogout } from '@/hooks/api/use-auth'
-import { ROUTES } from '@/shared/config/routes'
-import { useRouter } from 'next/navigation'
 import React from 'react'
 
 import {
@@ -17,20 +14,25 @@ import {
 	DropdownMenuTrigger,
 } from '@repo/ui'
 
+import { useLogout, useMe } from '@/shared/api/use-auth'
+import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
+
 const currentUser = {
 	name: 'Имя',
 	avatar: 'AL',
 }
 
 const ProfileMenu = () => {
-	const router = useRouter()
 	const logoutMutation = useLogout()
 
-	const handleLogout = async () => {
-		await logoutMutation.mutateAsync()
-
-		router.push(ROUTES.login)
+	const handleLogout = () => {
+		logoutMutation.mutateAsync()
+		const url = new URL(ROUTES.login, window.location.origin)
+		url.searchParams.set(ROUTE_QUERY_PARAMS.clearAuth, '1')
+		window.location.assign(url)
 	}
+
+	const profileQuery = useMe()
 
 	return (
 		<DropdownMenu>
@@ -48,7 +50,7 @@ const ProfileMenu = () => {
 							<AvatarFallback>{currentUser.avatar}</AvatarFallback>
 						</Avatar>
 						<span className='text-sm font-medium text-foreground'>
-							{currentUser.name}
+							{profileQuery.data?.name}
 						</span>
 					</div>
 				</DropdownMenuLabel>

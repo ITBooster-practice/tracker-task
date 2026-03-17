@@ -1,5 +1,6 @@
-import { authService } from '@/lib/api/auth-service'
 import { useMutation, useQuery } from '@tanstack/react-query'
+
+import { authService } from '@/shared/lib/api/auth-service'
 
 export const authKeys = {
 	register: ['register'],

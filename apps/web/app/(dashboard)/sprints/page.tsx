@@ -1,7 +1,8 @@
-import { FEATURES } from '@/hooks/use-feature-flag'
 import { notFound } from 'next/navigation'
 
 import { Card, CardContent } from '@repo/ui'
+
+import { FEATURES } from '@/shared/config'
 
 type SprintTask = {
 	id: string

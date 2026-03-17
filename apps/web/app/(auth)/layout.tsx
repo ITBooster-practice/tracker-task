@@ -1,7 +1,7 @@
-import { FEATURES } from '@/hooks/use-feature-flag'
-import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+
+import { FEATURES, ROUTES } from '@/shared/config'
 
 interface Props {
 	children: React.ReactNode

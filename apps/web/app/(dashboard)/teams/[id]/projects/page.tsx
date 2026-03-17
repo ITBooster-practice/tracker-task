@@ -1,6 +1,7 @@
-import { FEATURES } from '@/hooks/use-feature-flag'
-import { ProjectsPageView } from '@/views/projects'
 import { notFound } from 'next/navigation'
+
+import { ProjectsPageView } from '@/views/projects'
+import { FEATURES } from '@/shared/config'
 
 export default function ProjectsPage() {
 	if (!FEATURES.PROJECTS) {

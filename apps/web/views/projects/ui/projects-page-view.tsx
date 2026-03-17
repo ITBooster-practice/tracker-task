@@ -1,17 +1,18 @@
 'use client'
 
-import { useTeamDetail } from '@/hooks/api/use-teams'
-import {
-	buildTeamProjectHref,
-	createProjectId,
-	projectCatalog,
-	type ProjectCatalogItem,
-} from '@/lib/projects/catalog'
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { Button, EmptyState, Input } from '@repo/ui'
 import { FolderKanban, Plus, Search } from '@repo/ui/icons'
+
+import { useTeamDetail } from '@/shared/api/use-teams'
+import {
+	buildTeamProjectHref,
+	createProjectId,
+	projectCatalog,
+	type ProjectCatalogItem,
+} from '@/shared/lib/projects'
 
 import {
 	projectPageHeaderClassName,

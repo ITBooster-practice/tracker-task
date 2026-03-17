@@ -1,15 +1,16 @@
 'use client'
 
-import { ThemeToggle } from '@/features/theme'
-import { useTeamsList } from '@/hooks/api/use-teams'
-import { buildTeamProjectHref } from '@/lib/projects/catalog'
-import { getSidebarRouteId, ROUTES, type SidebarRouteId } from '@/shared/config/routes'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
 import React from 'react'
 
 import { Avatar, AvatarFallback, cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
+
+import { ThemeToggle } from '@/features/theme'
+import { useTeamsList } from '@/shared/api/use-teams'
+import { getSidebarRouteId, ROUTES, type SidebarRouteId } from '@/shared/config'
+import { buildTeamProjectHref } from '@/shared/lib/projects'
 
 import {
 	getSidebarSections,

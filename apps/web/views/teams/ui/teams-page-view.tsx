@@ -1,12 +1,13 @@
 'use client'
 
-import { useTeamsList } from '@/hooks/api/use-teams'
-import { ROUTES, teamRoutes } from '@/shared/config/routes'
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 
 import { Button, EmptyState } from '@repo/ui'
 import { Plus, Users } from '@repo/ui/icons'
+
+import { useTeamsList } from '@/shared/api/use-teams'
+import { ROUTES, teamRoutes } from '@/shared/config'
 
 import { mapTeamListItemToTeamCardModel } from '../lib/mappers'
 import {

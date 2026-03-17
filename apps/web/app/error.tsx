@@ -1,10 +1,11 @@
 'use client'
 
-import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
 import { useEffect } from 'react'
 
 import { Button, EmptyState } from '@repo/ui'
+
+import { ROUTES } from '@/shared/config'
 
 type GlobalErrorProps = {
 	error: Error & { digest?: string }

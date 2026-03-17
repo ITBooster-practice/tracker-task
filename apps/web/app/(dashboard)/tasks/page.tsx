@@ -1,7 +1,8 @@
-import { FEATURES } from '@/hooks/use-feature-flag'
 import { notFound } from 'next/navigation'
 
 import { Button } from '@repo/ui'
+
+import { FEATURES } from '@/shared/config'
 
 const mockTasks = [
 	{

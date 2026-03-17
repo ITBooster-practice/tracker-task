@@ -10,8 +10,8 @@ import {
 	Example,
 	exampleService,
 	UpdateExampleDto,
-} from '../../lib/api/example-service'
-import { ApiError, PaginationParams } from '../../lib/api/types'
+} from '@/shared/lib/api/example-service'
+import { ApiError, PaginationParams } from '@/shared/lib/api/types'
 
 // Query keys для кэширования
 export const exampleKeys = {

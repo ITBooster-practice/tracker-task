@@ -1,4 +1,4 @@
-import { teamRoutes } from '@/shared/config/routes'
+import { teamRoutes } from '@/shared/config'
 
 export type ProjectCatalogItem = {
 	id: string
