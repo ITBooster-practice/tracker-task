@@ -10,5 +10,7 @@ export default defineConfig({
 		environment: 'node',
 		globals: true,
 		setupFiles: ['../vitest.setup.ts'],
+		// e2e тесты делят одну БД и Redis — запускаем файлы последовательно
+		fileParallelism: false,
 	},
 })
