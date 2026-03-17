@@ -2,9 +2,9 @@
 
 import { useLogin } from '@/hooks/api/use-auth'
 import { isApiError } from '@/lib/api/utils'
-import { useSessionStore } from '@/lib/session'
 import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 import { Button, Form, toast } from '@repo/ui'
 
@@ -16,12 +16,12 @@ export default function LoginPage() {
 	const form = useLoginForm()
 
 	const loginMutation = useLogin()
-	const session = useSessionStore()
+	const router = useRouter()
 
 	const onSubmit = async (data: LoginFormValues) => {
 		try {
-			const { accessToken } = await loginMutation.mutateAsync(data)
-			session.setAuthenticated(accessToken)
+			await loginMutation.mutateAsync(data)
+			router.push(ROUTES.teams)
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)

@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang='ru' className='dark' suppressHydrationWarning>
-			<body>
+			<body suppressHydrationWarning>
 				<Providers>{children}</Providers>
 				<Toaster />
 			</body>

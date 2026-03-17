@@ -1,7 +1,6 @@
 'use client'
 
 import { useLogout } from '@/hooks/api/use-auth'
-import { useSessionStore } from '@/lib/session'
 import { ROUTES } from '@/shared/config/routes'
 import { useRouter } from 'next/navigation'
 import React from 'react'
@@ -26,12 +25,9 @@ const currentUser = {
 const ProfileMenu = () => {
 	const router = useRouter()
 	const logoutMutation = useLogout()
-	const session = useSessionStore()
 
 	const handleLogout = async () => {
 		await logoutMutation.mutateAsync()
-
-		session.clear()
 
 		router.push(ROUTES.login)
 	}

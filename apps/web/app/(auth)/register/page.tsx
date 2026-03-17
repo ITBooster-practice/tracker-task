@@ -2,9 +2,9 @@
 
 import { useRegister } from '@/hooks/api/use-auth'
 import { isApiError } from '@/lib/api/utils'
-import { useSessionStore } from '@/lib/session'
 import { ROUTES } from '@/shared/config/routes'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 import { Button, Form, toast } from '@repo/ui'
 
@@ -16,12 +16,12 @@ export default function RegisterPage() {
 	const form = useRegisterForm()
 
 	const registerMutation = useRegister()
-	const session = useSessionStore()
+	const router = useRouter()
 
 	const onSubmit = async (data: RegisterFormValues) => {
 		try {
-			const { accessToken } = await registerMutation.mutateAsync(data)
-			session.setAuthenticated(accessToken)
+			await registerMutation.mutateAsync(data)
+			router.push(ROUTES.teams)
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)
