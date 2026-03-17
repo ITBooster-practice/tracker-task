@@ -1,7 +1,9 @@
+import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config/routes'
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
-import { isTokenExpiredSoon, refreshSessionToken, useSessionStore } from '../session'
+import { isClientSide, setCookieHeader } from './auth-cookies'
 import { axiosConfig } from './axios-config'
+import { refreshAuthSession } from './refresh-auth-session'
 import { ApiError } from './types'
 import { toApiError } from './utils'
 
@@ -13,14 +15,8 @@ const client = axios.create(axiosConfig)
 
 client.interceptors.request.use(
 	async (request: InternalAxiosRequestConfig) => {
-		let token = useSessionStore.getState().accessToken
-
-		if (token && isTokenExpiredSoon(token)) {
-			token = await refreshSessionToken()
-		}
-
-		if (token) {
-			request.headers.set('Authorization', `Bearer ${token}`)
+		if (!isClientSide()) {
+			await setCookieHeader(request)
 		}
 
 		return request
@@ -36,12 +32,19 @@ client.interceptors.response.use(
 		if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
 			originalRequest._retry = true
 
-			const token = await refreshSessionToken()
-
-			if (token) {
-				originalRequest.headers.set('Authorization', `Bearer ${token}`)
+			const refreshResult = await refreshAuthSession()
+			if (refreshResult) {
+				if (!isClientSide()) {
+					await setCookieHeader(originalRequest)
+				}
 
 				return client(originalRequest)
+			}
+
+			if (isClientSide()) {
+				const url = new URL(ROUTES.login, window.location.origin)
+				url.searchParams.set(ROUTE_QUERY_PARAMS.clearAuth, '1')
+				window.location.assign(url)
 			}
 		}
 

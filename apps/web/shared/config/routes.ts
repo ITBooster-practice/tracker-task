@@ -9,6 +9,7 @@ export const ROUTE_SEGMENTS = {
 
 export const ROUTE_QUERY_PARAMS = {
 	from: 'from',
+	clearAuth: 'clearAuth',
 } as const
 
 export const ROUTES = {
