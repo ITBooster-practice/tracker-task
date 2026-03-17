@@ -3,7 +3,7 @@
 	"globalDependencies": ["**/.env.*local"],
 	"globalEnv": [
 		"DATABASE_URL",
-		"NEXT_PUBLIC_FEATURE_AUTH",
+		"NEXT_PUBLIC_API_URL",
 		"NEXT_PUBLIC_FEATURE_PROJECTS",
 		"NEXT_PUBLIC_FEATURE_TASKS",
 		"NEXT_PUBLIC_FEATURE_SPRINTS",
