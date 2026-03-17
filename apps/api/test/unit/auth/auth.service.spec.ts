@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common'
+import {
+	ConflictException,
+	NotFoundException,
+	UnauthorizedException,
+} from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AuthService } from '../../../src/auth/auth.service'
@@ -7,8 +11,10 @@ import {
 	createJwtMock,
 	createRedisMock,
 	createResMock,
+	createReqMock,
 	createPrismaMock,
 	makeTokens,
+	REFRESH_TOKEN,
 } from '../../helpers/auth.helpers'
 
 // ── argon2 mock ──────────────────────────────────────────────────────────────
@@ -34,6 +40,8 @@ const STORED_USER = { id: 'user-id-1', password: 'hashed_password' }
 describe('AuthService', () => {
 	let service: AuthService
 	let prisma: ReturnType<typeof createPrismaMock>
+	let redis: ReturnType<typeof createRedisMock>
+	let jwt: ReturnType<typeof createJwtMock>
 	let res: ReturnType<typeof createResMock>
 
 	beforeEach(() => {
@@ -42,9 +50,9 @@ describe('AuthService', () => {
 
 		prisma = createPrismaMock()
 		res = createResMock()
-		const jwt = createJwtMock()
+		jwt = createJwtMock()
 		const config = createConfigMock()
-		const redis = createRedisMock()
+		redis = createRedisMock()
 
 		service = new AuthService(prisma, config, jwt, redis)
 	})
@@ -128,6 +136,106 @@ describe('AuthService', () => {
 			await expect(service.login(res, LOGIN_DTO)).rejects.toThrow(
 				'Пользователь не найден',
 			)
+		})
+	})
+
+	// ── refresh ───────────────────────────────────────────────────────────────
+	describe('refresh', () => {
+		it('должен выдать новые токены при валидном refresh-токене', async () => {
+			const req = createReqMock({ refreshToken: REFRESH_TOKEN })
+			jwt.verifyAsync.mockResolvedValue({ id: 'user-id-1' })
+			redis.getRefreshToken.mockResolvedValue(REFRESH_TOKEN)
+			prisma.user.findUnique.mockResolvedValue({ id: 'user-id-1' })
+
+			await service.refresh(req, res)
+
+			expect(jwt.verifyAsync).toHaveBeenCalledWith(REFRESH_TOKEN)
+			expect(redis.getRefreshToken).toHaveBeenCalledWith('user-id-1')
+			expect(prisma.user.findUnique).toHaveBeenCalledWith({
+				where: { id: 'user-id-1' },
+				select: { id: true },
+			})
+			// sign вызывается дважды: accessToken + refreshToken
+			expect(jwt.sign).toHaveBeenCalledTimes(2)
+			// новый refresh-токен сохраняется в Redis
+			expect(redis.setRefreshToken).toHaveBeenCalledWith('user-id-1', REFRESH_TOKEN)
+			expect(res.cookie).toHaveBeenCalledTimes(2)
+		})
+
+		it('должен выбросить UnauthorizedException если cookie refreshToken отсутствует', async () => {
+			const req = createReqMock({})
+
+			await expect(service.refresh(req, res)).rejects.toThrow(UnauthorizedException)
+			await expect(service.refresh(req, res)).rejects.toThrow(
+				'Недействительный refresh-токен',
+			)
+		})
+
+		it('должен выбросить UnauthorizedException если токена нет в Redis', async () => {
+			const req = createReqMock({ refreshToken: REFRESH_TOKEN })
+			jwt.verifyAsync.mockResolvedValue({ id: 'user-id-1' })
+			redis.getRefreshToken.mockResolvedValue(null)
+
+			await expect(service.refresh(req, res)).rejects.toThrow(UnauthorizedException)
+			await expect(service.refresh(req, res)).rejects.toThrow(
+				'Недействительный refresh-токен',
+			)
+		})
+
+		it('должен выбросить UnauthorizedException если токен не совпадает с сохранённым', async () => {
+			const req = createReqMock({ refreshToken: REFRESH_TOKEN })
+			jwt.verifyAsync.mockResolvedValue({ id: 'user-id-1' })
+			redis.getRefreshToken.mockResolvedValue('other_token')
+
+			await expect(service.refresh(req, res)).rejects.toThrow(UnauthorizedException)
+			await expect(service.refresh(req, res)).rejects.toThrow(
+				'Недействительный refresh-токен',
+			)
+		})
+
+		it('должен выбросить NotFoundException если пользователь удалён из БД', async () => {
+			const req = createReqMock({ refreshToken: REFRESH_TOKEN })
+			jwt.verifyAsync.mockResolvedValue({ id: 'user-id-1' })
+			redis.getRefreshToken.mockResolvedValue(REFRESH_TOKEN)
+			prisma.user.findUnique.mockResolvedValue(null)
+
+			await expect(service.refresh(req, res)).rejects.toThrow(NotFoundException)
+			await expect(service.refresh(req, res)).rejects.toThrow('Пользователь не найден')
+		})
+	})
+
+	// ── logout ────────────────────────────────────────────────────────────────
+	describe('logout', () => {
+		it('должен удалить refresh-токен из Redis и очистить cookies', async () => {
+			const req = createReqMock({ refreshToken: REFRESH_TOKEN })
+			jwt.decode.mockReturnValue({ id: 'user-id-1' })
+
+			const result = await service.logout(req, res)
+
+			expect(jwt.decode).toHaveBeenCalledWith(REFRESH_TOKEN)
+			expect(redis.deleteRefreshToken).toHaveBeenCalledWith('user-id-1')
+			expect(res.cookie).toHaveBeenCalledTimes(2)
+			expect(res.cookie).toHaveBeenCalledWith(
+				'refreshToken',
+				'',
+				expect.objectContaining({ expires: new Date(0) }),
+			)
+			expect(res.cookie).toHaveBeenCalledWith(
+				'accessToken',
+				'',
+				expect.objectContaining({ expires: new Date(0) }),
+			)
+			expect(result).toEqual({ message: 'Пользователь успешно вышел', success: true })
+		})
+
+		it('должен корректно завершиться если cookie refreshToken отсутствует', async () => {
+			const req = createReqMock({})
+
+			const result = await service.logout(req, res)
+
+			expect(jwt.decode).not.toHaveBeenCalled()
+			expect(redis.deleteRefreshToken).not.toHaveBeenCalled()
+			expect(result).toEqual({ message: 'Пользователь успешно вышел', success: true })
 		})
 	})
 })

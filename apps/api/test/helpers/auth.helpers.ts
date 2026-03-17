@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
-import type { Response } from 'express'
+import type { Request, Response } from 'express'
 
 import { PrismaService } from '../../prisma/prisma.service'
 import { RedisService } from '../../src/common/redis/redis.service'
@@ -29,9 +29,15 @@ export function createPrismaMock() {
 export function createJwtMock() {
 	const jwtService = {
 		sign: vi.fn(),
+		verifyAsync: vi.fn(),
+		decode: vi.fn(),
 	}
 	jwtService.sign.mockReturnValueOnce(ACCESS_TOKEN).mockReturnValueOnce(REFRESH_TOKEN)
-	return jwtService as unknown as JwtService
+	return jwtService as unknown as JwtService & {
+		sign: ReturnType<typeof vi.fn>
+		verifyAsync: ReturnType<typeof vi.fn>
+		decode: ReturnType<typeof vi.fn>
+	}
 }
 
 export function createConfigMock() {
@@ -50,11 +56,19 @@ export function createRedisMock() {
 		setRefreshToken: vi.fn().mockResolvedValue(undefined),
 		deleteRefreshToken: vi.fn().mockResolvedValue(undefined),
 		getRefreshToken: vi.fn(),
-	} as unknown as RedisService
+	} as unknown as RedisService & {
+		setRefreshToken: ReturnType<typeof vi.fn>
+		deleteRefreshToken: ReturnType<typeof vi.fn>
+		getRefreshToken: ReturnType<typeof vi.fn>
+	}
 }
 
 export function createResMock() {
 	return {
 		cookie: vi.fn(),
 	} as unknown as Response
+}
+
+export function createReqMock(cookies: Record<string, string> = {}) {
+	return { cookies } as unknown as Request
 }
