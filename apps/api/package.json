@@ -22,7 +22,6 @@
 		"prisma:reset": "prisma migrate reset --force"
 	},
 	"dependencies": {
-		"@nestjs-modules/mailer": "^2.0.2",
 		"@nestjs/common": "^11.1.11",
 		"@nestjs/config": "^4.0.3",
 		"@nestjs/core": "^11.1.11",
@@ -41,7 +40,6 @@
 		"escape-html": "^1.0.3",
 		"ioredis": "^5.10.0",
 		"nestjs-zod": "^5.1.1",
-		"nodemailer": "^8.0.2",
 		"passport": "^0.7.0",
 		"passport-jwt": "^4.0.1",
 		"pg": "^8.18.0",
