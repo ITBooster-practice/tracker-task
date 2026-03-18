@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import {
 	ConflictException,
 	Injectable,
+	Logger,
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common'
@@ -16,6 +17,7 @@ import { LoginRequestDto } from './dto/login.dto'
 import { isDev } from 'src/utils/is-dev.util'
 import { parseTTLToMs } from 'src/utils/ms.util'
 import { RedisService } from 'src/common/redis/redis.service'
+import { MailService } from 'src/mail/mail.service'
 
 @Injectable()
 export class AuthService {
@@ -23,12 +25,14 @@ export class AuthService {
 	private readonly JWT_REFRESH_TOKEN_TTL: string
 	private readonly COOKIE_DOMAIN: string
 	private readonly COOKIE_TTL: string
+	private readonly logger = new Logger(AuthService.name)
 
 	constructor(
 		private readonly prismaService: PrismaService,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService,
 		private readonly redisService: RedisService,
+		private readonly mailService: MailService,
 	) {
 		this.JWT_ACCESS_TOKEN_TTL =
 			this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_TTL')
@@ -59,6 +63,12 @@ export class AuthService {
 				password: await hash(password),
 			},
 		})
+
+		try {
+			await this.mailService.sendWelcomeEmail(user.email, user.name)
+		} catch (error) {
+			this.logger.error('Не удалось отправить письмо приветствия', error)
+		}
 
 		return await this.auth(res, user.id)
 	}
