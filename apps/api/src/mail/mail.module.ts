@@ -4,6 +4,7 @@ import { MAIL_PROVIDER, RESEND_CLIENT } from './mail.constants'
 import { ConfigService } from '@nestjs/config'
 import { ResendMailProvider } from './providers/resend-mail.provider'
 import { Resend } from 'resend'
+
 @Module({
 	providers: [
 		MailService,
