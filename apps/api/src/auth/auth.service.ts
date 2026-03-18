@@ -65,7 +65,7 @@ export class AuthService {
 		})
 
 		try {
-			await this.mailService.sendWelcomeEmail(user.email)
+			await this.mailService.sendWelcomeEmail(user.email, user.name)
 		} catch (error) {
 			this.logger.error('Не удалось отправить письмо приветствия', error)
 		}

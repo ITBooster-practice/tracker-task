@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common'
 import type { MailProvider } from './mail.provider'
 import { MAIL_PROVIDER } from './mail.constants'
 import { ConfigService } from '@nestjs/config'
+import { render } from '@react-email/render'
+import { WELCOME_EMAIL_SUBJECT, WelcomeEmail } from './templates/welcome.email'
 
 @Injectable()
 export class MailService {
@@ -11,15 +13,17 @@ export class MailService {
 		private readonly configService: ConfigService,
 	) {}
 
-	async sendWelcomeEmail(email: string) {
-		const name = this.configService.getOrThrow('MAIL_FROM_NAME')
-		const address = this.configService.getOrThrow('MAIL_FROM')
+	async sendWelcomeEmail(email: string, name: string) {
+		const mailName = this.configService.getOrThrow('MAIL_FROM_NAME')
+		const mailAddress = this.configService.getOrThrow('MAIL_FROM')
+
+		const html = await render(WelcomeEmail({ name }))
 
 		await this.mailProvider.send({
-			from: `${name} <${address}>`,
+			from: `${mailName} <${mailAddress}>`,
 			to: email,
-			subject: 'Добро пожаловать',
-			text: 'Вы зарегистрированы',
+			subject: WELCOME_EMAIL_SUBJECT,
+			html,
 		})
 	}
 }
