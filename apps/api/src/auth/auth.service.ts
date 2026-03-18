@@ -25,6 +25,7 @@ export class AuthService {
 	private readonly JWT_REFRESH_TOKEN_TTL
 	private readonly COOKIE_DOMAIN: string
 	private readonly COOKIE_TTL: string
+	private readonly logger = new Logger(AuthService.name)
 
 	constructor(
 		private readonly prismaService: PrismaService,
@@ -32,7 +33,6 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 		private readonly redisService: RedisService,
 		private readonly mailService: MailService,
-		private readonly logger = new Logger(AuthService.name),
 	) {
 		this.JWT_ACCESS_TOKEN_TTL =
 			this.configService.getOrThrow<string>('JWT_ACCESS_TOKEN_TTL')
