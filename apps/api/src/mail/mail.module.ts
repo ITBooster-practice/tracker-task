@@ -1,39 +1,22 @@
 import { Module } from '@nestjs/common'
 import { MailService } from './mail.service'
-import { MAIL_PROVIDER } from './mail.constants'
-import { SmtpMailProvider } from './providers/smtp-mail.provider'
-import { MailerModule } from '@nestjs-modules/mailer'
-import { ConfigModule, ConfigService } from '@nestjs/config'
-import { getMailConfig } from './config/mail.config'
-
+import { MAIL_PROVIDER, RESEND_CLIENT } from './mail.constants'
+import { ConfigService } from '@nestjs/config'
+import { ResendMailProvider } from './providers/resend-mail.provider'
+import { Resend } from 'resend'
 @Module({
 	providers: [
 		MailService,
 		{
 			provide: MAIL_PROVIDER,
-			useClass: SmtpMailProvider,
+			useClass: ResendMailProvider,
 		},
-	],
-	imports: [
-		MailerModule.forRootAsync({
-			imports: [ConfigModule],
+		{
+			provide: RESEND_CLIENT,
+			useFactory: (configService: ConfigService) =>
+				new Resend(configService.getOrThrow('RESEND_API_KEY')),
 			inject: [ConfigService],
-			useFactory: (configService: ConfigService) => {
-				const { host, port, secure, auth, from } = getMailConfig(configService)
-
-				return {
-					transport: {
-						host,
-						port,
-						secure,
-						auth,
-					},
-					defaults: {
-						from: `${from.name} <${from.address}>`,
-					},
-				}
-			},
-		}),
+		},
 	],
 	exports: [MailService],
 })
