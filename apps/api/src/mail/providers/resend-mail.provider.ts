@@ -9,11 +9,15 @@ export class ResendMailProvider implements MailProvider {
 	constructor(@Inject(RESEND_CLIENT) private readonly resend: Resend) {}
 
 	async send(payload: MailPayload): Promise<void> {
-		await this.resend.emails.send({
+		const { error } = await this.resend.emails.send({
 			from: payload.from,
 			to: payload.to,
 			subject: payload.subject,
 			html: payload.html,
 		})
+
+		if (error) {
+			throw error
+		}
 	}
 }
