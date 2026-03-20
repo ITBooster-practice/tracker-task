@@ -26,6 +26,7 @@
 		"@repo/eslint-config": "workspace:*",
 		"@repo/types": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
+		"vitest": "^3.0.5",
 		"@tailwindcss/postcss": "^4.2.0",
 		"@tanstack/react-query-devtools": "^5.91.3",
 		"@types/node": "^24.10.13",
