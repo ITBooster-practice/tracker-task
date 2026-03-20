@@ -8,7 +8,9 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint \"{app,components,lib,utils}/**/*.{ts,tsx,js,jsx}\"",
-		"check-types": "tsc --noEmit"
+		"check-types": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^5.2.2",
@@ -26,6 +28,9 @@
 		"@repo/eslint-config": "workspace:*",
 		"@repo/types": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
+		"@repo/vitest-config": "workspace:*",
+		"@vitest/coverage-v8": "^3.0.5",
+		"jsdom": "^26.1.0",
 		"vitest": "^3.0.5",
 		"@tailwindcss/postcss": "^4.2.0",
 		"@tanstack/react-query-devtools": "^5.91.3",
