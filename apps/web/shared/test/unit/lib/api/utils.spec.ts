@@ -48,7 +48,7 @@ describe('toApiError', () => {
 	it('пустой data — fallback на error.message и status', () => {
 		const error = new AxiosError('Network failed', '500', undefined, undefined, {
 			status: 400,
-			data: {} as any,
+			data: {} as ApiError,
 			statusText: 'Internal Server Error',
 			headers: {},
 			config: { headers: new AxiosHeaders() },
