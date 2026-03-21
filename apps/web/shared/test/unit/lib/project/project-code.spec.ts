@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isValidProjectCode } from '@/shared/lib/projects'
+import { isValidProjectCode, normalizeProjectCodeInput } from '@/shared/lib/projects'
 
 describe('isValidProjectCode', () => {
 	it('пустое значение', () => {
@@ -73,5 +73,67 @@ describe('isValidProjectCode', () => {
 		const result = isValidProjectCode('ABCD')
 
 		expect(result).toBe(true)
+	})
+})
+
+describe('normalizeProjectCodeInput', () => {
+	it('пустое значение', () => {
+		const result = normalizeProjectCodeInput('')
+
+		expect(result).toBe('')
+	})
+
+	it('lowercase приводится к uppercase', () => {
+		const result = normalizeProjectCodeInput('abc')
+
+		expect(result).toBe('ABC')
+	})
+
+	it('обрезает до MAX_LENGTH', () => {
+		const result = normalizeProjectCodeInput('ABCDEF')
+
+		expect(result).toBe('ABCD')
+	})
+
+	it('ровно MAX_LENGTH', () => {
+		const result = normalizeProjectCodeInput('ABCD')
+
+		expect(result).toBe('ABCD')
+	})
+
+	it('цифры отфильтровываются', () => {
+		const result = normalizeProjectCodeInput('A1B2C')
+
+		expect(result).toBe('ABC')
+	})
+
+	it('эмодзи отфильтровываются', () => {
+		const result = normalizeProjectCodeInput('A👋B')
+
+		expect(result).toBe('AB')
+	})
+
+	it('смесь невалидных символов', () => {
+		const result = normalizeProjectCodeInput('a!1b@2c')
+
+		expect(result).toBe('ABC')
+	})
+
+	it('кириллица нормализуется', () => {
+		const result = normalizeProjectCodeInput('проект')
+
+		expect(result).toBe('ПРОЕ')
+	})
+
+	it('буква ё нормализуется', () => {
+		const result = normalizeProjectCodeInput('ёж')
+
+		expect(result).toBe('ЁЖ')
+	})
+
+	it('все невалидные символы', () => {
+		const result = normalizeProjectCodeInput('123!@#')
+
+		expect(result).toBe('')
 	})
 })
