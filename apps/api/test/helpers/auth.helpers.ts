@@ -8,12 +8,8 @@ import { RedisService } from '../../src/common/redis/redis.service'
 import { MailService } from '../../src/mail/mail.service'
 
 // ── Token fixtures ─────────────────────────────────────────────────────────────
-export const ACCESS_TOKEN = 'access.token'
+const ACCESS_TOKEN = 'access.token'
 export const REFRESH_TOKEN = 'refresh.token'
-
-export const makeTokens = () => ({
-	accessToken: ACCESS_TOKEN,
-})
 
 // ── Mock factories ─────────────────────────────────────────────────────────────
 export function createPrismaMock() {
