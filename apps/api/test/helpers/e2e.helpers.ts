@@ -11,6 +11,9 @@ import { AppModule } from '../../src/app.module'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CustomZodValidationPipe } from '../../src/common/providers/zod-validation.provider'
 import { REDIS_CLIENT } from '../../src/common/redis/redis.constants'
+import { MailService } from '../../src/mail/mail.service'
+
+const mailServiceMock = { sendWelcomeEmail: () => Promise.resolve() }
 
 export async function createTestApp(): Promise<{
 	app: INestApplication
@@ -23,7 +26,10 @@ export async function createTestApp(): Promise<{
 			{ provide: APP_PIPE, useClass: CustomZodValidationPipe },
 			{ provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
 		],
-	}).compile()
+	})
+		.overrideProvider(MailService)
+		.useValue(mailServiceMock)
+		.compile()
 
 	const app = moduleFixture.createNestApplication()
 	app.use(cookieParser())
@@ -35,13 +41,13 @@ export async function createTestApp(): Promise<{
 	return { app, prisma, redisClient }
 }
 
-// Регистрирует пользователя и возвращает accessToken + cookie
+// Регистрирует пользователя и возвращает cookies
 export async function registerAndLogin(
 	app: INestApplication,
 	email: string,
 	password = 'P@ssw0rd!',
 	name = 'Test User',
-): Promise<{ accessToken: string; cookies: string }> {
+): Promise<{ cookies: string }> {
 	const res = await request(app.getHttpServer() as Server)
 		.post('/auth/register')
 		.send({ email, password, name })
@@ -49,7 +55,6 @@ export async function registerAndLogin(
 
 	const setCookie = res.headers['set-cookie']
 	const cookies = Array.isArray(setCookie) ? setCookie.join('; ') : (setCookie ?? '')
-	const accessToken = res.body.accessToken
 
-	return { accessToken, cookies }
+	return { cookies }
 }

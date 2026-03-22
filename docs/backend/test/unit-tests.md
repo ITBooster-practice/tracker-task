@@ -2,29 +2,29 @@
 
 Тесты изолированы от БД и внешних сервисов — все зависимости мокируются.
 
-## Структура файлов
+## Содержание
 
-```
-test/
-├── mocks/
-│   └── argon2.ts              # vi.fn() заглушки для hash / verify
-├── helpers/
-│   └── auth.helpers.ts        # createPrismaMock, createJwtMock,
-│                              # createConfigMock, makeTokens
-└── unit/
-    └── auth/
-        └── auth.service.spec.ts
-```
-
-`mocks/` и `helpers/` доступны как unit, так и e2e тестам.
+- [Соглашения](#соглашения)
+- [AuthService](#authservice)
+- [TeamsService](#teamsservice)
+- [TeamMembersService](#teammembersservice)
 
 ## Соглашения
 
-- **Фикстуры** (`REGISTER_DTO`, `STORED_USER` и т.д.) — константы в верхней части файла
-- **Сброс моков** — `vi.clearAllMocks()` в `beforeEach`
-- **Мок argon2** — `vi.mock('argon2', async () => await import('../../mocks/argon2'))`
+- Фикстуры (`REGISTER_DTO`, `TEAM`, `MEMBER_OWNER` и т.д.) — константы вверху файла или в `helpers/`
+- `vi.clearAllMocks()` в `beforeEach`
+- Сервис инстанциируется напрямую, без NestJS DI
 
-## Покрытые сценарии: AuthService
+**Мок argon2** (в auth-тестах):
+
+```typescript
+vi.mock('argon2', async () => await import('../../mocks/argon2'))
+```
+
+## AuthService
+
+Файл: `test/unit/auth/auth.service.spec.ts`
+Хелперы: `test/helpers/auth.helpers.ts` — `createPrismaMock`, `createJwtMock`, `createConfigMock`, `makeTokens`
 
 | Метод      | Сценарий           | Ожидание             |
 | ---------- | ------------------ | -------------------- |
@@ -34,38 +34,44 @@ test/
 | `login`    | Email не найден    | `NotFoundException`  |
 | `login`    | Неверный пароль    | `NotFoundException`  |
 
-## Пример теста
+## TeamsService
 
-```typescript
-import { ConflictException } from '@nestjs/common'
-import { hash } from 'argon2'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+Файл: `test/unit/teams/teams.service.spec.ts`
+Хелперы: `test/helpers/teams.helpers.ts` — `createPrismaMock`, `TEAM`, `TEAM_ID`, `USER_ID`, `MEMBER_OWNER/ADMIN/PLAIN`
 
-import { AuthService } from '../../../src/auth/auth.service'
-import {
-	createConfigMock,
-	createJwtMock,
-	createPrismaMock,
-	makeTokens,
-} from '../../helpers/auth.helpers'
+| Метод          | Сценарий                       | Ожидание                                    |
+| -------------- | ------------------------------ | ------------------------------------------- |
+| `createTeam`   | Создание команды               | Команда с участником OWNER                  |
+| `createTeam`   | С полями description/avatarUrl | Поля сохраняются                            |
+| `getUserTeams` | Пользователь в командах        | Список с `membersCount` и `currentUserRole` |
+| `getUserTeams` | Нет команд                     | Пустой массив                               |
+| `getTeamById`  | Пользователь — участник        | Объект команды                              |
+| `getTeamById`  | Команда не найдена             | `NotFoundException`                         |
+| `getTeamById`  | Пользователь не участник       | `ForbiddenException`                        |
+| `updateTeam`   | OWNER или ADMIN                | Обновлённая команда                         |
+| `updateTeam`   | MEMBER                         | `ForbiddenException`                        |
+| `updateTeam`   | Не в команде                   | `ForbiddenException`                        |
+| `deleteTeam`   | OWNER                          | Подтверждение удаления                      |
+| `deleteTeam`   | Не OWNER                       | `ForbiddenException`                        |
 
-vi.mock('argon2', async () => await import('../../mocks/argon2'))
+## TeamMembersService
 
-describe('AuthService', () => {
-	let service: AuthService
-	let prisma: ReturnType<typeof createPrismaMock>
+Файл: `test/unit/teams/team-members.service.spec.ts`
+Хелперы: те же из `test/helpers/teams.helpers.ts`
 
-	beforeEach(() => {
-		vi.clearAllMocks()
-		vi.mocked(hash).mockResolvedValue('hashed_password' as never)
-
-		prisma = createPrismaMock()
-		service = new AuthService(prisma, createConfigMock(), createJwtMock())
-	})
-
-	it('register — ConflictException если email занят', async () => {
-		prisma.user.findUnique.mockResolvedValue({ id: 'x', email: 'alice@example.com' })
-		await expect(service.register(REGISTER_DTO)).rejects.toThrow(ConflictException)
-	})
-})
-```
+| Метод          | Сценарий                         | Ожидание                                   |
+| -------------- | -------------------------------- | ------------------------------------------ |
+| `getMembers`   | Участник команды                 | Список участников                          |
+| `getMembers`   | Команда не найдена               | `NotFoundException`                        |
+| `getMembers`   | Не участник                      | `ForbiddenException`                       |
+| `changeRole`   | OWNER/ADMIN меняет роль MEMBER   | Обновлённый участник                       |
+| `changeRole`   | Самостоятельная смена своей роли | `ForbiddenException`                       |
+| `changeRole`   | Target — OWNER                   | `ForbiddenException`                       |
+| `changeRole`   | Actor — MEMBER                   | `ForbiddenException`                       |
+| `changeRole`   | Target не в команде              | `NotFoundException`                        |
+| `removeMember` | OWNER/ADMIN удаляет MEMBER       | `{ message: 'Участник успешно исключён' }` |
+| `removeMember` | Самовыход (self-leave)           | `{ message: 'Вы покинули команду' }`       |
+| `removeMember` | Попытка удалить OWNER            | `ForbiddenException`                       |
+| `removeMember` | MEMBER удаляет другого           | `ForbiddenException`                       |
+| `removeMember` | ADMIN удаляет другого ADMIN      | `ForbiddenException`                       |
+| `removeMember` | Target не в команде              | `NotFoundException`                        |
