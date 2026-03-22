@@ -24,7 +24,6 @@ export class AuthService {
 	private readonly JWT_ACCESS_TOKEN_TTL: string
 	private readonly JWT_REFRESH_TOKEN_TTL: string
 	private readonly COOKIE_DOMAIN: string
-	private readonly COOKIE_TTL: string
 	private readonly logger = new Logger(AuthService.name)
 
 	constructor(
@@ -40,7 +39,6 @@ export class AuthService {
 			'JWT_REFRESH_TOKEN_TTL',
 		)
 		this.COOKIE_DOMAIN = this.configService.getOrThrow<string>('COOKIE_DOMAIN')
-		this.COOKIE_TTL = this.configService.getOrThrow<string>('COOKIES_TTL')
 	}
 
 	async register(res: Response, dto: RegisterRequestDto) {
@@ -174,7 +172,7 @@ export class AuthService {
 			res,
 			'refreshToken',
 			refreshToken,
-			new Date(Date.now() + parseTTLToMs(this.COOKIE_TTL)),
+			new Date(Date.now() + parseTTLToMs(this.JWT_REFRESH_TOKEN_TTL)),
 			'/',
 		)
 
