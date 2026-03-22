@@ -14,7 +14,6 @@ import {
 	createReqMock,
 	createPrismaMock,
 	createMailMock,
-	makeTokens,
 	REFRESH_TOKEN,
 } from '../../helpers/auth.helpers'
 
@@ -84,7 +83,7 @@ describe('AuthService', () => {
 				},
 			})
 
-			expect(result).toEqual(makeTokens())
+			expect(result).toEqual({ message: 'Пользователь успешно вошёл', success: true })
 		})
 
 		it('должен выбросить ConflictException, если пользователь с таким email уже существует', async () => {
@@ -117,7 +116,7 @@ describe('AuthService', () => {
 			})
 
 			expect(verify).toHaveBeenCalledWith(STORED_USER.password, LOGIN_DTO.password)
-			expect(result).toEqual(makeTokens())
+			expect(result).toEqual({ message: 'Пользователь успешно вошёл', success: true })
 		})
 
 		it('должен выбросить NotFoundException, если пользователь с указанным email не найден', async () => {

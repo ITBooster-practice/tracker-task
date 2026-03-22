@@ -35,13 +35,13 @@ export async function createTestApp(): Promise<{
 	return { app, prisma, redisClient }
 }
 
-// Регистрирует пользователя и возвращает accessToken + cookie
+// Регистрирует пользователя и возвращает cookies
 export async function registerAndLogin(
 	app: INestApplication,
 	email: string,
 	password = 'P@ssw0rd!',
 	name = 'Test User',
-): Promise<{ accessToken: string; cookies: string }> {
+): Promise<{ cookies: string }> {
 	const res = await request(app.getHttpServer() as Server)
 		.post('/auth/register')
 		.send({ email, password, name })
@@ -49,7 +49,6 @@ export async function registerAndLogin(
 
 	const setCookie = res.headers['set-cookie']
 	const cookies = Array.isArray(setCookie) ? setCookie.join('; ') : (setCookie ?? '')
-	const accessToken = res.body.accessToken
 
-	return { accessToken, cookies }
+	return { cookies }
 }

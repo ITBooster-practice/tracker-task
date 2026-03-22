@@ -13,10 +13,10 @@ describe('TeamMembers (e2e)', () => {
 	let prisma: PrismaService
 	let redisClient: Redis
 
-	let ownerToken: string
-	let adminToken: string
-	let memberToken: string
-	let strangerToken: string
+	let ownerCookies: string
+	let adminCookies: string
+	let memberCookies: string
+	let strangerCookies: string
 
 	let ownerId: string
 	let adminId: string
@@ -51,15 +51,15 @@ describe('TeamMembers (e2e)', () => {
 		const memberAuth = await registerAndLogin(app, 'member@test.com')
 		const strangerAuth = await registerAndLogin(app, 'stranger@test.com')
 
-		ownerToken = ownerAuth.accessToken
-		adminToken = adminAuth.accessToken
-		memberToken = memberAuth.accessToken
-		strangerToken = strangerAuth.accessToken
+		ownerCookies = ownerAuth.cookies
+		adminCookies = adminAuth.cookies
+		memberCookies = memberAuth.cookies
+		strangerCookies = strangerAuth.cookies
 
 		// Создаём команду от имени owner
 		const createRes = await request(server)
 			.post('/teams/new')
-			.set('Authorization', `Bearer ${ownerToken}`)
+			.set('Cookie', ownerCookies)
 			.send({ name: 'Test Team' })
 			.expect(201)
 
@@ -92,7 +92,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 200 и список участников для члена команды', async () => {
 			const res = await request(server)
 				.get(`/teams/${teamId}/members`)
-				.set('Authorization', `Bearer ${ownerToken}`)
+				.set('Cookie', ownerCookies)
 				.expect(200)
 
 			expect(res.body).toHaveLength(3)
@@ -112,14 +112,14 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 403 если пользователь не в команде', async () => {
 			await request(server)
 				.get(`/teams/${teamId}/members`)
-				.set('Authorization', `Bearer ${strangerToken}`)
+				.set('Cookie', strangerCookies)
 				.expect(403)
 		})
 
 		it('должен вернуть 404 если команда не найдена', async () => {
 			await request(server)
 				.get('/teams/00000000-0000-0000-0000-000000000000/members')
-				.set('Authorization', `Bearer ${ownerToken}`)
+				.set('Cookie', ownerCookies)
 				.expect(404)
 		})
 	})
@@ -129,7 +129,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 200 когда OWNER меняет роль MEMBER на ADMIN', async () => {
 			const res = await request(server)
 				.patch(`/teams/${teamId}/members/${memberId}/role`)
-				.set('Authorization', `Bearer ${ownerToken}`)
+				.set('Cookie', ownerCookies)
 				.send({ role: 'ADMIN' })
 				.expect(200)
 
@@ -139,7 +139,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 403 если MEMBER пытается изменить роль', async () => {
 			await request(server)
 				.patch(`/teams/${teamId}/members/${adminId}/role`)
-				.set('Authorization', `Bearer ${memberToken}`)
+				.set('Cookie', memberCookies)
 				.send({ role: 'MEMBER' })
 				.expect(403)
 		})
@@ -147,7 +147,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 403 если пытаются изменить свою собственную роль', async () => {
 			await request(server)
 				.patch(`/teams/${teamId}/members/${ownerId}/role`)
-				.set('Authorization', `Bearer ${ownerToken}`)
+				.set('Cookie', ownerCookies)
 				.send({ role: 'ADMIN' })
 				.expect(403)
 		})
@@ -155,7 +155,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 403 при попытке изменить роль OWNER', async () => {
 			await request(server)
 				.patch(`/teams/${teamId}/members/${ownerId}/role`)
-				.set('Authorization', `Bearer ${adminToken}`)
+				.set('Cookie', adminCookies)
 				.send({ role: 'MEMBER' })
 				.expect(403)
 		})
@@ -163,7 +163,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 404 если целевой участник не найден в команде', async () => {
 			await request(server)
 				.patch(`/teams/${teamId}/members/${strangerId}/role`)
-				.set('Authorization', `Bearer ${ownerToken}`)
+				.set('Cookie', ownerCookies)
 				.send({ role: 'MEMBER' })
 				.expect(404)
 		})
@@ -181,7 +181,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 200 когда OWNER удаляет MEMBER', async () => {
 			const res = await request(server)
 				.delete(`/teams/${teamId}/members/${memberId}`)
-				.set('Authorization', `Bearer ${ownerToken}`)
+				.set('Cookie', ownerCookies)
 				.expect(200)
 
 			expect(res.body).toEqual({ message: 'Участник успешно исключён', success: true })
@@ -190,7 +190,7 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 200 при самоуходе участника (self-leave)', async () => {
 			const res = await request(server)
 				.delete(`/teams/${teamId}/members/${memberId}`)
-				.set('Authorization', `Bearer ${memberToken}`)
+				.set('Cookie', memberCookies)
 				.expect(200)
 
 			expect(res.body).toEqual({ message: 'Вы покинули команду', success: true })
@@ -199,14 +199,14 @@ describe('TeamMembers (e2e)', () => {
 		it('должен вернуть 403 если MEMBER пытается удалить другого участника', async () => {
 			await request(server)
 				.delete(`/teams/${teamId}/members/${adminId}`)
-				.set('Authorization', `Bearer ${memberToken}`)
+				.set('Cookie', memberCookies)
 				.expect(403)
 		})
 
 		it('должен вернуть 403 при попытке удалить OWNER', async () => {
 			await request(server)
 				.delete(`/teams/${teamId}/members/${ownerId}`)
-				.set('Authorization', `Bearer ${adminToken}`)
+				.set('Cookie', adminCookies)
 				.expect(403)
 		})
 

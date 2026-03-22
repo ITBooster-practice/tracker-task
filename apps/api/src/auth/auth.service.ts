@@ -186,8 +186,7 @@ export class AuthService {
 			'/',
 		)
 
-		// TODO: удалить когда фронтенд перейдёт на cookie-only
-		return { accessToken }
+		return { message: 'Пользователь успешно вошёл', success: true }
 	}
 
 	private generateTokens(userId: string) {
