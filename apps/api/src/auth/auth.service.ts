@@ -106,7 +106,12 @@ export class AuthService {
 			throw new UnauthorizedException('Недействительный refresh-токен')
 		}
 
-		const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken)
+		let payload: JwtPayload
+		try {
+			payload = await this.jwtService.verifyAsync(refreshToken)
+		} catch {
+			throw new UnauthorizedException('Недействительный refresh-токен')
+		}
 
 		const storedRefreshToken = await this.redisService.getRefreshToken(payload.id)
 
@@ -114,22 +119,20 @@ export class AuthService {
 			throw new UnauthorizedException('Недействительный refresh-токен')
 		}
 
-		if (payload) {
-			const user = await this.prismaService.user.findUnique({
-				where: {
-					id: payload.id,
-				},
-				select: {
-					id: true,
-				},
-			})
+		const user = await this.prismaService.user.findUnique({
+			where: {
+				id: payload.id,
+			},
+			select: {
+				id: true,
+			},
+		})
 
-			if (!user) {
-				throw new NotFoundException('Пользователь не найден')
-			}
-
-			return await this.auth(res, user.id)
+		if (!user) {
+			throw new NotFoundException('Пользователь не найден')
 		}
+
+		return await this.auth(res, user.id)
 	}
 
 	async logout(req: Request, res: Response) {
