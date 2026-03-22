@@ -5,7 +5,7 @@ import request from 'supertest'
 import type { Redis } from 'ioredis'
 
 import { PrismaService } from '../../prisma/prisma.service'
-import { createTestApp } from '../helpers/e2e.helpers'
+import { createTestApp, registerAndLogin } from '../helpers/e2e.helpers'
 
 // Извлекает значение cookie по имени из массива Set-Cookie заголовков
 function getCookieValue(setCookie: string | string[], name: string): string | undefined {
@@ -139,6 +139,71 @@ describe('Auth (e2e)', () => {
 				.post('/auth/login')
 				.send({ email: 'alice@example.com' })
 				.expect(400)
+		})
+	})
+
+	// ── POST /auth/refresh ────────────────────────────────────────────────────
+	describe('POST /auth/refresh', () => {
+		let cookies: string
+
+		beforeEach(async () => {
+			const result = await registerAndLogin(app, 'alice@example.com')
+			cookies = result.cookies
+		})
+
+		it('должен вернуть 200 и установить новые cookies при валидном refreshToken', async () => {
+			const res = await request(server)
+				.post('/auth/refresh')
+				.set('Cookie', cookies)
+				.expect(200)
+
+			const setCookie = res.headers['set-cookie'] ?? []
+			expect(getCookieValue(setCookie, 'accessToken')).toBeDefined()
+			expect(getCookieValue(setCookie, 'refreshToken')).toBeDefined()
+		})
+
+		it('должен вернуть 401 если cookie не передан', async () => {
+			await request(server).post('/auth/refresh').expect(401)
+		})
+
+		it('должен вернуть 401 при невалидном refreshToken', async () => {
+			await request(server)
+				.post('/auth/refresh')
+				.set('Cookie', 'refreshToken=invalid.token.value')
+				.expect(401)
+		})
+	})
+
+	// ── POST /auth/logout ─────────────────────────────────────────────────────
+	describe('POST /auth/logout', () => {
+		let cookies: string
+
+		beforeEach(async () => {
+			const result = await registerAndLogin(app, 'alice@example.com')
+			cookies = result.cookies
+		})
+
+		it('должен вернуть 200 и очистить cookies', async () => {
+			const res = await request(server)
+				.post('/auth/logout')
+				.set('Cookie', cookies)
+				.expect(200)
+
+			const setCookie: string[] = Array.isArray(res.headers['set-cookie'])
+				? res.headers['set-cookie']
+				: [res.headers['set-cookie'] ?? '']
+
+			const accessTokenCookie = setCookie.find((c) => c.startsWith('accessToken='))
+			const refreshTokenCookie = setCookie.find((c) => c.startsWith('refreshToken='))
+
+			expect(accessTokenCookie).toContain('accessToken=;')
+			expect(refreshTokenCookie).toContain('refreshToken=;')
+		})
+
+		it('должен вернуть 200 если cookie не передан (идемпотентность)', async () => {
+			const res = await request(server).post('/auth/logout').expect(200)
+
+			expect(res.body).toEqual({ message: 'Пользователь успешно вышел', success: true })
 		})
 	})
 })

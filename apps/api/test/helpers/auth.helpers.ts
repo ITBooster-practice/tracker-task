@@ -5,6 +5,7 @@ import type { Request, Response } from 'express'
 
 import { PrismaService } from '../../prisma/prisma.service'
 import { RedisService } from '../../src/common/redis/redis.service'
+import { MailService } from '../../src/mail/mail.service'
 
 // ── Token fixtures ─────────────────────────────────────────────────────────────
 export const ACCESS_TOKEN = 'access.token'
@@ -71,4 +72,12 @@ export function createResMock() {
 
 export function createReqMock(cookies: Record<string, string> = {}) {
 	return { cookies } as unknown as Request
+}
+
+export function createMailMock() {
+	return {
+		sendWelcomeEmail: vi.fn().mockResolvedValue(undefined),
+	} as unknown as MailService & {
+		sendWelcomeEmail: ReturnType<typeof vi.fn>
+	}
 }

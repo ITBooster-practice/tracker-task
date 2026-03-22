@@ -13,6 +13,7 @@ import {
 	createResMock,
 	createReqMock,
 	createPrismaMock,
+	createMailMock,
 	makeTokens,
 	REFRESH_TOKEN,
 } from '../../helpers/auth.helpers'
@@ -42,6 +43,7 @@ describe('AuthService', () => {
 	let prisma: ReturnType<typeof createPrismaMock>
 	let redis: ReturnType<typeof createRedisMock>
 	let jwt: ReturnType<typeof createJwtMock>
+	let mail: ReturnType<typeof createMailMock>
 	let res: ReturnType<typeof createResMock>
 
 	beforeEach(() => {
@@ -53,8 +55,9 @@ describe('AuthService', () => {
 		jwt = createJwtMock()
 		const config = createConfigMock()
 		redis = createRedisMock()
+		mail = createMailMock()
 
-		service = new AuthService(prisma, config, jwt, redis)
+		service = new AuthService(prisma, config, jwt, redis, mail)
 	})
 
 	// ── register ──────────────────────────────────────────────────────────────
@@ -236,6 +239,32 @@ describe('AuthService', () => {
 			expect(jwt.decode).not.toHaveBeenCalled()
 			expect(redis.deleteRefreshToken).not.toHaveBeenCalled()
 			expect(result).toEqual({ message: 'Пользователь успешно вышел', success: true })
+		})
+	})
+
+	// ── validateUser ──────────────────────────────────────────────────────────
+	describe('validateUser', () => {
+		it('должен вернуть пользователя по userId', async () => {
+			const user = { id: 'user-id-1', email: 'alice@example.com', name: 'Alice' }
+			prisma.user.findUnique.mockResolvedValue(user)
+
+			const result = await service.validateUser('user-id-1')
+
+			expect(prisma.user.findUnique).toHaveBeenCalledWith({
+				where: { id: 'user-id-1' },
+			})
+			expect(result).toEqual(user)
+		})
+
+		it('должен выбросить NotFoundException если пользователь не найден', async () => {
+			prisma.user.findUnique.mockResolvedValue(null)
+
+			await expect(service.validateUser('nonexistent-id')).rejects.toThrow(
+				NotFoundException,
+			)
+			await expect(service.validateUser('nonexistent-id')).rejects.toThrow(
+				'Пользователь не найден',
+			)
 		})
 	})
 })
