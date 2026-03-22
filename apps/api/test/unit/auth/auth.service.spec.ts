@@ -13,6 +13,7 @@ import {
 	createResMock,
 	createReqMock,
 	createPrismaMock,
+	createMailMock,
 	makeTokens,
 	REFRESH_TOKEN,
 } from '../../helpers/auth.helpers'
@@ -42,6 +43,7 @@ describe('AuthService', () => {
 	let prisma: ReturnType<typeof createPrismaMock>
 	let redis: ReturnType<typeof createRedisMock>
 	let jwt: ReturnType<typeof createJwtMock>
+	let mail: ReturnType<typeof createMailMock>
 	let res: ReturnType<typeof createResMock>
 
 	beforeEach(() => {
@@ -53,8 +55,9 @@ describe('AuthService', () => {
 		jwt = createJwtMock()
 		const config = createConfigMock()
 		redis = createRedisMock()
+		mail = createMailMock()
 
-		service = new AuthService(prisma, config, jwt, redis)
+		service = new AuthService(prisma, config, jwt, redis, mail)
 	})
 
 	// ── register ──────────────────────────────────────────────────────────────
