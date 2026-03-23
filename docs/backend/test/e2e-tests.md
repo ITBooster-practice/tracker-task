@@ -6,6 +6,7 @@
 
 - [Инфраструктура](#инфраструктура)
 - [Auth](#auth)
+  - [GET /auth/me](#get-authme)
 - [Teams](#teams)
 - [TeamMembers](#teammembers)
 - [Prisma Connection](#prisma-connection)
@@ -82,7 +83,17 @@ beforeEach(async () => {
 | Сценарий                        | Код |
 | ------------------------------- | --- |
 | Успешный выход, cookies очищены | 200 |
-| Без токена                      | 401 |
+| Без токена (идемпотентность)    | 200 |
+
+### GET /auth/me
+
+Защищён `JwtGuard` через декоратор `@Authorization()`. Токен читается из cookie `accessToken`.
+
+| Сценарий                          | Код |
+| --------------------------------- | --- |
+| Возвращает `id`, `email`, `name`  | 200 |
+| Без токена                        | 401 |
+| Невалидный `accessToken` в cookie | 401 |
 
 ## Teams
 
