@@ -262,5 +262,28 @@ describe('Teams (e2e)', () => {
 				members: expect.any(Array),
 			})
 		})
+
+		it('403 — MEMBER не может обновить команду', async () => {
+			await request(server)
+				.patch(`/teams/${patchTeamId}`)
+				.set('Cookie', inTeamMemberCookies)
+				.send({ name: 'Should Not Work' })
+				.expect(403)
+		})
+
+		it('400 — невалидные данные (name короче 2 символов)', async () => {
+			await request(server)
+				.patch(`/teams/${patchTeamId}`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'X' })
+				.expect(400)
+		})
+
+		it('401 — без токена', async () => {
+			await request(server)
+				.patch(`/teams/${patchTeamId}`)
+				.send({ name: 'No Auth' })
+				.expect(401)
+		})
 	})
 })
