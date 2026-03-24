@@ -8,6 +8,11 @@
 - [Auth](#auth)
   - [GET /auth/me](#get-authme)
 - [Teams](#teams)
+  - [POST /teams/new](#post-teamsnew)
+  - [GET /teams](#get-teams)
+  - [GET /teams/:id](#get-teamsid)
+  - [PATCH /teams/:id](#patch-teamsid)
+  - [DELETE /teams/:id](#delete-teamsid)
 - [TeamMembers](#teammembers)
 - [Prisma Connection](#prisma-connection)
 
@@ -114,6 +119,27 @@ Setup: создаются два пользователя — `owner` и `member
 | -------------------------------------------------- | --- |
 | Список команд с `membersCount` и `currentUserRole` | 200 |
 | Нет команд — пустой массив                         | 200 |
+
+### GET /teams/:id
+
+| Сценарий                                      | Код |
+| --------------------------------------------- | --- |
+| Участник получает команду с полем `members[]` | 200 |
+| Пользователь не является участником команды   | 403 |
+| Команда с указанным id не существует          | 404 |
+| Без токена                                    | 401 |
+
+### PATCH /teams/:id
+
+Setup: дополнительно создаются `admin@patch.com` (роль ADMIN) и `member@patch.com` (роль MEMBER) через Prisma.
+
+| Сценарий                         | Код |
+| -------------------------------- | --- |
+| OWNER обновляет название команды | 200 |
+| ADMIN обновляет название команды | 200 |
+| MEMBER пытается обновить команду | 403 |
+| name короче 2 символов           | 400 |
+| Без токена                       | 401 |
 
 ### DELETE /teams/:id
 
