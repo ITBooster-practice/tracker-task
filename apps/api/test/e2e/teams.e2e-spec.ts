@@ -234,5 +234,33 @@ describe('Teams (e2e)', () => {
 				],
 			})
 		})
+
+		it('200 — OWNER обновляет команду', async () => {
+			const res = await request(server)
+				.patch(`/teams/${patchTeamId}`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Updated By Owner' })
+				.expect(200)
+
+			expect(res.body).toMatchObject({
+				id: patchTeamId,
+				name: 'Updated By Owner',
+				members: expect.any(Array),
+			})
+		})
+
+		it('200 — ADMIN обновляет команду', async () => {
+			const res = await request(server)
+				.patch(`/teams/${patchTeamId}`)
+				.set('Cookie', adminCookies)
+				.send({ name: 'Updated By Admin' })
+				.expect(200)
+
+			expect(res.body).toMatchObject({
+				id: patchTeamId,
+				name: 'Updated By Admin',
+				members: expect.any(Array),
+			})
+		})
 	})
 })
