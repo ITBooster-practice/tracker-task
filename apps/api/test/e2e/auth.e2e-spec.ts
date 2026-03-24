@@ -206,4 +206,35 @@ describe('Auth (e2e)', () => {
 			expect(res.body).toEqual({ message: 'Пользователь успешно вышел', success: true })
 		})
 	})
+
+	// ── GET /auth/me ──────────────────────────────────────────────────────────
+	describe('GET /auth/me', () => {
+		let cookies: string
+
+		beforeEach(async () => {
+			const result = await registerAndLogin(app, 'alice@example.com')
+			cookies = result.cookies
+		})
+
+		it('должен вернуть 200 и данные авторизованного пользователя', async () => {
+			const res = await request(server).get('/auth/me').set('Cookie', cookies).expect(200)
+
+			expect(res.body).toMatchObject({
+				id: expect.any(String),
+				email: 'alice@example.com',
+				name: 'Test User',
+			})
+		})
+
+		it('должен вернуть 401 без токена', async () => {
+			await request(server).get('/auth/me').expect(401)
+		})
+
+		it('должен вернуть 401 при невалидном accessToken', async () => {
+			await request(server)
+				.get('/auth/me')
+				.set('Cookie', 'accessToken=invalid.token.value')
+				.expect(401)
+		})
+	})
 })
