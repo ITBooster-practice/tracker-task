@@ -1,9 +1,9 @@
 import { ForbiddenException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import type { ExecutionContext } from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RolesGuard } from '../../../src/guards/roles.guard'
+import { createCtx } from '../../helpers/guards.helpers'
 import {
 	createPrismaMock,
 	MEMBER_OWNER,
@@ -11,21 +11,6 @@ import {
 	TEAM_ID,
 	USER_ID,
 } from '../../helpers/teams.helpers'
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-function createCtx(user: unknown = { id: USER_ID }, teamId: string | null = TEAM_ID) {
-	return {
-		getHandler: vi.fn(),
-		getClass: vi.fn(),
-		switchToHttp: () => ({
-			getRequest: () => ({
-				user,
-				params: { teamId },
-			}),
-		}),
-	} as unknown as ExecutionContext
-}
 
 // ── suite ─────────────────────────────────────────────────────────────────────
 describe('RolesGuard', () => {
