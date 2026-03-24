@@ -11,7 +11,7 @@ const mockRequestAuthRefresh = vi.mocked(requestAuthRefresh)
 
 describe('refreshAuthSession', () => {
 	beforeEach(() => {
-		vi.restoreAllMocks()
+		vi.clearAllMocks()
 	})
 
 	it('успешный вызов', async () => {
