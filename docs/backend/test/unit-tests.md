@@ -9,6 +9,7 @@
 - [TeamsService](#teamsservice)
 - [TeamMembersService](#teammembersservice)
 - [parseTTLToMs](#parsettltoms)
+- [RolesGuard](#rolesgard)
 
 ## Соглашения
 
@@ -102,3 +103,59 @@ vi.mock('argon2', async () => await import('../../mocks/argon2'))
 | Неизвестная единица            | `"7x"`      | бросает `Error` |
 | Некорректный формат            | `"abc"`     | бросает `Error` |
 | Только число без единицы       | `"123"`     | бросает `Error` |
+## RolesGuard
+
+Файл: `test/unit/guards/roles.guard.spec.ts`
+Хелперы: `test/helpers/guards.helpers.ts` — `createCtx`, `test/helpers/teams.helpers.ts` — фикстуры участников
+
+Гард мокируется через два минимальных объекта:
+
+- `Reflector` — `{ getAllAndOverride: vi.fn() }`
+- `PrismaService` — `createPrismaMock()` из `teams.helpers.ts`
+- `ExecutionContext` — `createCtx(user?, teamId?)` из `guards.helpers.ts`
+
+| Сценарий                         | Настройка                                          | Ожидание                                   |
+| -------------------------------- | -------------------------------------------------- | ------------------------------------------ |
+| `@Roles` не задан на обработчике | `reflector` → `undefined`                          | `true`, Prisma не вызывается               |
+| Роль участника совпадает         | `reflector` → `['OWNER']`, Prisma → `MEMBER_OWNER` | `true`                                     |
+| Роль участника не подходит       | `reflector` → `['OWNER']`, Prisma → `MEMBER_PLAIN` | `ForbiddenException`                       |
+| `user` отсутствует в запросе     | `createCtx(null, TEAM_ID)`                         | `ForbiddenException`, Prisma не вызывается |
+| `teamId` отсутствует в запросе   | `createCtx({ id }, null)`                          | `ForbiddenException`, Prisma не вызывается |
+| `member` не найден в БД          | `reflector` → `['OWNER']`, Prisma → `null`         | `ForbiddenException`                       |
+
+| Метод          | Сценарий                         | Ожидание                                   |
+| -------------- | -------------------------------- | ------------------------------------------ |
+| `getMembers`   | Участник команды                 | Список участников                          |
+| `getMembers`   | Команда не найдена               | `NotFoundException`                        |
+| `getMembers`   | Не участник                      | `ForbiddenException`                       |
+| `changeRole`   | OWNER/ADMIN меняет роль MEMBER   | Обновлённый участник                       |
+| `changeRole`   | Самостоятельная смена своей роли | `ForbiddenException`                       |
+| `changeRole`   | Target — OWNER                   | `ForbiddenException`                       |
+| `changeRole`   | Actor — MEMBER                   | `ForbiddenException`                       |
+| `changeRole`   | Target не в команде              | `NotFoundException`                        |
+| `removeMember` | OWNER/ADMIN удаляет MEMBER       | `{ message: 'Участник успешно исключён' }` |
+| `removeMember` | Самовыход (self-leave)           | `{ message: 'Вы покинули команду' }`       |
+| `removeMember` | Попытка удалить OWNER            | `ForbiddenException`                       |
+| `removeMember` | MEMBER удаляет другого           | `ForbiddenException`                       |
+| `removeMember` | ADMIN удаляет другого ADMIN      | `ForbiddenException`                       |
+| `removeMember` | Target не в команде              | `NotFoundException`                        |
+
+## RolesGuard
+
+Файл: `test/unit/guards/roles.guard.spec.ts`
+Хелперы: `test/helpers/guards.helpers.ts` — `createCtx`, `test/helpers/teams.helpers.ts` — фикстуры участников
+
+Гард мокируется через два минимальных объекта:
+
+- `Reflector` — `{ getAllAndOverride: vi.fn() }`
+- `PrismaService` — `createPrismaMock()` из `teams.helpers.ts`
+- `ExecutionContext` — `createCtx(user?, teamId?)` из `guards.helpers.ts`
+
+| Сценарий                         | Настройка                                          | Ожидание                                   |
+| -------------------------------- | -------------------------------------------------- | ------------------------------------------ |
+| `@Roles` не задан на обработчике | `reflector` → `undefined`                          | `true`, Prisma не вызывается               |
+| Роль участника совпадает         | `reflector` → `['OWNER']`, Prisma → `MEMBER_OWNER` | `true`                                     |
+| Роль участника не подходит       | `reflector` → `['OWNER']`, Prisma → `MEMBER_PLAIN` | `ForbiddenException`                       |
+| `user` отсутствует в запросе     | `createCtx(null, TEAM_ID)`                         | `ForbiddenException`, Prisma не вызывается |
+| `teamId` отсутствует в запросе   | `createCtx({ id }, null)`                          | `ForbiddenException`, Prisma не вызывается |
+| `member` не найден в БД          | `reflector` → `['OWNER']`, Prisma → `null`         | `ForbiddenException`                       |

@@ -131,6 +131,31 @@ MEMBER_PLAIN // { role: 'MEMBER', userId: 'user-id-3', ... }
 TEAM // полный объект команды с members[]
 ```
 
+### `guards.helpers.ts` — мок ExecutionContext для гардов
+
+```typescript
+// Создаёт минимальный мок ExecutionContext:
+// user — объект из request.user (по умолчанию { id: USER_ID })
+// teamId — значение из request.params.teamId (по умолчанию TEAM_ID)
+// Передайте null чтобы сымитировать отсутствие поля
+createCtx(user?, teamId?)
+```
+
+Пример использования в тесте гарда:
+
+```typescript
+import { createCtx } from '../../helpers/guards.helpers'
+
+// Валидный запрос
+guard.canActivate(createCtx({ id: USER_ID }))
+
+// Запрос без user
+guard.canActivate(createCtx(null, TEAM_ID))
+
+// Запрос без teamId
+guard.canActivate(createCtx({ id: USER_ID }, null))
+```
+
 **Когда создавать новый хелпер-файл:** когда появляется новый сервис с зависимостями (новый `createPrismaMock` с другими методами) или набор фикстур, нужных в нескольких spec-файлах.
 
 ---
