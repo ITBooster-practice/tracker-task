@@ -82,7 +82,7 @@ function getInitials(name?: string | null) {
 function getRoleBadgeClassName(role: TeamRole) {
 	switch (role) {
 		case TEAM_ROLES.OWNER:
-			return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/15 dark:bg-amber-400/10 dark:text-amber-300'
+			return 'border-amber-300 bg-amber-100/80 text-amber-900 dark:border-amber-400/15 dark:bg-amber-400/10 dark:text-amber-300'
 		case TEAM_ROLES.ADMIN:
 			return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-primary/15 dark:bg-primary/10 dark:text-primary'
 		default:
@@ -171,7 +171,7 @@ function TeamSettingsPageView() {
 						onClick={() => setInviteOpen(true)}
 						className={teamPagePrimaryButtonClassName}
 					>
-						<UserPlus className='mr-2 size-4' />
+						<UserPlus className='size-4' />
 						Пригласить
 					</Button>
 				</header>
@@ -218,7 +218,7 @@ function TeamSettingsPageView() {
 									<button
 										type='button'
 										onClick={() => void refetch()}
-										className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
+										className='inline-flex h-9 items-center justify-center rounded-[var(--radius-control)] bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
 									>
 										Повторить
 									</button>

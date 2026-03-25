@@ -25,14 +25,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
 					'--normal-bg': 'var(--popover)',
 					'--normal-text': 'var(--popover-foreground)',
 					'--normal-border': 'var(--border)',
-					'--border-radius': 'var(--radius)',
+					'--border-radius': 'var(--radius-surface)',
 				} as React.CSSProperties
 			}
 			toastOptions={{
 				unstyled: true,
 				classNames: {
 					default:
-						'p-4 gap-3 rounded-[8px] flex w-[410px] shadow-[0_0_3px_rgba(0,0,0,0.1),0_6px_12px_-6px_rgba(0,0,0,0.07),0_8px_24px_-4px_rgba(0,0,0,0.05)]',
+						'p-4 gap-3 rounded-[var(--radius-surface)] flex w-[410px] shadow-[0_0_3px_rgba(0,0,0,0.1),0_6px_12px_-6px_rgba(0,0,0,0.07),0_8px_24px_-4px_rgba(0,0,0,0.05)]',
 					toast: 'cn-toast ',
 					success: 'bg-success text-success-foreground',
 					error: 'bg-destructive text-destructive-foreground',

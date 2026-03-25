@@ -28,20 +28,20 @@ function HeroSection() {
 					<div className='flex flex-wrap items-center justify-center gap-4'>
 						<Button size='lg' className='h-12 px-8 text-[15px]' asChild>
 							<Link href={heroActions.primary.href}>
-								<Play className='mr-2 h-4 w-4' />
+								<Play className='h-4 w-4' />
 								{heroActions.primary.label}
 							</Link>
 						</Button>
 						<Button variant='outline' size='lg' className='h-12 px-8 text-[15px]' asChild>
 							<Link href={heroActions.secondary.href}>
-								<SecondaryIcon className='mr-2 h-4 w-4' />
+								<SecondaryIcon className='h-4 w-4' />
 								{heroActions.secondary.label}
 							</Link>
 						</Button>
 					</div>
 				</div>
 
-				<div className='animate-home-fade-up-delay mt-[64px] overflow-hidden rounded-xl border border-border bg-card shadow-level-3'>
+				<div className='animate-home-fade-up-delay mt-[64px] overflow-hidden rounded-[var(--radius-surface)] border border-border bg-card shadow-level-3'>
 					<div className='flex items-center gap-2 border-b border-border px-6 py-4'>
 						<div className='h-3 w-3 rounded-full bg-destructive/60' />
 						<div className='h-3 w-3 rounded-full bg-warning/60' />
@@ -53,7 +53,10 @@ function HeroSection() {
 					<div className='p-6'>
 						<div className='grid grid-cols-2 gap-4 md:grid-cols-4'>
 							{boardColumns.map((column) => (
-								<div key={column.title} className='rounded-lg bg-background p-4'>
+								<div
+									key={column.title}
+									className='rounded-[calc(var(--radius-surface)-2px)] bg-background p-4'
+								>
 									<div className='mb-4 flex items-center justify-between text-sm font-semibold text-muted-foreground'>
 										{column.title}
 										<span className='rounded bg-surface-2 px-2 py-0.5 text-[11px]'>
@@ -64,7 +67,7 @@ function HeroSection() {
 										{Array.from({ length: column.count }).map((_, index) => (
 											<div
 												key={`${column.title}-${index}`}
-												className='rounded-md border border-border/50 bg-surface-2 p-4'
+												className='rounded-[var(--radius-control)] border border-border/50 bg-surface-2 p-4'
 											>
 												<div className='mb-3 h-2.5 w-3/4 rounded bg-muted-foreground/20' />
 												<div className='h-2 w-1/2 rounded bg-muted-foreground/10' />

@@ -66,9 +66,9 @@ body {
 }
 
 :root {
-	--radius: 0.625rem;
-	--radius-control: 14px;
-	--radius-surface: 18px;
+	--radius: 0.375rem;
+	--radius-control: 8px;
+	--radius-surface: 10px;
 	--background: oklch(0.94 0.006 247.86);
 	--foreground: oklch(0.19 0.014 264.05);
 	--card: oklch(0.968 0.004 255.5);

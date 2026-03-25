@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: Props) {
 						href={ROUTES.home}
 						className='inline-flex items-center gap-3 rounded-full border border-border/70 bg-card/55 px-3 py-2 transition-colors hover:bg-card'
 					>
-						<div className='flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-primary/12 text-sm font-semibold text-primary'>
+						<div className='flex h-10 w-10 items-center justify-center rounded-[var(--radius-surface)] border border-primary/30 bg-primary/12 text-sm font-semibold text-primary'>
 							TT
 						</div>
 						<div className='hidden sm:block'>

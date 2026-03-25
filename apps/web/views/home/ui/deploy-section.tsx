@@ -14,7 +14,7 @@ function DeploySection() {
 					<p className='text-base text-muted-foreground'>Docker Compose — и вы в деле</p>
 				</div>
 				<div className='animate-home-fade-up-delay mx-auto max-w-[640px]'>
-					<div className='overflow-hidden rounded-xl border border-border bg-card'>
+					<div className='overflow-hidden rounded-[var(--radius-surface)] border border-border bg-card'>
 						<div className='flex items-center gap-2 border-b border-border px-6 py-4'>
 							<Terminal className='h-4 w-4 text-muted-foreground' />
 							<span className='text-sm text-muted-foreground'>Terminal</span>
@@ -35,7 +35,7 @@ function DeploySection() {
 					<div className='mt-8 flex flex-wrap items-center justify-center gap-4'>
 						<Button variant='outline' asChild>
 							<a href='#'>
-								<BookOpen className='mr-2 h-4 w-4' />
+								<BookOpen className='h-4 w-4' />
 								Документация
 							</a>
 						</Button>
@@ -45,7 +45,7 @@ function DeploySection() {
 								target='_blank'
 								rel='noopener noreferrer'
 							>
-								<Github className='mr-2 h-4 w-4' />
+								<Github className='h-4 w-4' />
 								Репозиторий
 							</a>
 						</Button>

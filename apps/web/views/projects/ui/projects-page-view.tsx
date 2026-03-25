@@ -81,7 +81,7 @@ function ProjectsPageView() {
 						onClick={() => setIsCreateDialogOpen(true)}
 						className={projectPagePrimaryButtonClassName}
 					>
-						<Plus className='mr-2 size-4' />
+						<Plus className='size-4' />
 						Создать проект
 					</Button>
 				</header>
@@ -92,7 +92,7 @@ function ProjectsPageView() {
 						value={searchQuery}
 						onChange={(event) => setSearchQuery(event.target.value)}
 						placeholder='Поиск проектов...'
-						className='h-10 rounded-[14px] border-border bg-background pl-9 text-[14px] shadow-none focus-visible:ring-[3px]'
+						className='h-10 rounded-[var(--radius-control)] border-border bg-background pl-9 text-[14px] shadow-none focus-visible:ring-[3px]'
 					/>
 				</div>
 
@@ -107,7 +107,7 @@ function ProjectsPageView() {
 									onClick={() => setIsCreateDialogOpen(true)}
 									className={projectPagePrimaryButtonClassName}
 								>
-									<Plus className='mr-2 size-4' />
+									<Plus className='size-4' />
 									Создать проект
 								</Button>
 							}

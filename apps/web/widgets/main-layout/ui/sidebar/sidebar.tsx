@@ -84,7 +84,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 						},
 					)}
 				>
-					<div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground'>
+					<div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-[calc(var(--radius-control)-2px)] bg-sidebar-primary text-sidebar-primary-foreground'>
 						<KanbanSquare className='size-4' />
 					</div>
 					{isOpen && (
@@ -184,7 +184,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 					>
 						<div
 							className={cn(
-								'flex rounded-xl text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/35',
+								'flex rounded-[var(--radius-control)] text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/35',
 								{
 									'h-8 items-center justify-center': !isOpen,
 									'min-w-0 flex-1 items-center gap-2 px-1.5 py-1': isOpen,

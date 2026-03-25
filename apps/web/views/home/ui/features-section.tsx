@@ -19,14 +19,14 @@ function FeaturesSection() {
 						return (
 							<article
 								key={feature.title}
-								className={`animate-home-fade-up rounded-lg border p-6 transition-all duration-300 hover:-translate-y-0.5 ${
+								className={`animate-home-fade-up rounded-[var(--radius-surface)] border p-6 transition-all duration-300 hover:-translate-y-0.5 ${
 									feature.highlight
 										? 'border-accent/30 bg-accent/5'
 										: 'border-border bg-card hover:border-primary/30'
 								}`}
 							>
 								<div
-									className={`mb-5 flex h-10 w-10 items-center justify-center rounded-md ${
+									className={`mb-5 flex h-10 w-10 items-center justify-center rounded-[calc(var(--radius-control)-2px)] ${
 										feature.highlight ? 'bg-accent/10' : 'bg-primary/10'
 									}`}
 								>
