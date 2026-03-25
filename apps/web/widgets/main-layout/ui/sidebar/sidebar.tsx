@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
 import React from 'react'
 
+import type { TeamRole } from '@repo/types'
 import { Avatar, AvatarFallback, cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
@@ -28,6 +29,10 @@ interface Props {
 	onNavigate?: () => void
 }
 
+function formatSidebarUserRole(role: TeamRole) {
+	return role.slice(0, 1) + role.slice(1).toLowerCase()
+}
+
 const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
@@ -40,6 +45,9 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const currentTeam = selectedTeamId
 		? (teams?.find((team) => team.id === selectedTeamId) ?? null)
 		: null
+	const currentUserRole = currentTeam?.currentUserRole
+		? formatSidebarUserRole(currentTeam.currentUserRole)
+		: sidebarCurrentUser.role
 	const activeRouteId = getSidebarRouteId(pathname)
 	const sections = getSidebarSections(teamId)
 	const [workSection, ...otherSections] = sections
@@ -194,7 +202,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 										{sidebarCurrentUser.name}
 									</div>
 									<div className='truncate text-[10px] text-muted-foreground'>
-										{sidebarCurrentUser.role}
+										{currentUserRole}
 									</div>
 								</div>
 							)}
