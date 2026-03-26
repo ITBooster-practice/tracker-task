@@ -14,6 +14,23 @@ export default mergeConfig(
 		test: {
 			root: '.',
 			include: ['test/**/*.spec.ts', 'test/**/*.spec.tsx'],
+			coverage: {
+				include: [
+					'app/**',
+					'entities/**',
+					'features/**',
+					'views/**',
+					'widgets/**',
+					'shared/**',
+				],
+				exclude: [
+					'**/*.d.ts',
+					'**/index.ts',
+					'**/types.ts',
+					'**/types/**',
+					'**/*.config.*',
+				],
+			},
 		},
 	}),
 )
