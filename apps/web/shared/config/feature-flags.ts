@@ -5,6 +5,6 @@ export const FEATURES = {
 	TEAM_SETTINGS: process.env.NEXT_PUBLIC_FEATURE_TEAM_SETTINGS === 'true',
 } as const
 
-export const useFeatureFlag = (featureName: keyof typeof FEATURES) => {
+export const getFeatureFlag = (featureName: keyof typeof FEATURES) => {
 	return FEATURES[featureName] ?? false
 }
