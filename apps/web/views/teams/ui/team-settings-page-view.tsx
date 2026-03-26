@@ -171,7 +171,7 @@ function TeamSettingsPageView() {
 						onClick={() => setInviteOpen(true)}
 						className={teamPagePrimaryButtonClassName}
 					>
-						<UserPlus className='mr-2 size-4' />
+						<UserPlus className='size-4' />
 						Пригласить
 					</Button>
 				</header>
@@ -218,7 +218,7 @@ function TeamSettingsPageView() {
 									<button
 										type='button'
 										onClick={() => void refetch()}
-										className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
+										className='inline-flex h-9 items-center justify-center rounded-[var(--radius-control)] bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
 									>
 										Повторить
 									</button>

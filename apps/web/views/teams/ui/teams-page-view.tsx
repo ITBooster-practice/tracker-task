@@ -50,7 +50,7 @@ function TeamsPageView() {
 						onClick={() => router.push(ROUTES.teamsNew)}
 						className={teamPagePrimaryButtonClassName}
 					>
-						<Plus className='mr-2 size-4' />
+						<Plus className='size-4' />
 						Создать команду
 					</Button>
 				</header>
@@ -87,7 +87,7 @@ function TeamsPageView() {
 									onClick={() => router.push(ROUTES.teamsNew)}
 									className={teamPagePrimaryButtonClassName}
 								>
-									<Plus className='mr-2 size-4' />
+									<Plus className='size-4' />
 									Создать команду
 								</Button>
 							}

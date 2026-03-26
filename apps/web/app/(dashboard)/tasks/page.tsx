@@ -97,7 +97,7 @@ export default async function TasksPage() {
 						<thead className='border-b border-border'>
 							<tr className='text-left text-base text-muted-foreground'>
 								<th className='w-12 px-4 py-4'>
-									<span className='block h-5 w-5 rounded-md border-2 border-primary' />
+									<span className='block h-5 w-5 rounded-[calc(var(--radius-control)-2px)] border-2 border-primary' />
 								</th>
 								<th className='min-w-28 px-3 py-4 font-semibold'>Ключ</th>
 								<th className='min-w-[360px] px-3 py-4 font-semibold'>Название</th>
@@ -111,7 +111,7 @@ export default async function TasksPage() {
 							{mockTasks?.map((task) => (
 								<tr key={task.id} className='border-b border-border last:border-b-0'>
 									<td className='px-4 py-3'>
-										<span className='block h-5 w-5 rounded-md border-2 border-primary' />
+										<span className='block h-5 w-5 rounded-[calc(var(--radius-control)-2px)] border-2 border-primary' />
 									</td>
 									<td className='px-3 py-3 text-xl text-muted-foreground'>{task.id}</td>
 									<td className='px-3 py-3 text-xl font-medium text-foreground'>

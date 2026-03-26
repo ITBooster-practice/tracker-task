@@ -12,7 +12,7 @@ function HomeHeader() {
 		<header className='animate-home-fade border-b border-border'>
 			<div className='mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-6'>
 				<div className='flex items-center gap-2'>
-					<div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground'>
+					<div className='flex h-8 w-8 items-center justify-center rounded-[calc(var(--radius-control)-2px)] bg-primary text-primary-foreground'>
 						<KanbanSquare className='h-4 w-4' />
 					</div>
 					<span className='text-base font-bold tracking-tight'>Tracker Task</span>
@@ -37,7 +37,7 @@ function HomeHeader() {
 							target='_blank'
 							rel='noopener noreferrer'
 						>
-							<Github className='mr-2 h-4 w-4' />
+							<Github className='h-4 w-4' />
 							GitHub
 						</a>
 					</Button>

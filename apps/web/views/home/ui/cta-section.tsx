@@ -20,7 +20,7 @@ function CtaSection() {
 						return (
 							<Button key={action.label} variant='outline' asChild>
 								<a href={action.href}>
-									<Icon className='mr-2 h-4 w-4' />
+									<Icon className='h-4 w-4' />
 									{action.label}
 								</a>
 							</Button>

@@ -109,7 +109,7 @@ export default function SprintsPage() {
 							<div className='mb-2.5 flex items-center justify-between'>
 								<h2 className='text-lg font-semibold text-foreground'>
 									{column.name}{' '}
-									<span className='rounded-md bg-muted px-1.5 py-0.5 text-xs text-foreground'>
+									<span className='rounded-[calc(var(--radius-control)-2px)] bg-muted px-1.5 py-0.5 text-xs text-foreground'>
 										{column.tasks.length}
 									</span>
 								</h2>

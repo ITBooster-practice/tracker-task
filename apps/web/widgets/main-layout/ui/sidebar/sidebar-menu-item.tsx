@@ -36,8 +36,8 @@ const SidebarMenuItem = (props: Props) => {
 			title={!isOpen ? title : undefined}
 			onClick={handleClick}
 			className={cn('flex items-center text-[14px] transition-colors', {
-				'h-10 justify-center rounded-lg': !isOpen,
-				'h-10 justify-start gap-3 rounded-[16px] px-3.5': isOpen,
+				'h-10 justify-center rounded-[var(--radius-control)]': !isOpen,
+				'h-10 justify-start gap-3 rounded-[var(--radius-control)] px-3.5': isOpen,
 				'bg-sidebar-accent/80 font-medium text-sidebar-primary': isActive,
 				'text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground':
 					!isActive,
