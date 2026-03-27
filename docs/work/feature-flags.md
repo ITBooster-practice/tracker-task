@@ -35,10 +35,10 @@ export const FEATURES = {
 3. Используйте строго типизированный хук в React-компонентах:
 
 ```tsx
-import { useFeatureFlag } from '@/hooks/use-feature-flag'
+import { getFeatureFlag } from '@/shared/config'
 
 export const Sidebar = () => {
-	const isNewDashboardEnabled = useFeatureFlag('NEW_DASHBOARD')
+	const isNewDashboardEnabled = getFeatureFlag('NEW_DASHBOARD')
 
 	return (
 		<aside>{isNewDashboardEnabled ? <NewDashboardLink /> : <OldDashboardLink />}</aside>
