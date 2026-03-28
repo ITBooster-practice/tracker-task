@@ -6,6 +6,12 @@ export const baseConfig = defineConfig({
 			enabled: true,
 			provider: 'v8',
 			reportsDirectory: 'coverage',
+			thresholds: {
+				statements: 50,
+				branches: 50,
+				functions: 50,
+				lines: 50,
+			},
 		},
 		environment: 'jsdom',
 	},
