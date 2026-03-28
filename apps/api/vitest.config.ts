@@ -11,6 +11,15 @@ export default mergeConfig(
 			root: '.',
 			include: ['src/**/*.spec.ts', 'test/unit/**/*.spec.ts'],
 			setupFiles: ['./vitest.setup.ts'],
+			coverage: {
+				provider: 'v8',
+				exclude: [
+					'**/config/**',
+					'**/decorators/**',
+					'swagger.util.ts',
+					'**/constants/**',
+				],
+			},
 		},
 	}),
 )
