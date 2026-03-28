@@ -1,40 +1,29 @@
 module.exports = {
-	// Проверка и форматирование TypeScript/React файлов в приложениях и пакетах
-	'{apps,packages}/*/**/*.{ts,tsx}': (files) => {
-		const commands = []
-		const workspaceFiles = {}
-
-		// Фильтруем файлы из prisma директории
-		const filteredFiles = files.filter(
-			(file) => !file.includes('/prisma/') && !file.includes('\\prisma\\'),
+	// Линт и форматирование TS/TSX файлов в apps и packages
+	'{apps,packages}/**/*.{ts,tsx}': (stagedFiles) => {
+		// Убираем prisma
+		const validFiles = stagedFiles.filter(
+			(filePath) => !filePath.includes('/prisma/') && !filePath.includes('\\prisma\\'),
 		)
 
-		if (filteredFiles.length === 0) return []
+		if (validFiles.length === 0) return []
 
-		// Группируем файлы по их рабочим пространствам (workspaces)
-		for (const file of filteredFiles) {
-			const normalized = file.replace(/\\/g, '/')
-			const match = normalized.match(/^(.*?\/(?:apps|packages)\/[^\/]+)/)
-			if (match) {
-				const workspace = match[1]
-				if (!workspaceFiles[workspace]) {
-					workspaceFiles[workspace] = []
-				}
-				workspaceFiles[workspace].push(file)
-			}
-		}
+		// Экранируем пути (важно для Windows)
+		const escapedFiles = validFiles.map((file) => `"${file}"`).join(' ')
 
-		// Генерируем команды: --config указывает ESLint точный конфиг без зависимости от cwd
-		for (const [workspace, filesInWorkspace] of Object.entries(workspaceFiles)) {
-			const escapedFiles = filesInWorkspace.map((f) => `"${f}"`).join(' ')
-			commands.push(
-				`npx eslint --config "${workspace}/eslint.config.mjs" --fix ${escapedFiles}`,
-			)
-			commands.push(`prettier --write ${escapedFiles}`)
-		}
+		return [
+			// ESLint сам найдёт eslint.config.mjs в корне
+			`eslint --fix ${escapedFiles}`,
 
-		return commands
+			// Форматирование
+			`prettier --write ${escapedFiles}`,
+		]
 	},
-	// Форматирование остальных файлов (JSON, MD, YML)
+
+	// Для всех остальных JS/TSX/TS/JSX файлов внутри apps и packages
+	// ESLint и Prettier будут применяться только к staged файлам
+	'{apps,packages}/*/**/*.{ts,tsx,js,jsx}': ['prettier --write', 'eslint --fix'],
+
+	// Форматирование остальных JSON, MD и YML файлов
 	'*.{json,md,yml}': ['prettier --write'],
 }

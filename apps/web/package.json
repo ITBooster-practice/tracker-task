@@ -9,6 +9,7 @@
 		"start": "next start",
 		"lint": "eslint \"{app,components,lib,utils}/**/*.{ts,tsx,js,jsx}\"",
 		"check-types": "tsc --noEmit",
+		"pretest": "pnpm --filter @repo/vitest-config build",
 		"test": "vitest run",
 		"test:watch": "vitest"
 	},

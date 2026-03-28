@@ -9,6 +9,7 @@
 		"start": "nest start",
 		"start:debug": "nest start --debug --watch",
 		"start:prod": "node dist/main",
+		"pretest": "pnpm --filter @repo/vitest-config build",
 		"test": "vitest run --reporter=verbose",
 		"test:watch": "vitest --reporter=verbose",
 		"test:ui": "vitest --ui",
