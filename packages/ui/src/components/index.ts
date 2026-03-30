@@ -15,6 +15,8 @@ export * from './textarea'
 export * from './tooltip'
 export * from './skeleton'
 export * from './sonner'
+export * from './drawer'
+export * from './dialog-drawer'
 
 export * from './layout/stack'
 export * from './layout/container'
