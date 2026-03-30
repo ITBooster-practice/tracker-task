@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 
 import {
 	Button,
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
+	DialogDrawer,
+	DialogDrawerContent,
+	DialogDrawerFooter,
+	DialogDrawerHeader,
+	DialogDrawerTitle,
 	Input,
 	Label,
+	VStack,
 } from '@repo/ui'
 
 import {
@@ -23,8 +24,6 @@ import {
 import {
 	projectDialogContentClassName,
 	projectDialogFooterClassName,
-	projectDialogFormClassName,
-	projectDialogHeaderClassName,
 	projectDialogInputClassName,
 	projectDialogLabelClassName,
 	projectDialogPrimaryButtonClassName,
@@ -68,17 +67,17 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className={projectDialogContentClassName}>
-				<form onSubmit={handleSubmit} className={projectDialogFormClassName}>
-					<DialogHeader className={projectDialogHeaderClassName}>
-						<DialogTitle className={projectDialogTitleClassName}>
+		<DialogDrawer open={open} onOpenChange={onOpenChange}>
+			<DialogDrawerContent className={projectDialogContentClassName}>
+				<form onSubmit={handleSubmit}>
+					<DialogDrawerHeader>
+						<DialogDrawerTitle className={projectDialogTitleClassName}>
 							Создать проект
-						</DialogTitle>
-					</DialogHeader>
+						</DialogDrawerTitle>
+					</DialogDrawerHeader>
 
-					<div className='space-y-4'>
-						<div className='space-y-1.5'>
+					<VStack spacing='md' className='p-4'>
+						<div>
 							<Label htmlFor='project-name' className={projectDialogLabelClassName}>
 								Название
 							</Label>
@@ -92,7 +91,7 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 							/>
 						</div>
 
-						<div className='space-y-1.5'>
+						<div>
 							<Label htmlFor='project-key' className={projectDialogLabelClassName}>
 								Ключ ({PROJECT_CODE_MIN_LENGTH}-{PROJECT_CODE_MAX_LENGTH} буквы)
 							</Label>
@@ -106,9 +105,9 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 								className={projectDialogInputClassName}
 							/>
 						</div>
-					</div>
+					</VStack>
 
-					<DialogFooter className={projectDialogFooterClassName}>
+					<DialogDrawerFooter className={projectDialogFooterClassName}>
 						<Button
 							type='button'
 							variant='outline'
@@ -124,10 +123,10 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 						>
 							Создать
 						</Button>
-					</DialogFooter>
+					</DialogDrawerFooter>
 				</form>
-			</DialogContent>
-		</Dialog>
+			</DialogDrawerContent>
+		</DialogDrawer>
 	)
 }
 

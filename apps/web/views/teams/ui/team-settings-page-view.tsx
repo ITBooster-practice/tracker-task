@@ -10,12 +10,12 @@ import {
 	Badge,
 	Button,
 	cn,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
+	DialogDrawer,
+	DialogDrawerContent,
+	DialogDrawerDescription,
+	DialogDrawerFooter,
+	DialogDrawerHeader,
+	DialogDrawerTitle,
 	EmptyState,
 	Input,
 	Label,
@@ -24,6 +24,7 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
+	VStack,
 } from '@repo/ui'
 import { Crown, Mail, Settings2, Shield, Trash2, UserPlus, Users } from '@repo/ui/icons'
 
@@ -32,8 +33,6 @@ import { useTeamDetail } from '@/shared/api/use-teams'
 import {
 	teamDialogContentClassName,
 	teamDialogFooterClassName,
-	teamDialogFormClassName,
-	teamDialogHeaderClassName,
 	teamDialogInputClassName,
 	teamDialogLabelClassName,
 	teamDialogPrimaryButtonClassName,
@@ -314,21 +313,21 @@ function TeamSettingsPageView() {
 				</div>
 			</div>
 
-			<Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-				<DialogContent className={teamDialogContentClassName}>
-					<form onSubmit={handleInviteSubmit} className={teamDialogFormClassName}>
-						<DialogHeader className={teamDialogHeaderClassName}>
-							<DialogTitle className={teamDialogTitleClassName}>
+			<DialogDrawer open={inviteOpen} onOpenChange={setInviteOpen}>
+				<DialogDrawerContent className={teamDialogContentClassName}>
+					<form onSubmit={handleInviteSubmit}>
+						<DialogDrawerHeader>
+							<DialogDrawerTitle className={teamDialogTitleClassName}>
 								Пригласить участника
-							</DialogTitle>
-							<DialogDescription>
+							</DialogDrawerTitle>
+							<DialogDrawerDescription>
 								Модалка работает локально. Отправка приглашений на сервер будет подключена
 								позже.
-							</DialogDescription>
-						</DialogHeader>
+							</DialogDrawerDescription>
+						</DialogDrawerHeader>
 
-						<div className='space-y-4'>
-							<div className='space-y-1.5'>
+						<VStack spacing='md' className='p-4'>
+							<div>
 								<Label htmlFor='invite-email' className={teamDialogLabelClassName}>
 									Email
 								</Label>
@@ -346,7 +345,7 @@ function TeamSettingsPageView() {
 								</div>
 							</div>
 
-							<div className='space-y-1.5'>
+							<div>
 								<Label htmlFor='invite-role' className={teamDialogLabelClassName}>
 									Роль
 								</Label>
@@ -371,9 +370,9 @@ function TeamSettingsPageView() {
 									</SelectContent>
 								</Select>
 							</div>
-						</div>
+						</VStack>
 
-						<DialogFooter className={teamDialogFooterClassName}>
+						<DialogDrawerFooter className={teamDialogFooterClassName}>
 							<Button
 								type='button'
 								variant='outline'
@@ -389,10 +388,10 @@ function TeamSettingsPageView() {
 							>
 								Добавить участника
 							</Button>
-						</DialogFooter>
+						</DialogDrawerFooter>
 					</form>
-				</DialogContent>
-			</Dialog>
+				</DialogDrawerContent>
+			</DialogDrawer>
 		</div>
 	)
 }

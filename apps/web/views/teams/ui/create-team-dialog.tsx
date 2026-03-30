@@ -5,12 +5,12 @@ import { useState } from 'react'
 
 import {
 	Button,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
+	DialogDrawer,
+	DialogDrawerContent,
+	DialogDrawerDescription,
+	DialogDrawerFooter,
+	DialogDrawerHeader,
+	DialogDrawerTitle,
 	Input,
 	Label,
 	toast,
@@ -23,8 +23,6 @@ import { isApiError } from '@/shared/lib/api/utils'
 import {
 	teamDialogContentClassName,
 	teamDialogFooterClassName,
-	teamDialogFormClassName,
-	teamDialogHeaderClassName,
 	teamDialogInputClassName,
 	teamDialogLabelClassName,
 	teamDialogPrimaryButtonClassName,
@@ -65,35 +63,33 @@ function CreateTeamDialog() {
 	}
 
 	return (
-		<Dialog open onOpenChange={(open) => !open && closeDialog()}>
-			<DialogContent className={teamDialogContentClassName}>
-				<form onSubmit={handleCreate} className={teamDialogFormClassName}>
-					<DialogHeader className={teamDialogHeaderClassName}>
-						<DialogTitle className={teamDialogTitleClassName}>
+		<DialogDrawer open onOpenChange={(open) => !open && closeDialog()}>
+			<DialogDrawerContent className={teamDialogContentClassName}>
+				<form onSubmit={handleCreate}>
+					<DialogDrawerHeader>
+						<DialogDrawerTitle className={teamDialogTitleClassName}>
 							Создать команду
-						</DialogTitle>
-						<DialogDescription>
+						</DialogDrawerTitle>
+						<DialogDrawerDescription>
 							Добавьте новую команду для работы над отдельным направлением.
-						</DialogDescription>
-					</DialogHeader>
+						</DialogDrawerDescription>
+					</DialogDrawerHeader>
 
-					<div className='space-y-4'>
-						<div className='space-y-1.5'>
-							<Label htmlFor='team-name' className={teamDialogLabelClassName}>
-								Название команды
-							</Label>
-							<Input
-								id='team-name'
-								placeholder='Например: Product Team'
-								value={newName}
-								onChange={(event) => setNewName(event.target.value)}
-								autoFocus
-								className={teamDialogInputClassName}
-							/>
-						</div>
+					<div className='p-4'>
+						<Label htmlFor='team-name' className={teamDialogLabelClassName}>
+							Название команды
+						</Label>
+						<Input
+							id='team-name'
+							placeholder='Например: Product Team'
+							value={newName}
+							onChange={(event) => setNewName(event.target.value)}
+							autoFocus
+							className={teamDialogInputClassName}
+						/>
 					</div>
 
-					<DialogFooter className={teamDialogFooterClassName}>
+					<DialogDrawerFooter className={teamDialogFooterClassName}>
 						<Button
 							type='button'
 							variant='outline'
@@ -109,10 +105,10 @@ function CreateTeamDialog() {
 						>
 							{createTeamMutation.isPending ? 'Создание...' : 'Создать'}
 						</Button>
-					</DialogFooter>
+					</DialogDrawerFooter>
 				</form>
-			</DialogContent>
-		</Dialog>
+			</DialogDrawerContent>
+		</DialogDrawer>
 	)
 }
 
