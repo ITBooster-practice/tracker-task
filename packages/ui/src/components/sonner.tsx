@@ -33,9 +33,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
 				classNames: {
 					default:
 						'p-4 gap-3 rounded-[var(--radius-surface)] flex w-[410px] shadow-[0_0_3px_rgba(0,0,0,0.1),0_6px_12px_-6px_rgba(0,0,0,0.07),0_8px_24px_-4px_rgba(0,0,0,0.05)]',
-					toast: 'cn-toast ',
+					toast: 'cn-toast',
+					title: 'text-sm font-medium',
+					description: 'text-sm opacity-70 mt-0.5',
 					success: 'bg-success text-success-foreground',
 					error: 'bg-destructive text-destructive-foreground',
+					warning: 'bg-warning text-foreground',
+					info: 'bg-info text-foreground',
 				},
 			}}
 			{...props}
