@@ -16,7 +16,8 @@ export default [
 		languageOptions: {
 			parser: tsParser,
 			parserOptions: {
-				project: true, // включает type-aware linting
+				projectService: true, // поддерживает tsconfig references и stories
+				tsconfigRootDir: import.meta.dirname,
 			},
 		},
 	},
