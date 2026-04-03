@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 
-import { Button, EmptyState } from '@repo/ui'
+import { Button, EmptyState, Skeleton } from '@repo/ui'
 import { Plus, Users } from '@repo/ui/icons'
 
 import { useTeamsList } from '@/shared/api/use-teams'
@@ -21,7 +21,7 @@ import { TeamCard } from './team-card'
 
 function TeamsPageView() {
 	const router = useRouter()
-	const { data, isPending, isError, refetch } = useTeamsList()
+	const { data, isLoading, isError, refetch } = useTeamsList()
 
 	const sortedTeams = useMemo(
 		() =>
@@ -55,9 +55,21 @@ function TeamsPageView() {
 					</Button>
 				</header>
 
-				{isPending ? (
-					<div className='flex justify-center py-16 text-sm text-muted-foreground'>
-						Загрузка команд...
+				{isLoading ? (
+					<div
+						className='grid gap-4 py-6 sm:grid-cols-2'
+						data-testid='teams-page-skeleton'
+					>
+						{Array.from({ length: 4 }).map((_, index) => (
+							<div
+								key={`teams-skeleton-${index}`}
+								className='space-y-3 rounded-[var(--radius-surface)] border border-border bg-card p-5'
+							>
+								<Skeleton className='h-6 w-40' />
+								<Skeleton className='h-4 w-full' />
+								<Skeleton className='h-4 w-28' />
+							</div>
+						))}
 					</div>
 				) : isError ? (
 					<div className='flex justify-center py-16'>
