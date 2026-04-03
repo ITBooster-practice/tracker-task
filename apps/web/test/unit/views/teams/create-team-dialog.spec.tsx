@@ -77,31 +77,22 @@ describe('CreateTeamDialog', () => {
 		expect(screen.getByPlaceholderText('Например: Product Team')).toBeDefined()
 	})
 
-	it('пустое имя — показывает ошибку валидации', async () => {
+	it('кнопка "Создать" disabled при пустом поле', () => {
 		render(<CreateTeamDialog />)
 
-		fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
-
-		await waitFor(() => {
-			expect(screen.getByText('Название команды обязательно')).toBeDefined()
-		})
-		expect(mockMutateAsync).not.toHaveBeenCalled()
+		const submitButton = screen.getByRole('button', { name: 'Создать' })
+		expect(submitButton).toHaveProperty('disabled', true)
 	})
 
-	it('ошибка очищается после ввода валидного имени', async () => {
+	it('кнопка "Создать" активна при заполненном поле', () => {
 		render(<CreateTeamDialog />)
-
-		fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
-
-		await waitFor(() => {
-			expect(screen.getByText('Название команды обязательно')).toBeDefined()
-		})
 
 		fireEvent.change(screen.getByPlaceholderText('Например: Product Team'), {
 			target: { value: 'Design Team' },
 		})
 
-		expect(screen.queryByText('Название команды обязательно')).toBeNull()
+		const submitButton = screen.getByRole('button', { name: 'Создать' })
+		expect(submitButton).toHaveProperty('disabled', false)
 	})
 
 	it('submit — вызывает mutateAsync с trimmed-именем', async () => {

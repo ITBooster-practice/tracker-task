@@ -34,7 +34,6 @@ function CreateTeamDialog() {
 	const router = useRouter()
 	const createTeamMutation = useCreateTeam()
 	const [newName, setNewName] = useState('')
-	const [nameError, setNameError] = useState<string | null>(null)
 
 	const closeDialog = () => {
 		router.replace(ROUTES.teams)
@@ -46,12 +45,10 @@ function CreateTeamDialog() {
 		const trimmedName = newName.trim()
 
 		if (!trimmedName) {
-			setNameError('Название команды обязательно')
 			return
 		}
 
 		try {
-			setNameError(null)
 			await createTeamMutation.mutateAsync({ name: trimmedName })
 			setNewName('')
 			router.replace(ROUTES.teams)
@@ -86,19 +83,10 @@ function CreateTeamDialog() {
 							id='team-name'
 							placeholder='Например: Product Team'
 							value={newName}
-							onChange={(event) => {
-								setNewName(event.target.value)
-								if (nameError) {
-									setNameError(null)
-								}
-							}}
+							onChange={(event) => setNewName(event.target.value)}
 							autoFocus
 							className={teamDialogInputClassName}
-							aria-invalid={Boolean(nameError)}
 						/>
-						{nameError ? (
-							<p className='mt-2 text-sm text-destructive'>{nameError}</p>
-						) : null}
 					</div>
 
 					<DialogDrawerFooter className={teamDialogFooterClassName}>

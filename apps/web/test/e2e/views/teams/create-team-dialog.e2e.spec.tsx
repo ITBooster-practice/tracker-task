@@ -57,14 +57,13 @@ describe('CreateTeamDialog e2e', () => {
 		expect(screen.getByLabelText('Название команды')).toBeDefined()
 	})
 
-	it('пустое имя показывает ошибку валидации', async () => {
+	it('пустое имя не даёт отправить форму', () => {
 		render(<CreateTeamDialog />)
 
-		fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
-
-		await waitFor(() => {
-			expect(screen.getByText('Название команды обязательно')).toBeDefined()
-		})
+		expect(screen.getByRole('button', { name: 'Создать' })).toHaveProperty(
+			'disabled',
+			true,
+		)
 		expect(mockMutateAsync).not.toHaveBeenCalled()
 	})
 
