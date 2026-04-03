@@ -1,5 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { useUserStore } from '@/entities/user'
 import { authService } from '@/shared/lib/api/auth-service'
 
 export const authKeys = {
@@ -24,9 +25,15 @@ export const useLogin = () => {
 }
 
 export const useLogout = () => {
+	const queryClient = useQueryClient()
+
 	return useMutation({
 		mutationKey: authKeys.logout,
 		mutationFn: authService.logout,
+		onSuccess: async () => {
+			useUserStore.getState().clearUser()
+			await queryClient.invalidateQueries({ queryKey: authKeys.getMe })
+		},
 	})
 }
 
