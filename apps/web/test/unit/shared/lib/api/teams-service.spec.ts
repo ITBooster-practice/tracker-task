@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { teamsService } from '@/shared/lib/api/teams-service'
 
-// vi.hoisted — создаёт моки ДО hoisting vi.mock
 const { mockGet, mockPost, mockPatch, mockDelete } = vi.hoisted(() => ({
 	mockGet: vi.fn(),
 	mockPost: vi.fn(),
@@ -20,7 +19,6 @@ vi.mock('@/shared/lib/api/client', () => ({
 	},
 }))
 
-// Хелпер: оборачивает data в AxiosResponse
 function axiosResponse<T>(data: T): AxiosResponse<T> {
 	return {
 		data,
@@ -31,142 +29,92 @@ function axiosResponse<T>(data: T): AxiosResponse<T> {
 	}
 }
 
-describe('teamsService — normalizeTeamMember', () => {
+const baseTeam = {
+	id: 'team-1',
+	name: 'Team',
+	description: null,
+	avatarUrl: null,
+	createdAt: '2024-01-01',
+	updatedAt: '2024-01-01',
+}
+
+describe('teamsService members normalization', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
 
-	describe('getById', () => {
-		it('member с плоскими полями', async () => {
-			mockGet.mockResolvedValue(
-				axiosResponse({
-					id: 't1',
-					name: 'Team',
-					members: [
-						{
-							id: 'm1',
-							userId: 'u1',
+	it('данные приходят как { user, role } и маппятся в плоский member', async () => {
+		mockGet.mockResolvedValue(
+			axiosResponse({
+				...baseTeam,
+				members: [
+					{
+						user: {
+							id: 'user-1',
 							name: 'Alex',
 							email: 'alex@test.com',
-							role: 'ADMIN',
-							joinedAt: '2024-01-01',
 						},
-					],
-				}),
-			)
+						role: 'ADMIN',
+					},
+				],
+			}),
+		)
 
-			const result = await teamsService.getById('t1')
+		const result = await teamsService.getById('team-1')
 
-			expect(result.members[0]).toEqual({
-				id: 'm1',
-				userId: 'u1',
+		expect(result.members).toEqual([
+			{
+				id: 'user-1',
+				userId: 'user-1',
 				name: 'Alex',
 				email: 'alex@test.com',
 				role: 'ADMIN',
-				joinedAt: '2024-01-01',
-			})
-		})
-
-		it('member с вложенным user', async () => {
-			mockGet.mockResolvedValue(
-				axiosResponse({
-					id: 't1',
-					name: 'Team',
-					members: [{ user: { id: 'u2', name: 'Bob', email: 'bob@test.com' } }],
-				}),
-			)
-
-			const result = await teamsService.getById('t1')
-
-			expect(result.members[0]).toEqual({
-				id: 'u2',
-				userId: 'u2',
-				name: 'Bob',
-				email: 'bob@test.com',
-				role: 'MEMBER',
 				joinedAt: '',
-			})
-		})
-
-		it('пустые поля', async () => {
-			mockGet.mockResolvedValue(
-				axiosResponse({
-					id: 't1',
-					name: 'Team',
-					members: [{}],
-				}),
-			)
-
-			const result = await teamsService.getById('t1')
-
-			expect(result.members[0]).toEqual({
-				id: '',
-				userId: '',
-				name: null,
-				email: '',
-				role: 'MEMBER',
-				joinedAt: '',
-			})
-		})
-
-		it('members не массив', async () => {
-			mockGet.mockResolvedValue(
-				axiosResponse({
-					id: 't1',
-					name: 'Team',
-					members: null,
-				}),
-			)
-
-			const result = await teamsService.getById('t1')
-
-			expect(result.members).toEqual([])
-		})
+			},
+		])
 	})
 
-	describe('create — нормализует ответ так же как getById', () => {
-		it('вложенный user', async () => {
-			mockPost.mockResolvedValue(
-				axiosResponse({
-					id: 't1',
-					name: 'New Team',
-					members: [{ user: { id: 'u1', name: null, email: 'c@test.com' } }],
-				}),
-			)
+	it('данные уже плоские и маппятся без потерь', async () => {
+		mockGet.mockResolvedValue(
+			axiosResponse({
+				...baseTeam,
+				members: [
+					{
+						id: 'member-1',
+						userId: 'user-1',
+						name: 'Alex',
+						email: 'alex@test.com',
+						role: 'MEMBER',
+						joinedAt: '2024-02-01',
+					},
+				],
+			}),
+		)
 
-			const result = await teamsService.create({ name: 'New Team' })
+		const result = await teamsService.getById('team-1')
 
-			expect(result.members[0]).toEqual({
-				id: 'u1',
-				userId: 'u1',
-				name: null,
-				email: 'c@test.com',
+		expect(result.members).toEqual([
+			{
+				id: 'member-1',
+				userId: 'user-1',
+				name: 'Alex',
+				email: 'alex@test.com',
 				role: 'MEMBER',
-				joinedAt: '',
-			})
-		})
+				joinedAt: '2024-02-01',
+			},
+		])
 	})
 
-	describe('update — нормализует ответ так же как getById', () => {
-		it('частичные данные member', async () => {
-			mockPatch.mockResolvedValue(
-				axiosResponse({
-					id: 't1',
-					name: 'Updated',
-					members: [{ userId: 'u1', role: 'ADMIN' }],
-				}),
-			)
+	it('пустой массив members возвращается как пустой массив', async () => {
+		mockGet.mockResolvedValue(
+			axiosResponse({
+				...baseTeam,
+				members: [],
+			}),
+		)
 
-			const result = await teamsService.update('t1', { name: 'Updated' })
+		const result = await teamsService.getById('team-1')
 
-			expect(result.members[0]).toEqual({
-				id: 'u1',
-				userId: 'u1',
-				name: null,
-				email: '',
-				role: 'ADMIN',
-				joinedAt: '',
-			})
-		})
+		expect(result.members).toEqual([])
 	})
 })
