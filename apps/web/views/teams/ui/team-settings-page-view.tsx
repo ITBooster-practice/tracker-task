@@ -10,6 +10,7 @@ import {
 	Badge,
 	Button,
 	cn,
+	ConfirmDialog,
 	DialogDrawer,
 	DialogDrawerContent,
 	DialogDrawerDescription,
@@ -107,6 +108,7 @@ function TeamSettingsPageView() {
 	const [inviteOpen, setInviteOpen] = useState(false)
 	const [inviteEmail, setInviteEmail] = useState('')
 	const [inviteRole, setInviteRole] = useState<TeamRole>(TEAM_ROLES.MEMBER)
+	const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null)
 
 	useEffect(() => {
 		setMembers(team?.members ?? [])
@@ -130,6 +132,15 @@ function TeamSettingsPageView() {
 		setMembers((currentMembers) =>
 			currentMembers.filter((member) => member.id !== memberId),
 		)
+	}
+
+	const handleConfirmDeleteMember = () => {
+		if (!memberToDelete) {
+			return
+		}
+
+		handleDeleteMember(memberToDelete.id)
+		setMemberToDelete(null)
 	}
 
 	const handleInviteSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -295,7 +306,7 @@ function TeamSettingsPageView() {
 														<Button
 															variant='ghost'
 															size='icon-sm'
-															onClick={() => handleDeleteMember(member.id)}
+															onClick={() => setMemberToDelete(member)}
 															className='size-8 text-destructive hover:bg-destructive/10 hover:text-destructive'
 															aria-label={`Удалить ${memberName}`}
 														>
@@ -392,6 +403,20 @@ function TeamSettingsPageView() {
 					</form>
 				</DialogDrawerContent>
 			</DialogDrawer>
+
+			<ConfirmDialog
+				open={memberToDelete !== null}
+				onOpenChange={(open) => !open && setMemberToDelete(null)}
+				title='Удалить участника из команды?'
+				description={
+					memberToDelete
+						? `${memberToDelete.name ?? memberToDelete.email} больше не сможет работать в этой команде.`
+						: undefined
+				}
+				confirmLabel='Удалить'
+				pendingLabel='Удаление...'
+				onConfirm={handleConfirmDeleteMember}
+			/>
 		</div>
 	)
 }
