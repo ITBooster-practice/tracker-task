@@ -21,6 +21,14 @@ describe('buildLoginHref', () => {
 		expect(result).toBe('/login?from=%2Fteams')
 	})
 
+	it("buildLoginHref('/teams/1') → /login?from=%2Fteams%2F1", () => {
+		expect(buildLoginHref('/teams/1')).toBe('/login?from=%2Fteams%2F1')
+	})
+
+	it("buildLoginHref('/a b') → корректный URL-encode пробела", () => {
+		expect(buildLoginHref('/a b')).toBe('/login?from=%2Fa+b')
+	})
+
 	it('from со спецсимволами', () => {
 		const result = buildLoginHref('/teams?foo=bar')
 
@@ -41,15 +49,15 @@ describe('buildLoginHref', () => {
 })
 
 describe('isAuthRoute', () => {
-	it('/login', () => {
+	it("isAuthRoute('/login') → true", () => {
 		expect(isAuthRoute('/login')).toBe(true)
 	})
 
-	it('/register', () => {
+	it("isAuthRoute('/register') → true", () => {
 		expect(isAuthRoute('/register')).toBe(true)
 	})
 
-	it('другой путь', () => {
+	it("isAuthRoute('/teams') → false", () => {
 		expect(isAuthRoute('/teams')).toBe(false)
 	})
 
@@ -59,24 +67,28 @@ describe('isAuthRoute', () => {
 })
 
 describe('isProtectedRoute', () => {
-	it.each(['/teams', '/tasks', '/sprints'])('%s', (path) => {
-		expect(isProtectedRoute(path)).toBe(true)
+	it("isProtectedRoute('/teams') → true", () => {
+		expect(isProtectedRoute('/teams')).toBe(true)
 	})
 
-	it('вложенный путь', () => {
-		expect(isProtectedRoute('/teams/123/projects')).toBe(true)
+	it("isProtectedRoute('/teams/1/projects') → true", () => {
+		expect(isProtectedRoute('/teams/1/projects')).toBe(true)
+	})
+
+	it("isProtectedRoute('/login') → false", () => {
+		expect(isProtectedRoute('/login')).toBe(false)
+	})
+
+	it("isProtectedRoute('/register') → false", () => {
+		expect(isProtectedRoute('/register')).toBe(false)
+	})
+
+	it("isProtectedRoute('/') → false", () => {
+		expect(isProtectedRoute('/')).toBe(false)
 	})
 
 	it('частичное совпадение не срабатывает', () => {
 		expect(isProtectedRoute('/teamsters')).toBe(false)
-	})
-
-	it('незащищённый путь', () => {
-		expect(isProtectedRoute('/login')).toBe(false)
-	})
-
-	it('корень', () => {
-		expect(isProtectedRoute('/')).toBe(false)
 	})
 })
 
@@ -89,20 +101,24 @@ describe('getSidebarRouteId', () => {
 		expect(getSidebarRouteId(undefined)).toBeNull()
 	})
 
-	it('/tasks', () => {
+	it("getSidebarRouteId('/tasks') → 'tasks'", () => {
 		expect(getSidebarRouteId('/tasks')).toBe(SIDEBAR_ROUTE_IDS.tasks)
 	})
 
-	it('/sprints', () => {
+	it("getSidebarRouteId('/sprints') → 'sprints'", () => {
 		expect(getSidebarRouteId('/sprints')).toBe(SIDEBAR_ROUTE_IDS.sprints)
 	})
 
-	it('/teams', () => {
+	it("getSidebarRouteId('/teams') → 'teams'", () => {
 		expect(getSidebarRouteId('/teams')).toBe(SIDEBAR_ROUTE_IDS.teams)
 	})
 
 	it('/teams/new', () => {
 		expect(getSidebarRouteId('/teams/new')).toBe(SIDEBAR_ROUTE_IDS.teams)
+	})
+
+	it("getSidebarRouteId('/teams/1/projects/p') → 'team.projects'", () => {
+		expect(getSidebarRouteId('/teams/1/projects/p')).toBe(SIDEBAR_ROUTE_IDS.teamProjects)
 	})
 
 	it('/teams/:id/projects', () => {
