@@ -24,6 +24,42 @@ const PROJECT_ID_MAX_LENGTH = 48
 const PROJECT_ID_FALLBACK_PREFIX = 'project'
 const PROJECT_ID_DUPLICATE_SUFFIX_START = 2
 
+const CYRILLIC_TO_LATIN_MAP: Record<string, string> = {
+	а: 'a',
+	б: 'b',
+	в: 'v',
+	г: 'g',
+	д: 'd',
+	е: 'e',
+	ё: 'e',
+	ж: 'zh',
+	з: 'z',
+	и: 'i',
+	й: 'y',
+	к: 'k',
+	л: 'l',
+	м: 'm',
+	н: 'n',
+	о: 'o',
+	п: 'p',
+	р: 'r',
+	с: 's',
+	т: 't',
+	у: 'u',
+	ф: 'f',
+	х: 'h',
+	ц: 'ts',
+	ч: 'ch',
+	ш: 'sh',
+	щ: 'sch',
+	ъ: '',
+	ы: 'y',
+	ь: '',
+	э: 'e',
+	ю: 'yu',
+	я: 'ya',
+}
+
 function isProjectNameSeparator(char: string) {
 	return char === '-' || char === '_'
 }
@@ -41,6 +77,16 @@ function isAllowedProjectIdChar(char: string) {
 	const isYoLetter = codePoint === 1105
 
 	return isDigit || isLatinLowercaseLetter || isCyrillicLowercaseLetter || isYoLetter
+}
+
+function transliterateCyrillic(value: string) {
+	let result = ''
+
+	for (const char of value.toLowerCase()) {
+		result += CYRILLIC_TO_LATIN_MAP[char] ?? char
+	}
+
+	return result
 }
 
 function splitProjectIdParts(projectId: string) {
@@ -66,11 +112,11 @@ function splitProjectIdParts(projectId: string) {
 	return parts
 }
 
-function normalizeProjectId(name: string) {
+function normalizeProjectSlug(name: string) {
 	let normalizedId = ''
 	let hasPendingSeparator = false
 
-	for (const char of name.toLowerCase().trim()) {
+	for (const char of transliterateCyrillic(name).trim()) {
 		if (isAllowedProjectIdChar(char)) {
 			normalizedId += char
 			hasPendingSeparator = false
@@ -90,6 +136,12 @@ function normalizeProjectId(name: string) {
 	}
 
 	return normalizedId.slice(0, PROJECT_ID_MAX_LENGTH)
+}
+
+export function normalizeProjectId(name: string) {
+	const normalizedSlug = normalizeProjectSlug(name)
+
+	return normalizedSlug.replaceAll('-', '_').toUpperCase()
 }
 
 export const projectCatalog: ProjectCatalogItem[] = [
@@ -217,17 +269,21 @@ export function buildTeamProjectHref(
 }
 
 export function getProjectById(projectId: string) {
-	return projectCatalog.find((project) => project.id === projectId) ?? null
+	return projectCatalog.find((project) => project.id === projectId)
 }
 
 export function formatProjectNameFromId(projectId: string) {
 	return splitProjectIdParts(projectId)
-		.map((part) => part[0]?.toUpperCase() + part.slice(1))
+		.map((part) => {
+			const normalizedPart = part.toLowerCase()
+
+			return normalizedPart[0]?.toUpperCase() + normalizedPart.slice(1)
+		})
 		.join(' ')
 }
 
 export function createProjectId(name: string, existingIds: string[]) {
-	const baseId = normalizeProjectId(name)
+	const baseId = normalizeProjectSlug(name)
 
 	if (!baseId) {
 		return `${PROJECT_ID_FALLBACK_PREFIX}-${existingIds.length + 1}`
