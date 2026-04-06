@@ -1,28 +1,13 @@
+import { createTeamCardModel, createTeamMember } from '@/test/mocks/team-card.fixtures'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import '@/test/mocks/team-card-ui.mock'
 
-import type { TeamCardModel } from '@/views/teams/model/types'
 import { TeamCard } from '@/views/teams/ui/team-card'
 
-const createMember = (id: string, name: string) => ({
-	id,
-	name,
-	avatar: name.slice(0, 2).toUpperCase(),
-	role: 'member' as const,
-})
-
-const createTeam = (overrides?: Partial<TeamCardModel>): TeamCardModel => ({
-	id: '1',
-	name: 'Dream Team',
-	projectCount: 3,
-	members: [createMember('m1', 'Alice'), createMember('m2', 'Bob')],
-	...overrides,
-})
-
 describe('TeamCard', () => {
-	let onOpen: ReturnType<typeof vi.fn<(team: TeamCardModel) => void>>
+	let onOpen: ReturnType<typeof vi.fn>
 
 	beforeEach(() => {
 		onOpen = vi.fn()
@@ -31,25 +16,25 @@ describe('TeamCard', () => {
 	afterEach(cleanup)
 
 	it('отображает название команды', () => {
-		render(<TeamCard team={createTeam()} onOpen={onOpen} />)
+		render(<TeamCard team={createTeamCardModel()} onOpen={onOpen} />)
 
 		expect(screen.getByText('Dream Team')).toBeDefined()
 	})
 
 	it('рендерит badge с числом участников', () => {
-		render(<TeamCard team={createTeam()} onOpen={onOpen} />)
+		render(<TeamCard team={createTeamCardModel()} onOpen={onOpen} />)
 
 		expect(screen.getByText(/2 участников/)).toBeDefined()
 	})
 
 	it('отображает количество проектов', () => {
-		render(<TeamCard team={createTeam()} onOpen={onOpen} />)
+		render(<TeamCard team={createTeamCardModel()} onOpen={onOpen} />)
 
 		expect(screen.getByText(/3 проектов/)).toBeDefined()
 	})
 
 	it('клик вызывает onOpen с данными команды', () => {
-		const team = createTeam()
+		const team = createTeamCardModel()
 
 		render(<TeamCard team={team} onOpen={onOpen} />)
 		fireEvent.click(screen.getByRole('button'))
@@ -65,7 +50,7 @@ describe('TeamCard', () => {
 	// Проверяем, что при 3 участниках рендерятся все 3.
 
 	it('нет участников → аватары не рендерятся', () => {
-		const team = createTeam({ members: [] })
+		const team = createTeamCardModel({ members: [] })
 
 		render(<TeamCard team={team} onOpen={onOpen} />)
 
@@ -73,8 +58,8 @@ describe('TeamCard', () => {
 	})
 
 	it('1 участник → рендерится ровно 1 аватар', () => {
-		const team = createTeam({
-			members: [createMember('1', 'Alice')],
+		const team = createTeamCardModel({
+			members: [createTeamMember('1', 'Alice')],
 		})
 
 		render(<TeamCard team={team} onOpen={onOpen} />)
@@ -83,11 +68,11 @@ describe('TeamCard', () => {
 	})
 
 	it('3 участника → рендерятся 3 аватара', () => {
-		const team = createTeam({
+		const team = createTeamCardModel({
 			members: [
-				createMember('1', 'Alice'),
-				createMember('2', 'Bob'),
-				createMember('3', 'Charlie'),
+				createTeamMember('1', 'Alice'),
+				createTeamMember('2', 'Bob'),
+				createTeamMember('3', 'Charlie'),
 			],
 		})
 
@@ -97,14 +82,14 @@ describe('TeamCard', () => {
 	})
 
 	it('показывает "+N" при больше 4 участниках', () => {
-		const team = createTeam({
+		const team = createTeamCardModel({
 			members: [
-				createMember('1', 'A'),
-				createMember('2', 'B'),
-				createMember('3', 'C'),
-				createMember('4', 'D'),
-				createMember('5', 'E'),
-				createMember('6', 'F'),
+				createTeamMember('1', 'A'),
+				createTeamMember('2', 'B'),
+				createTeamMember('3', 'C'),
+				createTeamMember('4', 'D'),
+				createTeamMember('5', 'E'),
+				createTeamMember('6', 'F'),
 			],
 		})
 
@@ -114,12 +99,12 @@ describe('TeamCard', () => {
 	})
 
 	it('НЕ показывает "+N" при ровно 4 участниках', () => {
-		const team = createTeam({
+		const team = createTeamCardModel({
 			members: [
-				createMember('1', 'A'),
-				createMember('2', 'B'),
-				createMember('3', 'C'),
-				createMember('4', 'D'),
+				createTeamMember('1', 'A'),
+				createTeamMember('2', 'B'),
+				createTeamMember('3', 'C'),
+				createTeamMember('4', 'D'),
 			],
 		})
 
