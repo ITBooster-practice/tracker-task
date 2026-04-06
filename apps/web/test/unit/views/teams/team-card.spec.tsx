@@ -1,27 +1,10 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import '@/test/mocks/team-card-ui.mock'
+
 import type { TeamCardModel } from '@/views/teams/model/types'
 import { TeamCard } from '@/views/teams/ui/team-card'
-
-vi.mock('@repo/ui', () => ({
-	Avatar: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.HTMLAttributes<HTMLDivElement>>) => (
-		<div data-testid='team-member-avatar' {...props}>
-			{children}
-		</div>
-	),
-	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
-	cn: (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' '),
-}))
-
-vi.mock('@repo/ui/icons', () => ({
-	ArrowRight: () => <span data-testid='arrow-icon' />,
-	FolderKanban: () => <span data-testid='folder-icon' />,
-	Users: () => <span data-testid='users-icon' />,
-}))
 
 const createMember = (id: string, name: string) => ({
 	id,
