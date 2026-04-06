@@ -3,34 +3,37 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useThemeStore } from '@/features/theme'
 
 describe('useThemeStore', () => {
-	// Сбрасываем store в исходное состояние перед каждым тестом
 	beforeEach(() => {
 		useThemeStore.setState({ theme: 'dark' })
 	})
 
-	it('дефолтное значение', () => {
+	it("начальное состояние → theme: 'dark'", () => {
 		const { theme } = useThemeStore.getState()
 
 		expect(theme).toBe('dark')
 	})
 
-	it('setTheme меняет тему', () => {
+	it("setTheme('light') → theme = 'light'", () => {
 		useThemeStore.getState().setTheme('light')
 
 		expect(useThemeStore.getState().theme).toBe('light')
 	})
 
-	it('toggleTheme: dark', () => {
+	it("toggleTheme при 'dark' → 'light'", () => {
 		useThemeStore.getState().toggleTheme()
 
 		expect(useThemeStore.getState().theme).toBe('light')
 	})
 
-	it('toggleTheme: light', () => {
+	it("toggleTheme при 'light' → 'dark'", () => {
 		useThemeStore.setState({ theme: 'light' })
 
 		useThemeStore.getState().toggleTheme()
 
 		expect(useThemeStore.getState().theme).toBe('dark')
+	})
+
+	it("persist: ключ 'theme'", () => {
+		expect(useThemeStore.persist.getOptions().name).toBe('theme')
 	})
 })
