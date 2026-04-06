@@ -20,7 +20,7 @@ function createTeamListItem(overrides: Partial<TeamListItem> = {}): TeamListItem
 }
 
 describe('mapTeamListItemToTeamCardModel', () => {
-	it('базовый маппинг полей', () => {
+	it('корректно маппит id, name и membersCount в модель', () => {
 		const team = createTeamListItem({ id: 'abc', name: 'Design Team' })
 
 		const result = mapTeamListItemToTeamCardModel(team)
@@ -28,6 +28,15 @@ describe('mapTeamListItemToTeamCardModel', () => {
 		expect(result.id).toBe('abc')
 		expect(result.name).toBe('Design Team')
 		expect(result.projectCount).toBe(0)
+		expect(result.members).toHaveLength(1)
+	})
+
+	it('membersCount = 0 → members: []', () => {
+		const team = createTeamListItem({ membersCount: 0 })
+
+		const result = mapTeamListItemToTeamCardModel(team)
+
+		expect(result.members).toEqual([])
 	})
 
 	it('инициалы из двух слов', () => {
@@ -86,11 +95,24 @@ describe('mapTeamListItemToTeamCardModel', () => {
 		expect(result.members[1]!.role).toBe('member')
 	})
 
-	it('membersCount = 0 — пустой массив', () => {
-		const team = createTeamListItem({ membersCount: 0 })
+	it('каждый member получает ожидаемую структуру', () => {
+		const team = createTeamListItem({ id: 'team-9', membersCount: 2 })
 
 		const result = mapTeamListItemToTeamCardModel(team)
 
-		expect(result.members).toEqual([])
+		expect(result.members).toEqual([
+			{
+				id: 'team-9-member-1',
+				name: 'Участник 1',
+				avatar: 'MT',
+				role: 'member',
+			},
+			{
+				id: 'team-9-member-2',
+				name: 'Участник 2',
+				avatar: 'MT',
+				role: 'member',
+			},
+		])
 	})
 })

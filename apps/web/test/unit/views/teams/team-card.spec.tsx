@@ -9,7 +9,9 @@ vi.mock('@repo/ui', () => ({
 		children,
 		...props
 	}: React.PropsWithChildren<React.HTMLAttributes<HTMLDivElement>>) => (
-		<div {...props}>{children}</div>
+		<div data-testid='team-member-avatar' {...props}>
+			{children}
+		</div>
 	),
 	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
 	cn: (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' '),
@@ -51,10 +53,15 @@ describe('TeamCard', () => {
 		expect(screen.getByText('Dream Team')).toBeDefined()
 	})
 
-	it('отображает количество участников и проектов', () => {
+	it('рендерит badge с числом участников', () => {
 		render(<TeamCard team={createTeam()} onOpen={onOpen} />)
 
 		expect(screen.getByText(/2 участников/)).toBeDefined()
+	})
+
+	it('отображает количество проектов', () => {
+		render(<TeamCard team={createTeam()} onOpen={onOpen} />)
+
 		expect(screen.getByText(/3 проектов/)).toBeDefined()
 	})
 
@@ -74,7 +81,25 @@ describe('TeamCard', () => {
 	// Код делает team.members.slice(0, 4) — показывает первые 4.
 	// Проверяем, что при 3 участниках рендерятся все 3.
 
-	it('рендерит аватары участников', () => {
+	it('нет участников → аватары не рендерятся', () => {
+		const team = createTeam({ members: [] })
+
+		render(<TeamCard team={team} onOpen={onOpen} />)
+
+		expect(screen.queryAllByTestId('team-member-avatar')).toHaveLength(0)
+	})
+
+	it('1 участник → рендерится ровно 1 аватар', () => {
+		const team = createTeam({
+			members: [createMember('1', 'Alice')],
+		})
+
+		render(<TeamCard team={team} onOpen={onOpen} />)
+
+		expect(screen.getAllByTestId('team-member-avatar')).toHaveLength(1)
+	})
+
+	it('3 участника → рендерятся 3 аватара', () => {
 		const team = createTeam({
 			members: [
 				createMember('1', 'Alice'),
@@ -85,9 +110,7 @@ describe('TeamCard', () => {
 
 		render(<TeamCard team={team} onOpen={onOpen} />)
 
-		expect(screen.getByText('AL')).toBeDefined()
-		expect(screen.getByText('BO')).toBeDefined()
-		expect(screen.getByText('CH')).toBeDefined()
+		expect(screen.getAllByTestId('team-member-avatar')).toHaveLength(3)
 	})
 
 	it('показывает "+N" при больше 4 участниках', () => {
