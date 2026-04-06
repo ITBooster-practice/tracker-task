@@ -5,6 +5,7 @@ import {
 	createProjectId,
 	formatProjectNameFromId,
 	getProjectById,
+	normalizeProjectId,
 } from '@/shared/lib/projects/catalog'
 
 // Мокаем модуль config ДО импорта catalog.ts
@@ -19,10 +20,10 @@ vi.mock('@/shared/config', () => ({
 }))
 
 describe('buildTeamProjectHref', () => {
-	it('оба параметра переданы — возвращает href', () => {
-		const result = buildTeamProjectHref('team-1', 'project-1')
+	it("buildTeamProjectHref('team-1', 'proj-2') → /teams/team-1/projects/proj-2", () => {
+		const result = buildTeamProjectHref('team-1', 'proj-2')
 
-		expect(result).toBe('/teams/team-1/projects/project-1')
+		expect(result).toBe('/teams/team-1/projects/proj-2')
 	})
 
 	it('teamId = null', () => {
@@ -39,19 +40,28 @@ describe('buildTeamProjectHref', () => {
 })
 
 describe('getProjectById', () => {
-	it('существующий проект', () => {
+	it("getProjectById('существующий-id') → возвращает ProjectCatalogItem", () => {
 		const result = getProjectById('tracker-task')
 
-		expect(result).not.toBeNull()
-		expect(result!.name).toBe('Tracker Task')
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'tracker-task',
+				name: 'Tracker Task',
+				code: 'TT',
+			}),
+		)
 	})
 
-	it('несуществующий проект', () => {
-		expect(getProjectById('nonexistent')).toBeNull()
+	it("getProjectById('несуществующий') → undefined", () => {
+		expect(getProjectById('nonexistent')).toBeUndefined()
 	})
 })
 
 describe('formatProjectNameFromId', () => {
+	it("formatProjectNameFromId('TRACKER_2') → корректное человекочитаемое название", () => {
+		expect(formatProjectNameFromId('TRACKER_2')).toBe('Tracker 2')
+	})
+
 	it('slug с дефисами', () => {
 		expect(formatProjectNameFromId('tracker-task')).toBe('Tracker Task')
 	})
@@ -70,7 +80,7 @@ describe('formatProjectNameFromId', () => {
 })
 
 describe('createProjectId', () => {
-	it('обычное имя', () => {
+	it("createProjectId('My Project') → нормализованный slug", () => {
 		expect(createProjectId('My Project', [])).toBe('my-project')
 	})
 
@@ -96,11 +106,17 @@ describe('createProjectId', () => {
 		expect(createProjectId('', ['a', 'b'])).toBe('project-3')
 	})
 
-	it('кириллица в имени', () => {
-		expect(createProjectId('Мой Проект', [])).toBe('мой-проект')
+	it('кириллица в имени транслитерируется', () => {
+		expect(createProjectId('Мой Проект', [])).toBe('moy-proekt')
 	})
 
 	it('множественные пробелы → один дефис', () => {
 		expect(createProjectId('my   project', [])).toBe('my-project')
+	})
+})
+
+describe('normalizeProjectId', () => {
+	it('транслитерирует кириллицу, убирает пробелы и приводит к upper snake_case', () => {
+		expect(normalizeProjectId('Мой проект 2!')).toBe('MOY_PROEKT_2')
 	})
 })
