@@ -1,4 +1,6 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import React from 'react'
+import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { create } from 'zustand'
 
@@ -24,33 +26,54 @@ describe('useHydratedStore', () => {
 		useTestStore = createTestStore()
 	})
 
-	it('возвращает значение из стора', () => {
+	it('до монтирования (SSR) возвращает undefined', () => {
+		let captured: number | undefined
+
+		const TestComponent = () => {
+			captured = useHydratedStore(useTestStore, (state) => state.count)
+			return null
+		}
+
+		renderToString(React.createElement(TestComponent))
+
+		expect(captured).toBeUndefined()
+	})
+
+	it('после монтирования возвращает актуальное значение из Zustand store', async () => {
 		const { result } = renderHook(() =>
 			useHydratedStore(useTestStore, (state) => state.count),
 		)
 
-		expect(result.current).toBe(42)
+		await waitFor(() => {
+			expect(result.current).toBe(42)
+		})
 	})
 
-	it('применяет selector — возвращает конкретное поле, а не весь стор', () => {
+	it('после монтирования selector возвращает актуальное поле из store', async () => {
 		const { result } = renderHook(() =>
 			useHydratedStore(useTestStore, (state) => state.name),
 		)
 
-		expect(result.current).toBe('test')
+		await waitFor(() => {
+			expect(result.current).toBe('test')
+		})
 	})
 
-	it('отражает изменения стора после обновления', () => {
-		const { result, rerender } = renderHook(() =>
+	it('при изменении store реактивно обновляется', async () => {
+		const { result } = renderHook(() =>
 			useHydratedStore(useTestStore, (state) => state.count),
 		)
 
-		expect(result.current).toBe(42)
+		await waitFor(() => {
+			expect(result.current).toBe(42)
+		})
 
-		useTestStore.getState().increment()
+		act(() => {
+			useTestStore.getState().increment()
+		})
 
-		rerender()
-
-		expect(result.current).toBe(43)
+		await waitFor(() => {
+			expect(result.current).toBe(43)
+		})
 	})
 })
