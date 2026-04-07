@@ -2,59 +2,67 @@ import { notFound } from 'next/navigation'
 
 import { Button } from '@repo/ui'
 
+import {
+	TaskPriority,
+	TaskPriorityBadge,
+	TaskStatus,
+	TaskStatusBadge,
+	TaskType,
+	TaskTypeBadge,
+} from '@/entities/task'
 import { FEATURES } from '@/shared/config'
 
-const mockTasks = [
+interface Task {
+	id: string
+	title: string
+	type: TaskType
+	status: TaskStatus
+	priority: TaskPriority
+	assignee: string
+}
+
+const mockTasks: Task[] = [
 	{
 		id: 'TT-1',
 		title: 'Реализовать систему авторизации',
 		type: 'Эпик',
-		status: 'В работе',
-		priority: 'Высокий',
+		status: 'IN_PROGRESS',
+		priority: 'HIGH',
 		assignee: 'Алексей',
 	},
 	{
 		id: 'TT-2',
 		title: 'Kanban доска с drag & drop',
 		type: 'Стори',
-		status: 'В работе',
-		priority: 'Высокий',
+		status: 'IN_PROGRESS',
+		priority: 'HIGH',
 		assignee: 'Мария',
 	},
 	{
 		id: 'TT-3',
 		title: 'Фильтры и поиск задач',
 		type: 'Стори',
-		status: 'К выполнению',
-		priority: 'Средний',
+		status: 'TODO',
+		priority: 'MEDIUM',
 		assignee: 'Дмитрий',
 	},
 	{
 		id: 'TT-4',
 		title: 'Исправить баг с отображением аватаров',
 		type: 'Баг',
-		status: 'Ревью',
-		priority: 'Высокий',
+		status: 'IN_REVIEW',
+		priority: 'HIGH',
 		assignee: 'Елена',
 	},
 	{
 		id: 'TT-5',
 		title: 'Настроить CI/CD pipeline',
 		type: 'Тех. долг',
-		status: 'Готово',
-		priority: 'Средний',
+		status: 'DONE',
+		priority: 'MEDIUM',
 		assignee: 'Павел',
 	},
 ] as const
-
-const typeBadgeClassName: Record<(typeof mockTasks)[number]['type'], string> = {
-	Эпик: 'border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/20 dark:text-violet-200',
-	Стори:
-		'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/25 dark:bg-sky-500/20 dark:text-sky-200',
-	Баг: 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/20 dark:text-rose-200',
-	'Тех. долг':
-		'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/20 dark:text-amber-200',
-}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -111,22 +119,24 @@ export default async function TasksPage() {
 							{mockTasks?.map((task) => (
 								<tr key={task.id} className='border-b border-border last:border-b-0'>
 									<td className='px-4 py-3'>
-										<span className='block h-5 w-5 rounded-[calc(var(--radius-control)-2px)] border-2 border-primary' />
+										<div className='block size-5 rounded-[calc(var(--radius-control)-2px)] border-2 border-primary' />
 									</td>
-									<td className='px-3 py-3 text-xl text-muted-foreground'>{task.id}</td>
-									<td className='px-3 py-3 text-xl font-medium text-foreground'>
-										{task.title}
+									<td className='px-3 py-3 text-body text-muted-foreground'>
+										<span>{task.id}</span>
+									</td>
+									<td className='px-3 py-3 text-body font-medium text-foreground'>
+										<span>{task.title}</span>
+									</td>
+									<td className='px-3 py-3 leading-none'>
+										<TaskTypeBadge type={task.type} />
+									</td>
+									<td className='px-3 py-3 leading-none'>
+										<TaskStatusBadge status={task.status} />
 									</td>
 									<td className='px-3 py-3'>
-										<span
-											className={`inline-flex rounded-full px-2.5 py-1 text-sm font-medium ${typeBadgeClassName[task.type]}`}
-										>
-											{task.type}
-										</span>
+										<TaskPriorityBadge priority={task.priority} />
 									</td>
-									<td className='px-3 py-3 text-xl text-foreground'>{task.status}</td>
-									<td className='px-3 py-3 text-xl text-foreground'>{task.priority}</td>
-									<td className='px-3 py-3 text-xl text-foreground'>{task.assignee}</td>
+									<td className='px-3 py-3 text-body text-foreground'>{task.assignee}</td>
 								</tr>
 							))}
 						</tbody>
