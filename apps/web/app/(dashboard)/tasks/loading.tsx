@@ -32,28 +32,30 @@ export default function Loading() {
 							</tr>
 						</thead>
 						<tbody>
-							{Array.from({ length: 4 }).map((_, index) => (
+							{Array.from({ length: 5 }).map((_, index) => (
 								<tr key={index} className='border-b border-border last:border-b-0'>
-									<td className='px-4 py-4'>
-										<Skeleton className='h-5 w-5 rounded-[calc(var(--radius-control)-2px)]' />
+									<td className='px-4 py-3'>
+										<Skeleton className='size-5 rounded-[calc(var(--radius-control)-2px)]' />
 									</td>
-									<td className='px-3 py-4'>
-										<Skeleton className='h-4 w-14' />
+									<td className='px-3 py-3'>
+										<Skeleton className='text-body w-14 text-transparent'>noop</Skeleton>
 									</td>
-									<td className='px-3 py-4'>
-										<Skeleton className='h-4 w-64 max-w-full' />
+									<td className='px-3 py-3'>
+										<Skeleton className='w-64 max-w-full text-transparent'>noop</Skeleton>
 									</td>
-									<td className='px-3 py-4'>
-										<Skeleton className='h-4 w-24' />
+									<td className='px-3 py-3'>
+										<Skeleton className='text-body w-20 text-transparent'>noop</Skeleton>
 									</td>
-									<td className='px-3 py-4'>
-										<Skeleton className='h-4 w-28' />
+									<td className='px-3 py-3'>
+										<Skeleton className='px-2 py-0.5 text-xs w-28 text-transparent border border-transparent'>
+											noop
+										</Skeleton>
 									</td>
-									<td className='px-3 py-4'>
-										<Skeleton className='h-4 w-20' />
+									<td className='px-3 py-3'>
+										<Skeleton className='size-3.5' />
 									</td>
-									<td className='px-3 py-4'>
-										<Skeleton className='h-4 w-24' />
+									<td className='px-3 py-3'>
+										<Skeleton className='text-body w-24 text-transparent'>noop</Skeleton>
 									</td>
 								</tr>
 							))}
