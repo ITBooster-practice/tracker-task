@@ -2,13 +2,15 @@ import { notFound } from 'next/navigation'
 
 import { Card, CardContent } from '@repo/ui'
 
+import { TaskPriority, TaskPriorityBadge, TaskType, TaskTypeBadge } from '@/entities/task'
 import { FEATURES } from '@/shared/config'
 
 type SprintTask = {
 	id: string
 	title: string
-	type: 'Эпик' | 'Стори' | 'Баг'
+	type: TaskType
 	tags: string[]
+	priority: TaskPriority
 }
 
 const sprintColumns: Array<{
@@ -23,12 +25,14 @@ const sprintColumns: Array<{
 				title: 'Realtime уведомления через WebSocket',
 				type: 'Стори',
 				tags: ['backend', 'realtime'],
+				priority: 'HIGH',
 			},
 			{
 				id: 'TT-8',
 				title: 'AI генерация эпиков из описания фичи',
 				type: 'Эпик',
 				tags: ['ai', 'feature'],
+				priority: 'MEDIUM',
 			},
 		],
 	},
@@ -38,14 +42,16 @@ const sprintColumns: Array<{
 			{
 				id: 'TT-3',
 				title: 'Фильтры и поиск задач',
-				type: 'Стори',
+				type: 'Тех. долг',
 				tags: ['ui', 'search'],
+				priority: 'LOW',
 			},
 			{
 				id: 'TT-9',
 				title: 'Система ролей и прав доступа',
-				type: 'Стори',
+				type: 'Баг',
 				tags: ['auth', 'roles'],
+				priority: 'CRITICAL',
 			},
 		],
 	},
@@ -55,25 +61,20 @@ const sprintColumns: Array<{
 			{
 				id: 'TT-1',
 				title: 'Реализовать систему авторизации',
-				type: 'Эпик',
+				type: 'Задача',
 				tags: ['auth', 'security'],
+				priority: 'MEDIUM',
 			},
 			{
 				id: 'TT-2',
 				title: 'Kanban доска c drag & drop',
 				type: 'Стори',
 				tags: ['ui', 'core'],
+				priority: 'MEDIUM',
 			},
 		],
 	},
 ]
-
-const typeClassName: Record<SprintTask['type'], string> = {
-	Эпик: 'border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/20 dark:text-violet-200',
-	Стори:
-		'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/25 dark:bg-sky-500/20 dark:text-sky-200',
-	Баг: 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/20 dark:text-rose-200',
-}
 
 export default function SprintsPage() {
 	if (!FEATURES.SPRINTS) {
@@ -129,17 +130,17 @@ export default function SprintsPage() {
 									>
 										<CardContent className='space-y-2.5 px-3 py-3 text-foreground'>
 											<div className='flex items-center gap-2'>
-												<span
-													className={`rounded-full px-2 py-0.5 text-xs font-medium ${typeClassName[task.type]}`}
-												>
-													{task.type}
-												</span>
+												<TaskTypeBadge type={task.type} />
 												<span className='text-xs text-foreground'>{task.id}</span>
 											</div>
 
 											<p className='text-lg font-medium leading-snug text-foreground'>
 												{task.title}
 											</p>
+
+											<div className='flex items-center gap-2'>
+												<TaskPriorityBadge priority={task.priority} />
+											</div>
 
 											<div className='flex flex-wrap gap-1.5'>
 												{task.tags.map((tag) => (
