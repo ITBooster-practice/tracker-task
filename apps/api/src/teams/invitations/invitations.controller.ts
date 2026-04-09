@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swa
 
 import { Authorization } from '../../auth/decorators/authorization.decorator'
 import { Authorized } from '../../auth/decorators/authorized.decorator'
+import { TeamResponse } from '../dto/team-response.dto'
 import {
 	MyInvitationResponse,
 	TeamInvitationResponse,
@@ -27,7 +28,7 @@ export class InvitationsController {
 	}
 
 	@ApiOperation({ summary: 'Принять приглашение по токену' })
-	@ApiOkResponse({ type: TeamInvitationResponse })
+	@ApiOkResponse({ type: TeamResponse })
 	@Post(':token/accept')
 	@HttpCode(HttpStatus.OK)
 	acceptInvitation(
