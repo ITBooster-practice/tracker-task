@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core'
+import { ScheduleModule } from '@nestjs/schedule'
 import { ZodSerializerInterceptor } from 'nestjs-zod'
 
 import { AppService } from './app.service'
@@ -15,6 +16,7 @@ import { RedisModule } from './common/redis/redis.module'
 @Module({
 	imports: [
 		ConfigModule.forRoot({ isGlobal: true }),
+		ScheduleModule.forRoot(),
 		PrismaModule,
 		RedisModule,
 		AuthModule,

@@ -8,11 +8,13 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common'
+import { Cron } from '@nestjs/schedule'
 
 import { PrismaService } from '../../../prisma/prisma.service'
 import {
 	INVITATION_ERROR_MESSAGES,
 	INVITATION_LOG_MESSAGES,
+	TEAM_INVITATION_EXPIRE_CRON,
 	TEAM_INVITATION_EXPIRES_IN_HOURS,
 } from '../../common/constants/invitations.constants'
 import { MailService } from '../../mail/mail.service'
@@ -366,6 +368,7 @@ export class TeamInvitationsService {
 		})
 	}
 
+	@Cron(TEAM_INVITATION_EXPIRE_CRON)
 	async expirePendingInvitations() {
 		return this.prisma.teamInvitation.updateMany({
 			where: {

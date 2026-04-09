@@ -1,6 +1,7 @@
 export const TEAM_INVITATION_EXPIRES_IN_HOURS = 48
 export const TEAM_INVITATION_EXPIRES_IN_LABEL = '48 часов'
 export const TEAM_INVITATION_EMAIL_SUBJECT = 'Вас пригласили в команду в Tracker Task'
+export const TEAM_INVITATION_EXPIRE_CRON = '0 */6 * * *'
 
 export const INVITATION_ERROR_MESSAGES = {
 	TEAM_NOT_FOUND: 'Команда не найдена',
