@@ -3,9 +3,14 @@ import type { ExecutionContext } from '@nestjs/common'
 
 import { USER_ID, TEAM_ID } from './teams.helpers'
 
+interface GuardRouteParams {
+	teamId?: string | null
+	id?: string | null
+}
+
 export function createCtx(
 	user: unknown = { id: USER_ID },
-	teamId: string | null = TEAM_ID,
+	params: GuardRouteParams = { teamId: TEAM_ID },
 ): ExecutionContext {
 	return {
 		getHandler: vi.fn(),
@@ -13,7 +18,7 @@ export function createCtx(
 		switchToHttp: () => ({
 			getRequest: () => ({
 				user,
-				params: { teamId },
+				params,
 			}),
 		}),
 	} as unknown as ExecutionContext
