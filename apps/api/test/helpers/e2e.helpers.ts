@@ -13,7 +13,10 @@ import { CustomZodValidationPipe } from '../../src/common/providers/zod-validati
 import { REDIS_CLIENT } from '../../src/common/redis/redis.constants'
 import { MailService } from '../../src/mail/mail.service'
 
-const mailServiceMock = { sendWelcomeEmail: () => Promise.resolve() }
+const mailServiceMock = {
+	sendWelcomeEmail: () => Promise.resolve(),
+	sendTeamInvitationEmail: () => Promise.resolve(),
+}
 
 export async function createTestApp(): Promise<{
 	app: INestApplication
