@@ -14,6 +14,7 @@
   - [PATCH /teams/:id](#patch-teamsid)
   - [DELETE /teams/:id](#delete-teamsid)
 - [TeamMembers](#teammembers)
+- [Invitations](#invitations)
 - [Prisma Connection](#prisma-connection)
 
 ## Инфраструктура
@@ -24,6 +25,8 @@
 | ------------------------------------------------ | ---------------------------------------------------------------------------- |
 | `createTestApp()`                                | Поднимает `AppModule`, подключает пайпы/интерцепторы, мокирует `MailService` |
 | `registerAndLogin(app, email, password?, name?)` | Регистрирует пользователя, возвращает `{ cookies }`                          |
+
+`MailService` в e2e мокируется с методами `sendWelcomeEmail()` и `sendTeamInvitationEmail()`, чтобы тесты не ходили во внешний email-провайдер.
 
 **Паттерн setup/teardown:**
 
@@ -183,6 +186,49 @@ Setup: 4 пользователя — `owner`, `admin`, `member`, `stranger`. К
 | MEMBER пытается удалить другого   | 403 |
 | Попытка удалить OWNER             | 403 |
 | Без токена                        | 401 |
+
+## Invitations
+
+Файл: `test/e2e/invitations.e2e-spec.ts`
+Setup: 5 пользователей — `owner`, `admin`, `member`, `stranger`, `invitee`. Команда создаётся owner-ом; `admin` и `member` добавляются через Prisma.
+
+### POST /teams/:id/invitations
+
+| Сценарий                             | Код |
+| ------------------------------------ | --- |
+| OWNER создаёт приглашение            | 201 |
+| MEMBER пытается отправить invitation | 403 |
+
+### GET /teams/:id/invitations
+
+| Сценарий                          | Код |
+| --------------------------------- | --- |
+| ADMIN получает список приглашений | 200 |
+
+### GET /invitations/me
+
+| Сценарий                                         | Код |
+| ------------------------------------------------ | --- |
+| Пользователь получает свои `PENDING` invitations | 200 |
+
+### POST /invitations/:token/accept
+
+| Сценарий                                              | Код |
+| ----------------------------------------------------- | --- |
+| Пользователь принимает invitation и становится MEMBER | 200 |
+
+### POST /invitations/:token/decline
+
+| Сценарий                          | Код |
+| --------------------------------- | --- |
+| Пользователь отклоняет invitation | 200 |
+
+### DELETE /teams/:id/invitations/:invId
+
+| Сценарий                                | Код |
+| --------------------------------------- | --- |
+| OWNER отзывает приглашение              | 200 |
+| Посторонний пользователь получает отказ | 403 |
 
 ## Prisma Connection
 
