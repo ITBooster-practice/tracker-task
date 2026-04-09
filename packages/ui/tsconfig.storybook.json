@@ -1,6 +1,7 @@
 {
 	"extends": "@repo/typescript-config/react-library.json",
 	"compilerOptions": {
+		"composite": true,
 		"outDir": "out-tsc/storybook",
 		"module": "esnext",
 		"moduleResolution": "bundler",

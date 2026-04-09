@@ -3,13 +3,23 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"baseUrl": ".",
+		"rootDir": "src",
 		"paths": {
 			"@/*": ["./src/*"],
 			"@repo/ui/*": ["./src/*"]
 		}
 	},
 	"include": ["src"],
-	"exclude": ["node_modules", "dist"],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"out-tsc",
+		"src/**/*.stories.ts",
+		"src/**/*.stories.tsx",
+		"src/**/*.stories.js",
+		"src/**/*.stories.jsx",
+		"src/**/*.stories.mdx"
+	],
 	"references": [
 		{
 			"path": "./tsconfig.storybook.json"
