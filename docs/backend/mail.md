@@ -28,37 +28,47 @@ src/mail/
     resend-mail.provider.ts        # реализация через Resend HTTP API
   templates/
     welcome.email.tsx              # React Email шаблон приветственного письма
+    team-invitation.email.tsx      # Письмо-приглашение в команду
 ```
 
 ## Переменные окружения
 
-| Переменная       | Описание                | Пример                |
-| ---------------- | ----------------------- | --------------------- |
-| `RESEND_API_KEY` | API-ключ сервиса Resend | `re_xxxxxxxxxxxxxxxx` |
-| `MAIL_FROM`      | Email адрес отправителя | `noreply@example.com` |
-| `MAIL_FROM_NAME` | Имя отправителя         | `Tracker Task`        |
+| Переменная       | Описание                | Пример                  |
+| ---------------- | ----------------------- | ----------------------- |
+| `RESEND_API_KEY` | API-ключ сервиса Resend | `re_xxxxxxxxxxxxxxxx`   |
+| `MAIL_FROM`      | Email адрес отправителя | `noreply@example.com`   |
+| `MAIL_FROM_NAME` | Имя отправителя         | `Tracker Task`          |
+| `WEB_APP_URL`    | Базовый URL web-клиента | `http://localhost:3001` |
 
 ## Как добавить новое письмо
 
 **1. Создать шаблон** в `templates/`:
 
 ```tsx
-// templates/invite.email.tsx
-export const INVITE_EMAIL_SUBJECT = 'Вас пригласили в команду'
-
-export const InviteEmail = ({ name, teamName }: Props) => <Html>...</Html>
+// templates/team-invitation.email.tsx
+export const TeamInvitationEmail = ({ teamName, inviterName, invitationLink }: Props) => (
+	<Html>...</Html>
+)
 ```
 
 **2. Добавить метод в `MailService`:**
 
 ```typescript
-async sendInviteEmail(email: string, name: string, teamName: string) {
-  const html = await render(InviteEmail({ name, teamName }))
+async sendTeamInvitationEmail(email: string, teamName: string, inviterName: string | null, token: string) {
+  const invitationLink = new URL(`/invitations/${token}`, WEB_APP_URL).toString()
+  const html = await render(
+    TeamInvitationEmail({
+      teamName,
+      inviterName: inviterName ?? 'Участник команды',
+      invitationLink,
+      expiresIn: TEAM_INVITATION_EXPIRES_IN_LABEL,
+    }),
+  )
 
   await this.mailProvider.send({
-    from: `${this.mailName} <${this.mailAddress}>`,
+    from: this.getMailFrom(),
     to: email,
-    subject: INVITE_EMAIL_SUBJECT,
+    subject: TEAM_INVITATION_EMAIL_SUBJECT,
     html,
   })
 }
@@ -67,8 +77,20 @@ async sendInviteEmail(email: string, name: string, teamName: string) {
 **3. Вызвать из нужного бизнес-сервиса:**
 
 ```typescript
-await this.mailService.sendInviteEmail(user.email, user.name, team.name)
+await this.mailService.sendTeamInvitationEmail(
+	dto.email,
+	team.name,
+	inviter.user.name,
+	invitation.token,
+)
 ```
+
+## Что отправляется сейчас
+
+- `sendWelcomeEmail(email, name)` — приветственное письмо после регистрации
+- `sendTeamInvitationEmail(email, teamName, inviterName, token)` — письмо со ссылкой на приглашение
+
+Срок действия приглашения и subject письма вынесены в `src/common/constants/invitations.constants.ts`, чтобы не дублировать доменные значения между сервисом, cron и шаблонами.
 
 ## Шаблоны писем
 

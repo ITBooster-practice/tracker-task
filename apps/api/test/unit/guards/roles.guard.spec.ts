@@ -47,6 +47,18 @@ describe('RolesGuard', () => {
 		})
 	})
 
+	it('пропускает если team id передан в params.id', async () => {
+		vi.mocked(reflector.getAllAndOverride).mockReturnValue(['OWNER'])
+		prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+
+		const result = await guard.canActivate(createCtx({ id: USER_ID }, { id: TEAM_ID }))
+
+		expect(result).toBe(true)
+		expect(prisma.teamMember.findUnique).toHaveBeenCalledWith({
+			where: { teamId_userId: { teamId: TEAM_ID, userId: USER_ID } },
+		})
+	})
+
 	it('выбрасывает 403 если роль участника не подходит', async () => {
 		vi.mocked(reflector.getAllAndOverride).mockReturnValue(['OWNER'])
 		prisma.teamMember.findUnique.mockResolvedValue(MEMBER_PLAIN)
@@ -59,16 +71,16 @@ describe('RolesGuard', () => {
 	it('выбрасывает 403 если user отсутствует в запросе', async () => {
 		vi.mocked(reflector.getAllAndOverride).mockReturnValue(['OWNER'])
 
-		await expect(guard.canActivate(createCtx(null, TEAM_ID))).rejects.toThrow(
+		await expect(guard.canActivate(createCtx(null, { teamId: TEAM_ID }))).rejects.toThrow(
 			ForbiddenException,
 		)
 		expect(prisma.teamMember.findUnique).not.toHaveBeenCalled()
 	})
 
-	it('выбрасывает 403 если teamId отсутствует в запросе', async () => {
+	it('выбрасывает 403 если id команды отсутствует в запросе', async () => {
 		vi.mocked(reflector.getAllAndOverride).mockReturnValue(['OWNER'])
 
-		await expect(guard.canActivate(createCtx({ id: USER_ID }, null))).rejects.toThrow(
+		await expect(guard.canActivate(createCtx({ id: USER_ID }, {}))).rejects.toThrow(
 			ForbiddenException,
 		)
 		expect(prisma.teamMember.findUnique).not.toHaveBeenCalled()

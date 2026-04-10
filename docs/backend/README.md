@@ -10,6 +10,7 @@
 ### API
 
 - [Swagger](./swagger/README.md) — API документация
+- [Teams](./teams/README.md) — Команды, участники, приглашения, роли
 
 ### База данных
 
@@ -23,7 +24,12 @@
 
 - [Обзор](./test/README.md) — Структура, команды
 - [Unit-тесты](./test/unit-tests.md) — AuthService: register, login
-- [E2E тест Prisma](./test/e2e-connection-test.md) — Проверка соединения с БД
+- [E2E-тесты](./test/e2e-tests.md) — Auth, Teams, TeamMembers, Invitations
+
+### Инфраструктура
+
+- [Mail](./mail.md) — Отправка писем и шаблоны
+- [Schedule](./schedule.md) — Шпаргалка по `@nestjs/schedule`
 
 ---
 
@@ -44,6 +50,26 @@
 - `refreshToken` — HTTP-only cookie, управляется сервером автоматически; хранится в Redis с TTL
 - Защищённые маршруты: декоратор `@Authorization()` (= `@UseGuards(JwtGuard)`)
 - `@Authorized()` — param-декоратор для получения объекта пользователя из запроса
+
+### Команды и приглашения
+
+- Реализованы команды: создание, просмотр, редактирование, удаление
+- Реализовано управление участниками: список, смена роли, исключение, self-leave
+- Реализованы приглашения в команду:
+  - `POST /teams/:id/invitations`
+  - `GET /teams/:id/invitations`
+  - `DELETE /teams/:id/invitations/:invId`
+  - `GET /invitations/me`
+  - `POST /invitations/:token/accept`
+  - `POST /invitations/:token/decline`
+- Team-scoped invitations routes защищены через `@Authorization()` + `@Roles('OWNER', 'ADMIN')` + `RolesGuard`
+- Входящие invitations routes защищены через `@Authorization()`
+
+### Планировщик задач
+
+- Для фоновых задач используется `@nestjs/schedule`
+- `ScheduleModule.forRoot()` подключён в корневом модуле
+- Каждые 6 часов cron-задача переводит просроченные `PENDING` invitations в `EXPIRED`
 
 ### Переменные окружения
 
@@ -81,6 +107,9 @@ apps/api/
     │   └── interfaces/
     │       └── jwt.interface.ts    # JwtPayload { id }
     ├── common/
+    │   ├── constants/
+    │   │   ├── roles.constants.ts         # ROLES_KEY, TeamRole
+    │   │   └── invitations.constants.ts   # TTL invitations, cron, error/log messages
     │   ├── providers/
     │   │   └── zod-validation.provider.ts  # Кастомный ValidationPipe
     │   └── redis/
@@ -88,9 +117,27 @@ apps/api/
     │       ├── redis.module.ts     # @Global() модуль, создаёт ioredis-клиент
     │       └── redis.service.ts    # setRefreshToken / getRefreshToken / deleteRefreshToken
     ├── guards/
-    │   └── auth.guard.ts       # JwtGuard extends AuthGuard('jwt')
+    │   ├── auth.guard.ts       # JwtGuard extends AuthGuard('jwt')
+    │   └── roles.guard.ts      # Guard для OWNER / ADMIN на team-scoped routes
+    ├── mail/
+    │   ├── mail.module.ts
+    │   ├── mail.service.ts
+    │   └── templates/
+    │       ├── welcome.email.tsx
+    │       └── team-invitation.email.tsx
     ├── strategies/
     │   └── jwt.strategy.ts     # PassportStrategy -> validateUser
+    ├── teams/
+    │   ├── teams.module.ts
+    │   ├── teams.controller.ts
+    │   ├── teams.service.ts
+    │   ├── invitations/
+    │   │   ├── team-invitations.module.ts
+    │   │   ├── team-invitations.controller.ts
+    │   │   ├── invitations.controller.ts
+    │   │   ├── team-invitations.service.ts
+    │   │   └── dto/
+    │   └── members/
     └── utils/
         ├── swagger.util.ts     # setupSwagger()
         ├── is-dev.util.ts      # isDev(configService)
@@ -109,4 +156,5 @@ apps/api/
 | Database   | PostgreSQL + Prisma 7.x                       |
 | Cache      | Redis 7 + ioredis                             |
 | API Docs   | @nestjs/swagger                               |
+| Scheduling | @nestjs/schedule                              |
 | Testing    | Vitest                                        |

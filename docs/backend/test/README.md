@@ -15,6 +15,7 @@ apps/api/test/
 ├── helpers/
 │   ├── auth.helpers.ts                  # createPrismaMock, createJwtMock, createConfigMock, makeTokens
 │   ├── teams.helpers.ts                 # createPrismaMock, TEAM, MEMBER_OWNER/ADMIN/PLAIN, USER_ID, TEAM_ID
+│   ├── invitations.helpers.ts           # mocks и фикстуры для invitations service
 │   └── e2e.helpers.ts                   # createTestApp, registerAndLogin
 ├── unit/
 │   ├── app.controller.spec.ts
@@ -22,12 +23,14 @@ apps/api/test/
 │   │   └── auth.service.spec.ts
 │   └── teams/
 │       ├── teams.service.spec.ts
-│       └── team-members.service.spec.ts
+│       ├── team-members.service.spec.ts
+│       └── team-invitations.service.spec.ts
 └── e2e/
     ├── prisma-connection.e2e-spec.ts
     ├── auth.e2e-spec.ts
     ├── teams.e2e-spec.ts
-    └── team-members.e2e-spec.ts
+    ├── team-members.e2e-spec.ts
+    └── invitations.e2e-spec.ts
 ```
 
 ## Команды

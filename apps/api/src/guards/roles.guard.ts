@@ -17,6 +17,10 @@ export class RolesGuard implements CanActivate {
 		private readonly prisma: PrismaService,
 	) {}
 
+	private getTeamId(request: Request): string | null {
+		return request.params['teamId'] ?? request.params['id'] ?? null
+	}
+
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const requiredRoles = this.reflector.getAllAndOverride<TeamRole[]>(ROLES_KEY, [
 			context.getHandler(),
@@ -29,7 +33,7 @@ export class RolesGuard implements CanActivate {
 
 		const request = context.switchToHttp().getRequest<Request>()
 		const user = request.user as User
-		const teamId = request.params['teamId']
+		const teamId = this.getTeamId(request)
 
 		if (!user || !teamId) {
 			throw new ForbiddenException('Недостаточно прав')
