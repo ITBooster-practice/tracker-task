@@ -19,6 +19,7 @@ export * from './sonner'
 export * from './drawer'
 export * from './dialog-drawer'
 
+export * from './pagination'
 export * from './layout/stack'
 export * from './layout/container'
 
