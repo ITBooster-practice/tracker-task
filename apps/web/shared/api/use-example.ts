@@ -5,13 +5,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import type { PaginationParams } from '@repo/types'
+
 import {
 	CreateExampleDto,
 	Example,
 	exampleService,
 	UpdateExampleDto,
 } from '@/shared/lib/api/example-service'
-import { ApiError, PaginationParams } from '@/shared/lib/api/types'
+import { ApiError } from '@/shared/lib/api/types'
 
 // Query keys для кэширования
 export const exampleKeys = {
