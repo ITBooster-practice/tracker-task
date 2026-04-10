@@ -1,5 +1,5 @@
 export { Pagination } from './pagination'
-export type { PaginationMeta, PaginationProps } from './pagination'
+export type { PaginationProps } from './pagination'
 export {
 	PaginationRoot,
 	PaginationContent,

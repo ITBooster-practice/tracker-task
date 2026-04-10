@@ -110,12 +110,7 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'
 
 // ─── Smart wrapper ─────────────────────────────────────────────────────────────
 
-export interface PaginationMeta {
-	page: number
-	limit: number
-	total: number
-	totalPages: number
-}
+import type { PaginationMeta } from '@repo/types'
 
 export interface PaginationProps {
 	meta: PaginationMeta
