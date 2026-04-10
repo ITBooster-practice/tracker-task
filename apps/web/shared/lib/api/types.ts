@@ -10,25 +10,6 @@ export interface ApiError {
 // Обёртка для одиночного ответа
 export type ApiResponse<T> = AxiosResponse<T>
 
-// Пагинированный ответ
-export interface PaginatedResponse<T> {
-	data: T[]
-	meta: PaginationMeta
-}
-
-export interface PaginationMeta {
-	page: number
-	limit: number
-	total: number
-	totalPages: number
-}
-
-// Параметры пагинации для запросов
-export interface PaginationParams {
-	page?: number
-	limit?: number
-}
-
 // Базовый тип для сущностей с ID и timestamps
 export interface BaseEntity {
 	id: string

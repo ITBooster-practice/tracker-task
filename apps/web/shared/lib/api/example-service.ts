@@ -3,14 +3,10 @@
  * Скопируйте его и адаптируйте для своей сущности.
  */
 
+import type { PaginatedResponse, PaginationParams } from '@repo/types'
+
 import { client } from './client'
-import {
-	BaseEntity,
-	CreateDto,
-	PaginatedResponse,
-	PaginationParams,
-	UpdateDto,
-} from './types'
+import { BaseEntity, CreateDto, UpdateDto } from './types'
 
 // 1. Определите тип вашей сущности
 export interface Example extends BaseEntity {
