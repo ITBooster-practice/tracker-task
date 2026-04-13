@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 
-import { Button, EmptyState, Skeleton } from '@repo/ui'
+import { Button, EmptyState } from '@repo/ui'
 import { Plus, Users } from '@repo/ui/icons'
 
 import { useTeamsList } from '@/shared/api/use-teams'
@@ -11,6 +11,7 @@ import { ROUTES, teamRoutes } from '@/shared/config'
 
 import { mapTeamListItemToTeamCardModel } from '../lib/mappers'
 import {
+	teamPageGridClassName,
 	teamPageHeaderClassName,
 	teamPagePrimaryButtonClassName,
 	teamPageSubtitleClassName,
@@ -18,6 +19,7 @@ import {
 } from '../lib/styles'
 import type { TeamCardModel } from '../model/types'
 import { TeamCard } from './team-card'
+import { TeamCardSkeleton } from './team-card-skeleton'
 
 function TeamsPageView() {
 	const router = useRouter()
@@ -56,19 +58,9 @@ function TeamsPageView() {
 				</header>
 
 				{isLoading ? (
-					<div
-						className='grid gap-4 py-6 sm:grid-cols-2'
-						data-testid='teams-page-skeleton'
-					>
+					<div className={teamPageGridClassName} data-testid='teams-page-skeleton'>
 						{Array.from({ length: 4 }).map((_, index) => (
-							<div
-								key={`teams-skeleton-${index}`}
-								className='space-y-3 rounded-[var(--radius-surface)] border border-border bg-card p-5'
-							>
-								<Skeleton className='h-6 w-40' />
-								<Skeleton className='h-4 w-full' />
-								<Skeleton className='h-4 w-28' />
-							</div>
+							<TeamCardSkeleton key={`teams-skeleton-${index}`} />
 						))}
 					</div>
 				) : isError ? (
@@ -107,7 +99,7 @@ function TeamsPageView() {
 						/>
 					</div>
 				) : (
-					<section className='grid gap-4 sm:grid-cols-2'>
+					<section className={teamPageGridClassName}>
 						{sortedTeams.map((team) => (
 							<TeamCard key={team.id} team={team} onOpen={handleOpenTeam} />
 						))}
