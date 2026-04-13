@@ -4,8 +4,7 @@
 		"composite": true,
 		"outDir": "out-tsc/storybook",
 		"module": "esnext",
-		"moduleResolution": "bundler",
-		"jsx": "preserve"
+		"moduleResolution": "bundler"
 	},
 	"exclude": [
 		"src/**/*.spec.ts",

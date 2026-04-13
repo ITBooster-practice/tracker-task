@@ -1,5 +1,7 @@
 import { cn } from '@repo/ui'
 
+export const teamPageGridClassName = 'grid gap-4 sm:grid-cols-2'
+
 export const teamPageHeaderClassName =
 	'mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'
 
