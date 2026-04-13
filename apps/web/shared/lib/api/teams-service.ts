@@ -3,46 +3,16 @@ import type {
 	DeleteTeamResponse,
 	Team,
 	TeamListItem,
-	TeamMember,
 	UpdateTeam,
 } from '@repo/types'
 
 import { client } from './client'
+import { normalizeTeam, type TeamApiResponse } from './teams-normalizers'
 
 export type { CreateTeam, DeleteTeamResponse, Team, TeamListItem, UpdateTeam }
 
 const ENDPOINT = '/teams'
 const CREATE_ENDPOINT = `${ENDPOINT}/new`
-
-type TeamApiMember = Partial<TeamMember> & {
-	user?: {
-		id?: string
-		name?: string | null
-		email?: string
-	} | null
-}
-
-type TeamApiResponse = Omit<Team, 'members'> & {
-	members: TeamApiMember[]
-}
-
-function normalizeTeamMember(member: TeamApiMember): TeamMember {
-	return {
-		id: member.id ?? member.userId ?? member.user?.id ?? '',
-		userId: member.userId ?? member.user?.id ?? '',
-		name: member.name ?? member.user?.name ?? null,
-		email: member.email ?? member.user?.email ?? '',
-		role: member.role ?? 'MEMBER',
-		joinedAt: member.joinedAt ?? '',
-	}
-}
-
-function normalizeTeam(team: TeamApiResponse): Team {
-	return {
-		...team,
-		members: Array.isArray(team.members) ? team.members.map(normalizeTeamMember) : [],
-	}
-}
 
 export const teamsService = {
 	getAll: async (): Promise<TeamListItem[]> => {
