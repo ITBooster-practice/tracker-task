@@ -54,8 +54,16 @@ vi.mock('@repo/ui/icons', () => ({
 
 // ─── Мок: TeamCard ───────────────────────────────────────────────
 vi.mock('@/views/teams/ui/team-card', () => ({
-	TeamCard: ({ team }: { team: { id: string; name: string }; onOpen: () => void }) => (
-		<div data-testid={`team-card-${team.id}`}>{team.name}</div>
+	TeamCard: ({
+		team,
+		onOpen,
+	}: {
+		team: { id: string; name: string }
+		onOpen: (team: { id: string; name: string }) => void
+	}) => (
+		<button data-testid={`team-card-${team.id}`} onClick={() => onOpen(team)}>
+			{team.name}
+		</button>
 	),
 }))
 
@@ -168,5 +176,34 @@ describe('TeamsPageView', () => {
 
 		fireEvent.click(createButton!)
 		expect(mockPush).toHaveBeenCalledWith('/teams/new')
+	})
+
+	it('клик по TeamCard → router.push на страницу проектов команды', () => {
+		mockUseTeamsList.mockReturnValue({
+			data: [createTeamListItem({ id: 'team-42', name: 'Design Team' })],
+			isLoading: false,
+			isError: false,
+			refetch: vi.fn(),
+		})
+		render(<TeamsPageView />)
+
+		fireEvent.click(screen.getByTestId('team-card-team-42'))
+
+		expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('team-42'))
+	})
+
+	it('error — кнопка "Повторить" вызывает refetch', () => {
+		const mockRefetch = vi.fn()
+		mockUseTeamsList.mockReturnValue({
+			data: undefined,
+			isLoading: false,
+			isError: true,
+			refetch: mockRefetch,
+		})
+		render(<TeamsPageView />)
+
+		fireEvent.click(screen.getByRole('button', { name: 'Повторить' }))
+
+		expect(mockRefetch).toHaveBeenCalledOnce()
 	})
 })

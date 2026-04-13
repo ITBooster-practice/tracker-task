@@ -81,18 +81,32 @@ vi.mock('@repo/ui/icons', () => ({
 vi.mock('@/views/projects/ui/project-card', () => ({
 	ProjectCard: ({
 		project,
+		onOpen,
 	}: {
 		project: { id: string; name: string; code: string }
-		onOpen: () => void
+		onOpen: (project: { id: string; name: string; code: string }) => void
 	}) => (
-		<div data-testid={`project-card-${project.id}`}>
+		<button data-testid={`project-card-${project.id}`} onClick={() => onOpen(project)}>
 			{project.name} ({project.code})
-		</div>
+		</button>
 	),
 }))
 
 vi.mock('@/views/projects/ui/create-project-dialog', () => ({
-	CreateProjectDialog: () => <div data-testid='create-dialog' />,
+	CreateProjectDialog: ({
+		onCreate,
+	}: {
+		open: boolean
+		onOpenChange: (v: boolean) => void
+		onCreate: (data: { name: string; code: string }) => void
+	}) => (
+		<button
+			data-testid='create-dialog-submit'
+			onClick={() => onCreate({ name: 'Тест проект', code: 'TP' })}
+		>
+			Создать
+		</button>
+	),
 }))
 
 describe('ProjectsPageView', () => {
@@ -156,5 +170,21 @@ describe('ProjectsPageView', () => {
 			btn.textContent?.includes('Создать проект'),
 		)
 		expect(createButton).toBeDefined()
+	})
+
+	it('клик по ProjectCard → router.push с корректным путём', () => {
+		render(<ProjectsPageView />)
+
+		fireEvent.click(screen.getByTestId('project-card-project-1'))
+
+		expect(mockPush).toHaveBeenCalledWith('/teams/team-1/projects/project-1')
+	})
+
+	it('onCreate в CreateProjectDialog → добавляет проект в список', () => {
+		render(<ProjectsPageView />)
+
+		fireEvent.click(screen.getByTestId('create-dialog-submit'))
+
+		expect(screen.getByText('Тест проект (TP)')).toBeDefined()
 	})
 })

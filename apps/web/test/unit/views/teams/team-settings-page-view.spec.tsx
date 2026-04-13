@@ -1,5 +1,5 @@
 import { createTeamFixture, createTeamMemberFixture } from '@/test/mocks/teams.fixtures'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TEAM_ROLES } from '@repo/types'
@@ -180,5 +180,72 @@ describe('TeamSettingsPageView', () => {
 		expect(screen.getByText('Bob Member')).toBeDefined()
 		expect(screen.queryByRole('button', { name: 'Удалить Alice Owner' })).toBeNull()
 		expect(screen.getByRole('button', { name: 'Удалить Bob Member' })).toBeDefined()
+	})
+
+	it('инвайт — кнопка "Добавить участника" disabled при пустом и невалидном email', () => {
+		mockUseTeamDetail.mockReturnValue({
+			data: createTeamFixture({ members: [] }),
+			isPending: false,
+			isError: false,
+			refetch: vi.fn(),
+		})
+
+		render(<TeamSettingsPageView />)
+
+		const submitButton = screen.getByRole('button', { name: 'Добавить участника' })
+		expect(submitButton).toHaveProperty('disabled', true)
+
+		fireEvent.change(screen.getByPlaceholderText('user@company.com'), {
+			target: { value: 'not-an-email' },
+		})
+
+		expect(submitButton).toHaveProperty('disabled', true)
+	})
+
+	it('инвайт — submit с валидным email добавляет участника в список', () => {
+		mockUseTeamDetail.mockReturnValue({
+			data: createTeamFixture({ members: [] }),
+			isPending: false,
+			isError: false,
+			refetch: vi.fn(),
+		})
+
+		render(<TeamSettingsPageView />)
+
+		fireEvent.change(screen.getByPlaceholderText('user@company.com'), {
+			target: { value: 'john@example.com' },
+		})
+		fireEvent.submit(screen.getByPlaceholderText('user@company.com').closest('form')!)
+
+		expect(screen.getByText('John')).toBeDefined()
+		expect(screen.getByText('john@example.com')).toBeDefined()
+	})
+
+	it('удаление — клик "Удалить" → ConfirmDialog → "Подтвердить" убирает участника', () => {
+		mockUseTeamDetail.mockReturnValue({
+			data: createTeamFixture({
+				members: [
+					createTeamMemberFixture({
+						id: 'user-member',
+						name: 'Bob Member',
+						email: 'bob@example.com',
+						role: TEAM_ROLES.MEMBER,
+					}),
+				],
+			}),
+			isPending: false,
+			isError: false,
+			refetch: vi.fn(),
+		})
+
+		render(<TeamSettingsPageView />)
+
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить Bob Member' }))
+
+		expect(screen.getByTestId('confirm-dialog')).toBeDefined()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Подтвердить' }))
+
+		expect(screen.queryByText('Bob Member')).toBeNull()
 	})
 })
