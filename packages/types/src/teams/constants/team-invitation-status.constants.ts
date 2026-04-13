@@ -1,0 +1,9 @@
+export const TEAM_INVITATION_STATUSES = {
+	PENDING: 'PENDING',
+	ACCEPTED: 'ACCEPTED',
+	DECLINED: 'DECLINED',
+	EXPIRED: 'EXPIRED',
+} as const
+
+export type TeamInvitationStatus =
+	(typeof TEAM_INVITATION_STATUSES)[keyof typeof TEAM_INVITATION_STATUSES]
