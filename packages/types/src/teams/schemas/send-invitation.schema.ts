@@ -1,7 +1,9 @@
 import { z } from 'zod'
 
+import { createEmailSchema } from '../../auth/schemas/user-fields.schema'
+
 export const sendInvitationSchema = z.object({
-	email: z.email({ message: 'Некорректный email' }),
+	email: createEmailSchema({ invalid: 'Некорректный email' }),
 	role: z.enum(['ADMIN', 'MEMBER'], {
 		message: 'Роль должна быть ADMIN или MEMBER. Пригласить как OWNER нельзя',
 	}),

@@ -1,13 +1,10 @@
 import { z } from 'zod'
 
+import { userEmailSchema, userNameSchema } from './user-fields.schema'
+
 export const registerRequestSchema = z.object({
-	name: z
-		.string({ message: 'Имя должно быть строкой' })
-		.max(50, { message: 'Имя должно быть не длиннее 50 символов' })
-		.optional(),
-	email: z
-		.email({ error: 'Email некорректный' })
-		.min(1, { message: 'Email не может быть пустым' }),
+	name: userNameSchema.optional(),
+	email: userEmailSchema,
 	password: z
 		.string({ message: 'Пароль должен быть строкой' })
 		.min(6, { message: 'Пароль должен быть не менее 6 символов' })

@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
+import { userEmailSchema } from './user-fields.schema'
+
 export const loginRequestSchema = z.object({
-	email: z
-		.email({ message: 'Email некорректный' })
-		.min(1, { message: 'Email не может быть пустым' }),
+	email: userEmailSchema,
 	password: z
 		.string({ message: 'Пароль должен быть строкой' })
 		.min(6, { message: 'Пароль должен быть не менее 6 символов' })
