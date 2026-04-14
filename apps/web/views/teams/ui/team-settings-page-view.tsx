@@ -3,7 +3,13 @@
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { TEAM_ROLES, type TeamMember, type TeamRole } from '@repo/types'
+import {
+	TEAM_ROLES,
+	userEmailSchema,
+	userNameSchema,
+	type TeamMember,
+	type TeamRole,
+} from '@repo/types'
 import {
 	Avatar,
 	AvatarFallback,
@@ -30,6 +36,7 @@ import {
 import { Crown, Mail, Settings2, Shield, Trash2, UserPlus, Users } from '@repo/ui/icons'
 
 import { useTeamDetail } from '@/shared/api/use-teams'
+import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
 
 import {
 	teamDialogContentClassName,
@@ -69,16 +76,6 @@ const roleOptions = [
 	},
 ] as const
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function getInitials(name?: string | null) {
-	return (name ?? '')
-		.split(/\s+/)
-		.slice(0, 2)
-		.map((part) => part[0]?.toUpperCase() ?? '')
-		.join('')
-}
-
 function getRoleBadgeClassName(role: TeamRole) {
 	switch (role) {
 		case TEAM_ROLES.OWNER:
@@ -115,9 +112,10 @@ function TeamSettingsPageView() {
 	}, [team])
 
 	const normalizedInviteEmail = inviteEmail.trim().toLowerCase()
+	const isInviteEmailValid = userEmailSchema.safeParse(normalizedInviteEmail).success
 	const isInviteDisabled =
 		!normalizedInviteEmail ||
-		!emailPattern.test(normalizedInviteEmail) ||
+		!isInviteEmailValid ||
 		members.some((member) => member.email.toLowerCase() === normalizedInviteEmail)
 
 	const handleRoleChange = (memberId: string, nextRole: string) => {
@@ -150,12 +148,18 @@ function TeamSettingsPageView() {
 			return
 		}
 
+		const fallbackInviteName = 'Новый участник'
+		const derivedInviteName = getNameFromEmail(normalizedInviteEmail)
+		const inviteName = userNameSchema.safeParse(derivedInviteName).success
+			? derivedInviteName
+			: fallbackInviteName
+
 		setMembers((currentMembers) => [
 			...currentMembers,
 			{
 				id: normalizedInviteEmail,
 				userId: '',
-				name: getNameFromEmail(normalizedInviteEmail),
+				name: inviteName,
 				email: normalizedInviteEmail,
 				role: inviteRole,
 				joinedAt: new Date().toISOString(),
@@ -246,7 +250,7 @@ function TeamSettingsPageView() {
 
 							<div>
 								{members.map((member) => {
-									const memberName = member.name ?? member.email
+									const memberName = getUserDisplayName(member)
 									const isOwner = member.role === TEAM_ROLES.OWNER
 									return (
 										<div
@@ -256,7 +260,7 @@ function TeamSettingsPageView() {
 											<div className='flex min-w-0 items-center gap-3'>
 												<Avatar className='size-9 border border-border/80'>
 													<AvatarFallback className='bg-surface-2 text-[13px] font-medium text-muted-foreground'>
-														{getInitials(memberName)}
+														{getNameInitials(memberName)}
 													</AvatarFallback>
 												</Avatar>
 
