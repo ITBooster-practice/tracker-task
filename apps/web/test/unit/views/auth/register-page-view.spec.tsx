@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RegisterPageView } from '@/views/auth/ui/register-page-view'
 
-const { mockMutateAsync, mockPush, mockIsApiError, mockToastError } = vi.hoisted(() => ({
-	mockMutateAsync: vi.fn(),
-	mockPush: vi.fn(),
-	mockIsApiError: vi.fn(),
-	mockToastError: vi.fn(),
-}))
+const { mockMutateAsync, mockPush, mockIsApiError, mockToastError, mockSearchParamGet } =
+	vi.hoisted(() => ({
+		mockMutateAsync: vi.fn(),
+		mockPush: vi.fn(),
+		mockIsApiError: vi.fn(),
+		mockToastError: vi.fn(),
+		mockSearchParamGet: vi.fn(),
+	}))
 
 vi.mock('@/shared/api/use-auth', () => ({
 	useRegister: () => ({
@@ -19,6 +21,9 @@ vi.mock('@/shared/api/use-auth', () => ({
 
 vi.mock('next/navigation', () => ({
 	useRouter: () => ({ push: mockPush }),
+	useSearchParams: () => ({
+		get: mockSearchParamGet,
+	}),
 }))
 
 vi.mock('@/shared/lib/api/utils', () => ({
@@ -93,6 +98,7 @@ vi.mock('@/views/auth/model/use-register-form', () => ({
 describe('RegisterPageView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockSearchParamGet.mockReturnValue(null)
 	})
 
 	afterEach(cleanup)
@@ -144,6 +150,16 @@ describe('RegisterPageView', () => {
 		await waitFor(() => {
 			expect(mockPush).toHaveBeenCalledWith('/teams')
 		})
+	})
+
+	it('сохраняет параметр from для ссылки на вход', () => {
+		mockSearchParamGet.mockReturnValue('/invitations/token-1')
+
+		render(<RegisterPageView />)
+
+		expect(screen.getByRole('link', { name: 'Войти' }).getAttribute('href')).toBe(
+			'/login?from=%2Finvitations%2Ftoken-1',
+		)
 	})
 
 	it('API ошибка — показывает toast.error с сообщением', async () => {

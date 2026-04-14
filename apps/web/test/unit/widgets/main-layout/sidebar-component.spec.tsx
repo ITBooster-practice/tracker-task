@@ -38,9 +38,14 @@ vi.mock('@/features/theme', () => ({
 
 // ─── Мок: useTeamsList ───────────────────────────────────────────
 const mockUseTeamsList = vi.fn()
+const mockUseMe = vi.fn()
 
 vi.mock('@/shared/api/use-teams', () => ({
 	useTeamsList: () => mockUseTeamsList(),
+}))
+
+vi.mock('@/shared/api/use-auth', () => ({
+	useMe: () => mockUseMe(),
 }))
 
 // ─── Мок: shared/config ──────────────────────────────────────────
@@ -128,6 +133,13 @@ describe('Sidebar', () => {
 		mockUsePathname.mockReturnValue('/')
 		mockUseParams.mockReturnValue({})
 		mockUseTeamsList.mockReturnValue({ data: [] })
+		mockUseMe.mockReturnValue({
+			data: {
+				id: 'user-1',
+				name: 'Alex Real',
+				email: 'alex.real@test.dev',
+			},
+		})
 		useSideBarStore.setState({ isOpen: true })
 	})
 
@@ -165,5 +177,11 @@ describe('Sidebar', () => {
 		render(<Sidebar forceOpen={true} />)
 
 		expect(screen.getByText('Design Team')).toBeDefined()
+	})
+
+	it('показывает реальное имя пользователя внизу sidebar', () => {
+		render(<Sidebar forceOpen={true} />)
+
+		expect(screen.getByText('Alex Real')).toBeDefined()
 	})
 })

@@ -1,66 +1,18 @@
+import {
+	mockCreateTeamMutateAsync,
+	mockIsApiError,
+	mockRouterReplace,
+	mockToastError,
+	resetCreateTeamDialogUnitMocks,
+} from '@/test/mocks/views/teams/create-team-dialog.unit.mock'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { CreateTeamDialog } from '@/views/teams/ui/create-team-dialog'
 
-const { mockMutateAsync, mockReplace, mockIsApiError, mockToastError, mockIsPending } =
-	vi.hoisted(() => ({
-		mockMutateAsync: vi.fn(),
-		mockReplace: vi.fn(),
-		mockIsApiError: vi.fn(),
-		mockToastError: vi.fn(),
-		mockIsPending: { value: false },
-	}))
-
-vi.mock('@/shared/api/use-teams', () => ({
-	useCreateTeam: () => ({
-		mutateAsync: mockMutateAsync,
-		get isPending() {
-			return mockIsPending.value
-		},
-	}),
-}))
-
-vi.mock('next/navigation', () => ({
-	useRouter: () => ({ replace: mockReplace }),
-}))
-
-vi.mock('@/shared/lib/api/utils', () => ({
-	isApiError: mockIsApiError,
-	toApiError: vi.fn(),
-}))
-
-vi.mock('@repo/ui', () => ({
-	Button: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
-		<button {...props}>{children}</button>
-	),
-	DialogDrawer: ({
-		children,
-	}: React.PropsWithChildren<{ open: boolean; onOpenChange: (v: boolean) => void }>) => (
-		<div data-testid='dialog'>{children}</div>
-	),
-	DialogDrawerContent: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	DialogDrawerHeader: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	DialogDrawerTitle: ({ children }: React.PropsWithChildren) => <h2>{children}</h2>,
-	DialogDrawerDescription: ({ children }: React.PropsWithChildren) => <p>{children}</p>,
-	DialogDrawerFooter: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
-	Label: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.LabelHTMLAttributes<HTMLLabelElement>>) => (
-		<label {...props}>{children}</label>
-	),
-	toast: { error: mockToastError },
-}))
-
 describe('CreateTeamDialog', () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
-		mockIsPending.value = false
+		resetCreateTeamDialogUnitMocks()
 	})
 
 	afterEach(cleanup)
@@ -96,7 +48,7 @@ describe('CreateTeamDialog', () => {
 	})
 
 	it('submit — вызывает mutateAsync с trimmed-именем', async () => {
-		mockMutateAsync.mockResolvedValue({ id: 'new-team', name: 'Design Team' })
+		mockCreateTeamMutateAsync.mockResolvedValue({ id: 'new-team', name: 'Design Team' })
 		render(<CreateTeamDialog />)
 
 		fireEvent.change(screen.getByPlaceholderText('Например: Product Team'), {
@@ -107,12 +59,12 @@ describe('CreateTeamDialog', () => {
 		)
 
 		await waitFor(() => {
-			expect(mockMutateAsync).toHaveBeenCalledWith({ name: 'Design Team' })
+			expect(mockCreateTeamMutateAsync).toHaveBeenCalledWith({ name: 'Design Team' })
 		})
 	})
 
 	it('успешный submit — редирект на /teams', async () => {
-		mockMutateAsync.mockResolvedValue({ id: 'new-team', name: 'Design Team' })
+		mockCreateTeamMutateAsync.mockResolvedValue({ id: 'new-team', name: 'Design Team' })
 		render(<CreateTeamDialog />)
 
 		fireEvent.change(screen.getByPlaceholderText('Например: Product Team'), {
@@ -123,13 +75,13 @@ describe('CreateTeamDialog', () => {
 		)
 
 		await waitFor(() => {
-			expect(mockReplace).toHaveBeenCalledWith('/teams')
+			expect(mockRouterReplace).toHaveBeenCalledWith('/teams')
 		})
 	})
 
 	it('API ошибка — показывает toast.error', async () => {
 		const apiError = { message: 'Команда с таким именем уже существует', statusCode: 409 }
-		mockMutateAsync.mockRejectedValue(apiError)
+		mockCreateTeamMutateAsync.mockRejectedValue(apiError)
 		mockIsApiError.mockReturnValue(true)
 
 		render(<CreateTeamDialog />)
@@ -151,6 +103,6 @@ describe('CreateTeamDialog', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
 
-		expect(mockReplace).toHaveBeenCalledWith('/teams')
+		expect(mockRouterReplace).toHaveBeenCalledWith('/teams')
 	})
 })

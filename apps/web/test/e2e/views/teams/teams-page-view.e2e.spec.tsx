@@ -1,42 +1,17 @@
+import { createTeamListItemFixture } from '@/test/mocks/teams.fixtures'
+import {
+	mockTeamsPagePush,
+	mockUseTeamsList,
+	resetTeamsPageViewE2eMocks,
+} from '@/test/mocks/views/teams/teams-page-view.e2e.mock'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { TeamListItem } from '@repo/types'
-
 import { TeamsPageView } from '@/views/teams/ui/teams-page-view'
-
-const mockUseTeamsList = vi.fn()
-const mockPush = vi.fn()
-
-vi.mock('@/shared/api/use-teams', () => ({
-	useTeamsList: () => mockUseTeamsList(),
-}))
-
-vi.mock('next/navigation', () => ({
-	useRouter: () => ({ push: mockPush }),
-}))
-
-vi.mock('@/views/teams/ui/team-card', () => ({
-	TeamCard: ({ team }: { team: { id: string; name: string } }) => (
-		<div data-testid={`team-card-${team.id}`}>{team.name}</div>
-	),
-}))
-
-const createTeamListItem = (overrides?: Partial<TeamListItem>): TeamListItem => ({
-	id: 'team-1',
-	name: 'Alpha Team',
-	description: null,
-	avatarUrl: null,
-	membersCount: 3,
-	currentUserRole: 'MEMBER',
-	createdAt: '2024-01-01',
-	updatedAt: '2024-01-01',
-	...overrides,
-})
 
 describe('TeamsPageView e2e', () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
+		resetTeamsPageViewE2eMocks()
 	})
 
 	afterEach(cleanup)
@@ -44,8 +19,8 @@ describe('TeamsPageView e2e', () => {
 	it('рендерит список команд из мока useTeamsList', () => {
 		mockUseTeamsList.mockReturnValue({
 			data: [
-				createTeamListItem({ id: 'team-1', name: 'Alpha Team' }),
-				createTeamListItem({ id: 'team-2', name: 'Beta Team' }),
+				createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
+				createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
 			],
 			isLoading: false,
 			isError: false,
@@ -98,6 +73,6 @@ describe('TeamsPageView e2e', () => {
 		render(<TeamsPageView />)
 		fireEvent.click(screen.getAllByRole('button', { name: /создать команду/i })[0]!)
 
-		expect(mockPush).toHaveBeenCalledWith('/teams/new')
+		expect(mockTeamsPagePush).toHaveBeenCalledWith('/teams/new')
 	})
 })

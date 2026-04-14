@@ -22,11 +22,18 @@ export const teamInvitationsKeys = {
 	decline: () => [...teamInvitationsKeys.all, 'decline'] as const,
 } as const
 
-export const useTeamInvitations = (teamId: string) => {
+type TeamInvitationsQueryOptions = {
+	enabled?: boolean
+}
+
+export const useTeamInvitations = (
+	teamId: string,
+	options?: TeamInvitationsQueryOptions,
+) => {
 	return useQuery({
 		queryKey: teamInvitationsKeys.teamList(teamId),
 		queryFn: () => teamInvitationsService.getTeamInvitations(teamId),
-		enabled: Boolean(teamId),
+		enabled: Boolean(teamId) && (options?.enabled ?? true),
 	})
 }
 
@@ -57,10 +64,11 @@ export const useRevokeTeamInvitation = (teamId: string) => {
 	})
 }
 
-export const useMyInvitations = () => {
+export const useMyInvitations = (options?: TeamInvitationsQueryOptions) => {
 	return useQuery({
 		queryKey: teamInvitationsKeys.myList(),
 		queryFn: teamInvitationsService.getMyInvitations,
+		enabled: options?.enabled ?? true,
 	})
 }
 

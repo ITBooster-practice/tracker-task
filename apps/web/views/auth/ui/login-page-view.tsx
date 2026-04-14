@@ -1,12 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import { Button, Form, toast } from '@repo/ui'
 
 import { useLogin } from '@/shared/api/use-auth'
-import { ROUTES } from '@/shared/config'
+import {
+	buildRegisterHref,
+	getAuthRedirectPath,
+	ROUTE_QUERY_PARAMS,
+} from '@/shared/config'
 import { isApiError } from '@/shared/lib/api/utils'
 
 import { useLoginForm, type LoginFormValues } from '../model/use-login-form'
@@ -18,11 +22,13 @@ function LoginPageView() {
 
 	const loginMutation = useLogin()
 	const router = useRouter()
+	const searchParams = useSearchParams()
+	const redirectPath = getAuthRedirectPath(searchParams.get(ROUTE_QUERY_PARAMS.from))
 
 	const onSubmit = async (data: LoginFormValues) => {
 		try {
 			await loginMutation.mutateAsync(data)
-			router.push(ROUTES.teams)
+			router.push(redirectPath)
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)
@@ -53,7 +59,7 @@ function LoginPageView() {
 						<p className='text-center text-sm text-muted-foreground'>
 							Еще нет аккаунта?{' '}
 							<Link
-								href={ROUTES.register}
+								href={buildRegisterHref(searchParams.get(ROUTE_QUERY_PARAMS.from))}
 								className='font-medium text-primary transition-opacity hover:opacity-80'
 							>
 								Зарегистрироваться

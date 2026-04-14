@@ -7,3 +7,4 @@ export {
 	CardDescription,
 	CardContent,
 } from './card'
+export { CardSkeleton } from './card-skeleton'

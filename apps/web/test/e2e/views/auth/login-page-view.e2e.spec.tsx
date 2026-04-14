@@ -5,9 +5,10 @@ import { toast } from '@repo/ui'
 
 import { LoginPageView } from '@/views/auth/ui/login-page-view'
 
-const { mockLoginMutateAsync, mockPush } = vi.hoisted(() => ({
+const { mockLoginMutateAsync, mockPush, mockSearchParamGet } = vi.hoisted(() => ({
 	mockLoginMutateAsync: vi.fn(),
 	mockPush: vi.fn(),
+	mockSearchParamGet: vi.fn(),
 }))
 
 vi.mock('@/shared/api/use-auth', () => ({
@@ -19,6 +20,9 @@ vi.mock('@/shared/api/use-auth', () => ({
 
 vi.mock('next/navigation', () => ({
 	useRouter: () => ({ push: mockPush }),
+	useSearchParams: () => ({
+		get: mockSearchParamGet,
+	}),
 }))
 
 vi.mock('next/link', () => ({
@@ -41,6 +45,7 @@ describe('LoginPageView e2e', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockSearchParamGet.mockReturnValue(null)
 		toastErrorSpy = vi.spyOn(toast, 'error').mockImplementation(vi.fn())
 	})
 

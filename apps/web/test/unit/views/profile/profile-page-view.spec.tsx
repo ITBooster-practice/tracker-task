@@ -1,134 +1,20 @@
+import {
+	mockProfileAcceptMutateAsync,
+	mockProfileDeclineMutateAsync,
+	mockProfileRouterPush,
+	mockProfileToastInfo,
+	mockProfileToastSuccess,
+	mockProfileUseMe,
+	mockProfileUseMyInvitations,
+	mockProfileUseTeamsList,
+	resetProfilePageViewMocks,
+} from '@/test/mocks/views/profile/profile-page-view.mock'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TEAM_ROLES, type MyInvitation, type TeamListItem } from '@repo/types'
 
 import { ProfilePageView } from '@/views/profile/ui/profile-page-view'
-
-const {
-	mockPush,
-	mockToastInfo,
-	mockToastSuccess,
-	mockToastError,
-	mockAcceptMutateAsync,
-	mockDeclineMutateAsync,
-	mockUseMe,
-	mockUseTeamsList,
-	mockUseMyInvitations,
-} = vi.hoisted(() => ({
-	mockPush: vi.fn(),
-	mockToastInfo: vi.fn(),
-	mockToastSuccess: vi.fn(),
-	mockToastError: vi.fn(),
-	mockAcceptMutateAsync: vi.fn(),
-	mockDeclineMutateAsync: vi.fn(),
-	mockUseMe: vi.fn(),
-	mockUseTeamsList: vi.fn(),
-	mockUseMyInvitations: vi.fn(),
-}))
-
-vi.mock('next/navigation', () => ({
-	useRouter: () => ({ push: mockPush }),
-}))
-
-vi.mock('@/shared/api/use-auth', () => ({
-	useMe: () => mockUseMe(),
-}))
-
-vi.mock('@/shared/api/use-teams', () => ({
-	useTeamsList: () => mockUseTeamsList(),
-}))
-
-vi.mock('@/shared/api/use-team-invitations', () => ({
-	useMyInvitations: () => mockUseMyInvitations(),
-	useAcceptInvitation: () => ({
-		mutateAsync: mockAcceptMutateAsync,
-		isPending: false,
-		variables: undefined,
-	}),
-	useDeclineInvitation: () => ({
-		mutateAsync: mockDeclineMutateAsync,
-		isPending: false,
-		variables: undefined,
-	}),
-}))
-
-vi.mock('@/shared/lib/api/utils', () => ({
-	isApiError: (value: unknown) =>
-		typeof value === 'object' &&
-		value !== null &&
-		'message' in value &&
-		'statusCode' in value,
-}))
-
-vi.mock('@repo/ui', () => ({
-	Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
-	Badge: ({
-		children,
-	}: React.PropsWithChildren<{ className?: string; variant?: string }>) => (
-		<span>{children}</span>
-	),
-	Button: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
-		<button {...props}>{children}</button>
-	),
-	Card: ({ children }: React.PropsWithChildren<{ className?: string }>) => (
-		<div>{children}</div>
-	),
-	CardContent: ({ children }: React.PropsWithChildren<{ className?: string }>) => (
-		<div>{children}</div>
-	),
-	CardHeader: ({ children }: React.PropsWithChildren<{ className?: string }>) => (
-		<div>{children}</div>
-	),
-	CardTitle: ({ children }: React.PropsWithChildren<{ className?: string }>) => (
-		<h2>{children}</h2>
-	),
-	EmptyState: ({
-		title,
-		action,
-	}: {
-		title: string
-		description?: string
-		action?: React.ReactNode
-		className?: string
-	}) => (
-		<div data-testid='empty-state'>
-			<p>{title}</p>
-			{action}
-		</div>
-	),
-	Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
-	Label: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.LabelHTMLAttributes<HTMLLabelElement>>) => (
-		<label {...props}>{children}</label>
-	),
-	Skeleton: (props: React.HTMLAttributes<HTMLDivElement>) => (
-		<div data-testid='skeleton' {...props} />
-	),
-	cn: (...values: Array<string | false | null | undefined>) =>
-		values.filter(Boolean).join(' '),
-	toast: {
-		info: mockToastInfo,
-		success: mockToastSuccess,
-		error: mockToastError,
-	},
-}))
-
-vi.mock('@repo/ui/icons', () => ({
-	Check: () => <span />,
-	ChevronRight: () => <span />,
-	Mail: () => <span />,
-	Shield: () => <span />,
-	UserRound: () => <span />,
-	Users: () => <span />,
-	X: () => <span />,
-}))
 
 function createTeam(overrides?: Partial<TeamListItem>): TeamListItem {
 	return {
@@ -168,15 +54,15 @@ function createInvitation(overrides?: Partial<MyInvitation>): MyInvitation {
 
 describe('ProfilePageView', () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
+		resetProfilePageViewMocks()
 
-		mockUseMe.mockReturnValue({
+		mockProfileUseMe.mockReturnValue({
 			data: { id: 'user-1', name: 'Алексей Петров', email: 'alex@tracker.dev' },
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
 		})
-		mockUseTeamsList.mockReturnValue({
+		mockProfileUseTeamsList.mockReturnValue({
 			data: [
 				createTeam(),
 				createTeam({
@@ -189,14 +75,17 @@ describe('ProfilePageView', () => {
 			isError: false,
 			refetch: vi.fn(),
 		})
-		mockUseMyInvitations.mockReturnValue({
+		mockProfileUseMyInvitations.mockReturnValue({
 			data: [createInvitation()],
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
 		})
-		mockAcceptMutateAsync.mockResolvedValue({ id: 'team-99', name: 'Marketing Team' })
-		mockDeclineMutateAsync.mockResolvedValue({})
+		mockProfileAcceptMutateAsync.mockResolvedValue({
+			id: 'team-99',
+			name: 'Marketing Team',
+		})
+		mockProfileDeclineMutateAsync.mockResolvedValue({})
 	})
 
 	afterEach(cleanup)
@@ -216,7 +105,7 @@ describe('ProfilePageView', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: /Product Team/i }))
 
-		expect(mockPush).toHaveBeenCalledWith('/teams/team-1/projects')
+		expect(mockProfileRouterPush).toHaveBeenCalledWith('/teams/team-1/projects')
 	})
 
 	it('submit профиля без backend показывает info toast', async () => {
@@ -228,7 +117,7 @@ describe('ProfilePageView', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
 
 		await waitFor(() => {
-			expect(mockToastInfo).toHaveBeenCalledWith(
+			expect(mockProfileToastInfo).toHaveBeenCalledWith(
 				'Сохранение профиля подключим после backend-части',
 			)
 		})
@@ -240,9 +129,9 @@ describe('ProfilePageView', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Принять' }))
 
 		await waitFor(() => {
-			expect(mockAcceptMutateAsync).toHaveBeenCalledWith('token-1')
+			expect(mockProfileAcceptMutateAsync).toHaveBeenCalledWith('token-1')
 		})
-		expect(mockToastSuccess).toHaveBeenCalledWith(
+		expect(mockProfileToastSuccess).toHaveBeenCalledWith(
 			'Вы присоединились к команде Marketing Team',
 		)
 	})
@@ -253,8 +142,8 @@ describe('ProfilePageView', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Отклонить' }))
 
 		await waitFor(() => {
-			expect(mockDeclineMutateAsync).toHaveBeenCalledWith('token-1')
+			expect(mockProfileDeclineMutateAsync).toHaveBeenCalledWith('token-1')
 		})
-		expect(mockToastSuccess).toHaveBeenCalledWith('Приглашение отклонено')
+		expect(mockProfileToastSuccess).toHaveBeenCalledWith('Приглашение отклонено')
 	})
 })

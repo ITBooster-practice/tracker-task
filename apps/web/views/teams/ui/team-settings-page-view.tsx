@@ -1,173 +1,246 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { useMemo, useState, type FormEvent } from 'react'
+
+import { TEAM_ROLES, userEmailSchema, type TeamMember } from '@repo/types'
+import { Button, ConfirmDialog, EmptyState, toast } from '@repo/ui'
+import { UserPlus, Users } from '@repo/ui/icons'
+
+import { useMe } from '@/shared/api/use-auth'
+import {
+	useRevokeTeamInvitation,
+	useSendTeamInvitation,
+	useTeamInvitations,
+} from '@/shared/api/use-team-invitations'
+import {
+	useChangeMemberRole,
+	useRemoveTeamMember,
+	useTeamMembers,
+} from '@/shared/api/use-team-members'
+import { useDeleteTeam, useTeamDetail } from '@/shared/api/use-teams'
+import { ROUTES } from '@/shared/config'
+import { isApiError } from '@/shared/lib/api/utils'
 
 import {
-	TEAM_ROLES,
-	userEmailSchema,
-	userNameSchema,
-	type TeamMember,
-	type TeamRole,
-} from '@repo/types'
+	TEAM_SETTINGS_TEXT,
+	type TeamAssignableRole,
+} from '../config/team-settings.constants'
 import {
-	Avatar,
-	AvatarFallback,
-	Badge,
-	Button,
-	cn,
-	ConfirmDialog,
-	DialogDrawer,
-	DialogDrawerContent,
-	DialogDrawerDescription,
-	DialogDrawerFooter,
-	DialogDrawerHeader,
-	DialogDrawerTitle,
-	EmptyState,
-	Input,
-	Label,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-	VStack,
-} from '@repo/ui'
-import { Crown, Mail, Settings2, Shield, Trash2, UserPlus, Users } from '@repo/ui/icons'
-
-import { useTeamDetail } from '@/shared/api/use-teams'
-import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
-
-import {
-	teamDialogContentClassName,
-	teamDialogFooterClassName,
-	teamDialogInputClassName,
-	teamDialogLabelClassName,
-	teamDialogPrimaryButtonClassName,
-	teamDialogSecondaryButtonClassName,
-	teamDialogTitleClassName,
 	teamPageHeaderClassName,
 	teamPagePrimaryButtonClassName,
 	teamPageSubtitleClassName,
 	teamPageTitleClassName,
 } from '../lib/styles'
+import {
+	canDeleteTeam,
+	getCurrentTeamMember,
+	getDeleteMemberDescription,
+	getDeleteMemberDialogCopy,
+	isTeamManagerRole,
+} from '../lib/team-settings'
+import { TeamInviteMemberDialog } from './team-invite-member-dialog'
+import { TeamSettingsDangerZoneSection } from './team-settings-danger-zone-section'
+import { TeamSettingsInvitationsSection } from './team-settings-invitations-section'
+import { TeamSettingsMembersSection } from './team-settings-members-section'
+import { TeamSettingsRolesSection } from './team-settings-roles-section'
 
-const roleOptions = [
-	{
-		value: TEAM_ROLES.OWNER,
-		label: 'Owner',
-		description: 'Полный доступ, управление командой и billing',
-		icon: Crown,
-		iconClassName: 'text-amber-400',
-	},
-	{
-		value: TEAM_ROLES.ADMIN,
-		label: 'Admin',
-		description: 'Управление проектами, участниками и настройками',
-		icon: Shield,
-		iconClassName: 'text-primary',
-	},
-	{
-		value: TEAM_ROLES.MEMBER,
-		label: 'Member',
-		description: 'Работа с задачами, комментарии, просмотр',
-		icon: Users,
-		iconClassName: 'text-muted-foreground',
-	},
-] as const
-
-function getRoleBadgeClassName(role: TeamRole) {
-	switch (role) {
-		case TEAM_ROLES.OWNER:
-			return 'border-amber-300 bg-amber-100/80 text-amber-900 dark:border-amber-400/15 dark:bg-amber-400/10 dark:text-amber-300'
-		case TEAM_ROLES.ADMIN:
-			return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-primary/15 dark:bg-primary/10 dark:text-primary'
-		default:
-			return 'border-slate-200 bg-slate-50 text-slate-700 dark:border-border/60 dark:bg-surface-2 dark:text-muted-foreground'
-	}
-}
-
-function getNameFromEmail(email: string) {
-	const [localPart = 'Новый участник'] = email.split('@')
-
-	return localPart
-		.split(/[._-]+/)
-		.filter(Boolean)
-		.map((part) => part[0]?.toUpperCase() + part.slice(1))
-		.join(' ')
-}
+const INITIAL_INVITE_ROLE = TEAM_ROLES.MEMBER
 
 function TeamSettingsPageView() {
 	const params = useParams<{ id: string }>()
+	const router = useRouter()
 	const teamId = params.id
-	const { data: team, isPending, isError, refetch } = useTeamDetail(teamId)
-	const [members, setMembers] = useState<TeamMember[]>([])
-	const [inviteOpen, setInviteOpen] = useState(false)
+
 	const [inviteEmail, setInviteEmail] = useState('')
-	const [inviteRole, setInviteRole] = useState<TeamRole>(TEAM_ROLES.MEMBER)
+	const [inviteOpen, setInviteOpen] = useState(false)
+	const [inviteRole, setInviteRole] = useState<TeamAssignableRole>(INITIAL_INVITE_ROLE)
 	const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null)
+	const [isDeleteTeamDialogOpen, setIsDeleteTeamDialogOpen] = useState(false)
 
-	useEffect(() => {
-		setMembers(team?.members ?? [])
-	}, [team])
+	const profileQuery = useMe()
+	const teamQuery = useTeamDetail(teamId)
+	const membersQuery = useTeamMembers(teamId)
 
-	const normalizedInviteEmail = inviteEmail.trim().toLowerCase()
-	const isInviteEmailValid = userEmailSchema.safeParse(normalizedInviteEmail).success
-	const isInviteDisabled =
-		!normalizedInviteEmail ||
-		!isInviteEmailValid ||
-		members.some((member) => member.email.toLowerCase() === normalizedInviteEmail)
+	const members = useMemo(
+		() => membersQuery.data ?? teamQuery.data?.members ?? [],
+		[membersQuery.data, teamQuery.data?.members],
+	)
 
-	const handleRoleChange = (memberId: string, nextRole: string) => {
-		setMembers((currentMembers) =>
-			currentMembers.map((member) =>
-				member.id === memberId ? { ...member, role: nextRole as TeamRole } : member,
-			),
-		)
+	const currentUser = profileQuery.data
+	const currentUserId = currentUser?.id
+	const currentTeamMember = getCurrentTeamMember(members, currentUserId)
+	const currentUserRole = currentTeamMember?.role
+	const canManageTeam = isTeamManagerRole(currentUserRole)
+	const canDeleteCurrentTeam = canDeleteTeam(currentUserRole)
+
+	const invitationsQuery = useTeamInvitations(teamId, {
+		enabled: canManageTeam,
+	})
+	const changeMemberRoleMutation = useChangeMemberRole(teamId)
+	const removeTeamMemberMutation = useRemoveTeamMember(teamId)
+	const sendTeamInvitationMutation = useSendTeamInvitation(teamId)
+	const revokeTeamInvitationMutation = useRevokeTeamInvitation(teamId)
+	const deleteTeamMutation = useDeleteTeam()
+
+	const inviteEmailValue = inviteEmail.trim()
+	const isInviteEmailValid = userEmailSchema.safeParse(inviteEmailValue).success
+	const isDuplicateMember = members.some((member) => member.email === inviteEmailValue)
+	const isInviteSubmitDisabled =
+		!inviteEmailValue || !isInviteEmailValid || isDuplicateMember
+
+	const isRoleMutationPending = changeMemberRoleMutation.isPending
+		? (changeMemberRoleMutation.variables?.userId ?? null)
+		: null
+	const revokePendingInvitationId = revokeTeamInvitationMutation.isPending
+		? (revokeTeamInvitationMutation.variables ?? null)
+		: null
+
+	const isSelfRemoveAction = memberToDelete?.userId === currentUserId
+	const deleteMemberDialogCopy = memberToDelete
+		? getDeleteMemberDialogCopy(isSelfRemoveAction)
+		: null
+
+	const resetInviteDialog = () => {
+		setInviteEmail('')
+		setInviteRole(INITIAL_INVITE_ROLE)
+		setInviteOpen(false)
 	}
 
-	const handleDeleteMember = (memberId: string) => {
-		setMembers((currentMembers) =>
-			currentMembers.filter((member) => member.id !== memberId),
-		)
+	const handleRoleChange = async (member: TeamMember, nextRole: TeamAssignableRole) => {
+		try {
+			await changeMemberRoleMutation.mutateAsync({
+				userId: member.userId,
+				data: { role: nextRole },
+			})
+			toast.success(TEAM_SETTINGS_TEXT.members.roleUpdated)
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+
+			throw error
+		}
 	}
 
-	const handleConfirmDeleteMember = () => {
+	const handleConfirmDeleteMember = async () => {
 		if (!memberToDelete) {
 			return
 		}
 
-		handleDeleteMember(memberToDelete.id)
-		setMemberToDelete(null)
+		try {
+			await removeTeamMemberMutation.mutateAsync(memberToDelete.userId)
+			toast.success(
+				isSelfRemoveAction
+					? TEAM_SETTINGS_TEXT.members.selfLeaveSuccess
+					: TEAM_SETTINGS_TEXT.members.removeSuccess,
+			)
+			setMemberToDelete(null)
+
+			if (isSelfRemoveAction) {
+				router.replace(ROUTES.teams)
+			}
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+
+			throw error
+		}
 	}
 
-	const handleInviteSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+	const handleInviteSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 
-		if (isInviteDisabled) {
+		if (isInviteSubmitDisabled) {
 			return
 		}
 
-		const fallbackInviteName = 'Новый участник'
-		const derivedInviteName = getNameFromEmail(normalizedInviteEmail)
-		const inviteName = userNameSchema.safeParse(derivedInviteName).success
-			? derivedInviteName
-			: fallbackInviteName
-
-		setMembers((currentMembers) => [
-			...currentMembers,
-			{
-				id: normalizedInviteEmail,
-				userId: '',
-				name: inviteName,
-				email: normalizedInviteEmail,
+		try {
+			await sendTeamInvitationMutation.mutateAsync({
+				email: inviteEmailValue,
 				role: inviteRole,
-				joinedAt: new Date().toISOString(),
-			},
-		])
-		setInviteOpen(false)
-		setInviteEmail('')
-		setInviteRole(TEAM_ROLES.MEMBER)
+			})
+			toast.success(TEAM_SETTINGS_TEXT.invitations.sendSuccess)
+			resetInviteDialog()
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+
+			throw error
+		}
+	}
+
+	const handleRevokeInvitation = async (invitationId: string) => {
+		try {
+			await revokeTeamInvitationMutation.mutateAsync(invitationId)
+			toast.success(TEAM_SETTINGS_TEXT.invitations.revokeSuccess)
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+
+			throw error
+		}
+	}
+
+	const handleDeleteTeam = async () => {
+		if (!teamQuery.data) {
+			return
+		}
+
+		try {
+			await deleteTeamMutation.mutateAsync(teamQuery.data.id)
+			toast.success(TEAM_SETTINGS_TEXT.dangerZone.success)
+			setIsDeleteTeamDialogOpen(false)
+			router.replace(ROUTES.teams)
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+
+			throw error
+		}
+	}
+
+	if (teamQuery.isPending && !teamQuery.data) {
+		return (
+			<div className='min-h-full w-full bg-background text-foreground'>
+				<div className='mx-auto max-w-[960px] px-6 py-5'>
+					<div className='flex justify-center py-16 text-sm text-muted-foreground'>
+						{TEAM_SETTINGS_TEXT.members.loading}
+					</div>
+				</div>
+			</div>
+		)
+	}
+
+	if (teamQuery.isError || !teamQuery.data) {
+		return (
+			<div className='min-h-full w-full bg-background text-foreground'>
+				<div className='mx-auto max-w-[960px] px-6 py-5'>
+					<div className='flex justify-center py-16'>
+						<EmptyState
+							icon={<Users className='size-7' />}
+							title={TEAM_SETTINGS_TEXT.emptyState.title}
+							description={TEAM_SETTINGS_TEXT.emptyState.description}
+							action={
+								<Button type='button' onClick={() => void teamQuery.refetch()}>
+									{TEAM_SETTINGS_TEXT.retryAction}
+								</Button>
+							}
+							className='max-w-[420px] border-border bg-card'
+						/>
+					</div>
+				</div>
+			</div>
+		)
 	}
 
 	return (
@@ -175,251 +248,105 @@ function TeamSettingsPageView() {
 			<div className='mx-auto max-w-[960px] px-6 py-5'>
 				<header className={teamPageHeaderClassName}>
 					<div>
-						<h1 className={teamPageTitleClassName}>Настройки команды</h1>
-						<p className={teamPageSubtitleClassName}>
-							{team?.name ?? 'Загрузка команды'}
-						</p>
+						<h1 className={teamPageTitleClassName}>{TEAM_SETTINGS_TEXT.pageTitle}</h1>
+						<p className={teamPageSubtitleClassName}>{teamQuery.data.name}</p>
 					</div>
 
-					<Button
-						onClick={() => setInviteOpen(true)}
-						className={teamPagePrimaryButtonClassName}
-					>
-						<UserPlus className='size-4' />
-						Пригласить
-					</Button>
+					{canManageTeam ? (
+						<Button
+							type='button'
+							onClick={() => setInviteOpen(true)}
+							className={teamPagePrimaryButtonClassName}
+						>
+							<UserPlus className='size-4' />
+							{TEAM_SETTINGS_TEXT.members.inviteAction}
+						</Button>
+					) : null}
 				</header>
 
 				<div className='space-y-5'>
-					<section className='rounded-[var(--radius-surface)] border border-border bg-card p-4 shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
-						<div className='mb-3 flex items-center gap-2'>
-							<div className='flex size-7 items-center justify-center rounded-[calc(var(--radius-control)-2px)] bg-primary/10 text-primary'>
-								<Settings2 className='size-4' />
-							</div>
-							<h2 className='text-[14px] font-semibold tracking-tight'>Роли</h2>
-						</div>
+					<TeamSettingsRolesSection />
 
-						<div className='grid gap-3 lg:grid-cols-3 lg:gap-5'>
-							{roleOptions.map((role) => {
-								const Icon = role.icon
+					<TeamSettingsMembersSection
+						currentUserId={currentUserId}
+						currentUserRole={currentUserRole}
+						isError={membersQuery.isError}
+						isLoading={membersQuery.isLoading && members.length === 0}
+						isMutatingRoleForUserId={isRoleMutationPending}
+						members={members}
+						onOpenRemoveDialog={setMemberToDelete}
+						onRetry={() => void membersQuery.refetch()}
+						onRoleChange={handleRoleChange}
+					/>
 
-								return (
-									<div key={role.value} className='space-y-1'>
-										<div className='flex items-center gap-2 text-[13px] font-semibold'>
-											<Icon className={cn('size-4', role.iconClassName)} />
-											<span>{role.label}</span>
-										</div>
-										<p className='max-w-[250px] text-[12px] leading-5 text-muted-foreground'>
-											{role.description}
-										</p>
-									</div>
-								)
-							})}
-						</div>
-					</section>
+					{canManageTeam ? (
+						<TeamSettingsInvitationsSection
+							invitations={invitationsQuery.data ?? []}
+							isError={invitationsQuery.isError}
+							isLoading={invitationsQuery.isLoading}
+							onRetry={() => void invitationsQuery.refetch()}
+							onRevoke={(invitation) => void handleRevokeInvitation(invitation.id)}
+							pendingInvitationId={revokePendingInvitationId}
+						/>
+					) : null}
 
-					{isPending ? (
-						<div className='flex justify-center py-16 text-sm text-muted-foreground'>
-							Загрузка участников...
-						</div>
-					) : isError || !team ? (
-						<div className='flex justify-center py-16'>
-							<EmptyState
-								icon={<Users className='size-7' />}
-								title='Не удалось загрузить команду'
-								description='Попробуйте повторить запрос ещё раз.'
-								action={
-									<button
-										type='button'
-										onClick={() => void refetch()}
-										className='inline-flex h-9 items-center justify-center rounded-[var(--radius-control)] bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
-									>
-										Повторить
-									</button>
-								}
-								className='max-w-[420px] border-border bg-card'
-							/>
-						</div>
-					) : (
-						<section className='overflow-hidden rounded-[var(--radius-surface)] border border-border bg-card shadow-[0_18px_32px_-28px_rgba(12,18,32,0.55)]'>
-							<div className='border-b border-border px-4 py-3.5'>
-								<h2 className='text-[16px] font-semibold tracking-tight'>
-									Участники ({members.length})
-								</h2>
-							</div>
-
-							<div>
-								{members.map((member) => {
-									const memberName = getUserDisplayName(member)
-									const isOwner = member.role === TEAM_ROLES.OWNER
-									return (
-										<div
-											key={member.id}
-											className='flex flex-col gap-2.5 border-b border-border px-4 py-2.5 last:border-b-0 lg:min-h-[56px] lg:flex-row lg:items-center lg:justify-between'
-										>
-											<div className='flex min-w-0 items-center gap-3'>
-												<Avatar className='size-9 border border-border/80'>
-													<AvatarFallback className='bg-surface-2 text-[13px] font-medium text-muted-foreground'>
-														{getNameInitials(memberName)}
-													</AvatarFallback>
-												</Avatar>
-
-												<div className='min-w-0'>
-													<div className='truncate text-[15px] font-medium leading-tight'>
-														{memberName}
-													</div>
-													<div className='truncate text-[12px] leading-4 text-muted-foreground'>
-														{member.email}
-													</div>
-												</div>
-											</div>
-
-											<div className='flex flex-wrap items-center gap-2.5 lg:justify-end'>
-												<Badge
-													variant='outline'
-													className={cn(
-														'h-6 rounded-full border px-3 text-[12px] font-medium',
-														getRoleBadgeClassName(member.role),
-													)}
-												>
-													{roleOptions.find((role) => role.value === member.role)?.label}
-												</Badge>
-
-												{isOwner ? null : (
-													<>
-														<Select
-															value={member.role}
-															onValueChange={(value) =>
-																handleRoleChange(member.id, value)
-															}
-														>
-															<SelectTrigger className='h-10 w-full sm:w-[136px] rounded-[var(--radius-control)] border-border bg-background px-3.5 text-[14px] shadow-none'>
-																<SelectValue placeholder='Выберите роль' />
-															</SelectTrigger>
-															<SelectContent className='border-border bg-popover'>
-																{roleOptions
-																	.filter((role) => role.value !== TEAM_ROLES.OWNER)
-																	.map((role) => (
-																		<SelectItem key={role.value} value={role.value}>
-																			{role.label}
-																		</SelectItem>
-																	))}
-															</SelectContent>
-														</Select>
-
-														<Button
-															variant='ghost'
-															size='icon-sm'
-															onClick={() => setMemberToDelete(member)}
-															className='size-8 text-destructive hover:bg-destructive/10 hover:text-destructive'
-															aria-label={`Удалить ${memberName}`}
-														>
-															<Trash2 className='size-[15px]' />
-														</Button>
-													</>
-												)}
-											</div>
-										</div>
-									)
-								})}
-							</div>
-						</section>
-					)}
+					{canDeleteCurrentTeam ? (
+						<TeamSettingsDangerZoneSection
+							isPending={deleteTeamMutation.isPending}
+							onDeleteTeam={() => setIsDeleteTeamDialogOpen(true)}
+						/>
+					) : null}
 				</div>
 			</div>
 
-			<DialogDrawer open={inviteOpen} onOpenChange={setInviteOpen}>
-				<DialogDrawerContent className={teamDialogContentClassName}>
-					<form onSubmit={handleInviteSubmit}>
-						<DialogDrawerHeader>
-							<DialogDrawerTitle className={teamDialogTitleClassName}>
-								Пригласить участника
-							</DialogDrawerTitle>
-							<DialogDrawerDescription>
-								Модалка работает локально. Отправка приглашений на сервер будет подключена
-								позже.
-							</DialogDrawerDescription>
-						</DialogDrawerHeader>
+			<TeamInviteMemberDialog
+				email={inviteEmail}
+				isOpen={inviteOpen}
+				isPending={sendTeamInvitationMutation.isPending}
+				isSubmitDisabled={isInviteSubmitDisabled}
+				onClose={resetInviteDialog}
+				onEmailChange={setInviteEmail}
+				onOpenChange={(open) => {
+					if (!open) {
+						resetInviteDialog()
+						return
+					}
 
-						<VStack spacing='md' className='p-4'>
-							<div>
-								<Label htmlFor='invite-email' className={teamDialogLabelClassName}>
-									Email
-								</Label>
-								<div className='relative'>
-									<Mail className='pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground' />
-									<Input
-										id='invite-email'
-										type='email'
-										autoFocus
-										placeholder='user@company.com'
-										value={inviteEmail}
-										onChange={(event) => setInviteEmail(event.target.value)}
-										className={cn(teamDialogInputClassName, 'pl-10')}
-									/>
-								</div>
-							</div>
-
-							<div>
-								<Label htmlFor='invite-role' className={teamDialogLabelClassName}>
-									Роль
-								</Label>
-								<Select
-									value={inviteRole}
-									onValueChange={(value) => setInviteRole(value as TeamRole)}
-								>
-									<SelectTrigger
-										id='invite-role'
-										className={cn(teamDialogInputClassName, 'w-full px-3.5')}
-									>
-										<SelectValue placeholder='Выберите роль' />
-									</SelectTrigger>
-									<SelectContent className='border-border bg-popover'>
-										{roleOptions
-											.filter((role) => role.value !== TEAM_ROLES.OWNER)
-											.map((role) => (
-												<SelectItem key={role.value} value={role.value}>
-													{role.label}
-												</SelectItem>
-											))}
-									</SelectContent>
-								</Select>
-							</div>
-						</VStack>
-
-						<DialogDrawerFooter className={teamDialogFooterClassName}>
-							<Button
-								type='button'
-								variant='outline'
-								onClick={() => setInviteOpen(false)}
-								className={teamDialogSecondaryButtonClassName}
-							>
-								Отмена
-							</Button>
-							<Button
-								type='submit'
-								disabled={isInviteDisabled}
-								className={teamDialogPrimaryButtonClassName}
-							>
-								Добавить участника
-							</Button>
-						</DialogDrawerFooter>
-					</form>
-				</DialogDrawerContent>
-			</DialogDrawer>
+					setInviteOpen(true)
+				}}
+				onRoleChange={setInviteRole}
+				onSubmit={(event) => void handleInviteSubmit(event)}
+				role={inviteRole}
+			/>
 
 			<ConfirmDialog
-				open={memberToDelete !== null}
-				onOpenChange={(open) => !open && setMemberToDelete(null)}
-				title='Удалить участника из команды?'
+				open={Boolean(memberToDelete)}
+				onOpenChange={(open) => {
+					if (!open) {
+						setMemberToDelete(null)
+					}
+				}}
+				title={deleteMemberDialogCopy?.title ?? ''}
 				description={
 					memberToDelete
-						? `${memberToDelete.name ?? memberToDelete.email} больше не сможет работать в этой команде.`
-						: undefined
+						? getDeleteMemberDescription(memberToDelete, isSelfRemoveAction)
+						: ''
 				}
-				confirmLabel='Удалить'
-				pendingLabel='Удаление...'
-				onConfirm={handleConfirmDeleteMember}
+				confirmLabel={deleteMemberDialogCopy?.confirm}
+				pendingLabel={deleteMemberDialogCopy?.pending}
+				isPending={removeTeamMemberMutation.isPending}
+				onConfirm={() => void handleConfirmDeleteMember()}
+			/>
+
+			<ConfirmDialog
+				open={isDeleteTeamDialogOpen}
+				onOpenChange={setIsDeleteTeamDialogOpen}
+				title={TEAM_SETTINGS_TEXT.dangerZone.dialogTitle}
+				description={TEAM_SETTINGS_TEXT.dangerZone.dialogDescription}
+				confirmLabel={TEAM_SETTINGS_TEXT.dangerZone.dialogConfirm}
+				pendingLabel={TEAM_SETTINGS_TEXT.dangerZone.dialogPending}
+				isPending={deleteTeamMutation.isPending}
+				onConfirm={() => void handleDeleteTeam()}
 			/>
 		</div>
 	)

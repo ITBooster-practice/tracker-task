@@ -9,9 +9,11 @@ import { Avatar, AvatarFallback, cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
 import { ThemeToggle } from '@/features/theme'
+import { useMe } from '@/shared/api/use-auth'
 import { useTeamsList } from '@/shared/api/use-teams'
 import { getSidebarRouteId, ROUTES, type SidebarRouteId } from '@/shared/config'
 import { buildTeamProjectHref } from '@/shared/lib/projects'
+import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
 
 import {
 	getSidebarSections,
@@ -37,6 +39,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
 	const params = useParams<{ id?: string; projectId?: string }>()
+	const profileQuery = useMe()
 	const { data: teams } = useTeamsList()
 	const isOpen = forceOpen ?? isDesktopOpen
 	const selectedTeamId = typeof params.id === 'string' ? params.id : null
@@ -48,6 +51,11 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const currentUserRole = currentTeam?.currentUserRole
 		? formatSidebarUserRole(currentTeam.currentUserRole)
 		: sidebarCurrentUser.role
+	const currentUserName = profileQuery.data
+		? getUserDisplayName(profileQuery.data)
+		: sidebarCurrentUser.name
+	const currentUserInitials =
+		getNameInitials(currentUserName) || sidebarCurrentUser.initials
 	const activeRouteId = getSidebarRouteId(pathname)
 	const sections = getSidebarSections(teamId)
 	const [workSection, ...otherSections] = sections
@@ -193,13 +201,13 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 						>
 							<Avatar className='size-6'>
 								<AvatarFallback className='bg-sidebar-primary text-xs text-sidebar-primary-foreground'>
-									{sidebarCurrentUser.initials}
+									{currentUserInitials}
 								</AvatarFallback>
 							</Avatar>
 							{isOpen && (
 								<div className='min-w-0'>
 									<div className='truncate text-[12px] font-medium leading-tight'>
-										{sidebarCurrentUser.name}
+										{currentUserName}
 									</div>
 									<div className='truncate text-[10px] text-muted-foreground'>
 										{currentUserRole}

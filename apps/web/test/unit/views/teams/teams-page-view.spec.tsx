@@ -1,88 +1,17 @@
+import { createTeamListItemFixture } from '@/test/mocks/teams.fixtures'
+import {
+	mockTeamsPagePush,
+	mockUseTeamsList,
+	resetTeamsPageViewUnitMocks,
+} from '@/test/mocks/views/teams/teams-page-view.unit.mock'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { TeamListItem } from '@repo/types'
-
 import { TeamsPageView } from '@/views/teams/ui/teams-page-view'
-
-// ─── Мок: useTeamsList ───────────────────────────────────────────
-const mockUseTeamsList = vi.fn()
-
-vi.mock('@/shared/api/use-teams', () => ({
-	useTeamsList: () => mockUseTeamsList(),
-}))
-
-// ─── Мок: useRouter ──────────────────────────────────────────────
-const mockPush = vi.fn()
-
-vi.mock('next/navigation', () => ({
-	useRouter: () => ({ push: mockPush }),
-}))
-
-// ─── Мок: UI-компоненты ──────────────────────────────────────────
-vi.mock('@repo/ui', () => ({
-	Button: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
-		<button {...props}>{children}</button>
-	),
-	Skeleton: (props: React.HTMLAttributes<HTMLDivElement>) => (
-		<div data-testid='skeleton' {...props} />
-	),
-	EmptyState: ({
-		title,
-		action,
-	}: {
-		title: string
-		description?: string
-		action?: React.ReactNode
-		icon?: React.ReactNode
-		className?: string
-	}) => (
-		<div data-testid='empty-state'>
-			<p>{title}</p>
-			{action}
-		</div>
-	),
-}))
-
-vi.mock('@repo/ui/icons', () => ({
-	Plus: () => <span data-testid='plus-icon' />,
-	Users: () => <span data-testid='users-icon' />,
-}))
-
-// ─── Мок: TeamCard ───────────────────────────────────────────────
-vi.mock('@/views/teams/ui/team-card', () => ({
-	TeamCard: ({
-		team,
-		onOpen,
-	}: {
-		team: { id: string; name: string }
-		onOpen: (team: { id: string; name: string }) => void
-	}) => (
-		<button data-testid={`team-card-${team.id}`} onClick={() => onOpen(team)}>
-			{team.name}
-		</button>
-	),
-}))
-
-// ─── Хелпер: создаёт TeamListItem ────────────────────────────────
-const createTeamListItem = (overrides?: Partial<TeamListItem>): TeamListItem => ({
-	id: 'team-1',
-	name: 'Alpha Team',
-	description: null,
-	avatarUrl: null,
-	membersCount: 3,
-	currentUserRole: 'MEMBER',
-	createdAt: '2024-01-01',
-	updatedAt: '2024-01-01',
-	...overrides,
-})
 
 describe('TeamsPageView', () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
+		resetTeamsPageViewUnitMocks()
 	})
 
 	afterEach(cleanup)
@@ -97,7 +26,7 @@ describe('TeamsPageView', () => {
 		render(<TeamsPageView />)
 
 		expect(screen.getByTestId('teams-page-skeleton')).toBeDefined()
-		expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0)
+		expect(screen.getAllByTestId('card-skeleton')).toHaveLength(4)
 	})
 
 	it('error — показывает сообщение об ошибке', () => {
@@ -128,8 +57,8 @@ describe('TeamsPageView', () => {
 	it('список команд — рендерит TeamCard для каждой', () => {
 		mockUseTeamsList.mockReturnValue({
 			data: [
-				createTeamListItem({ id: 'team-1', name: 'Alpha Team' }),
-				createTeamListItem({ id: 'team-2', name: 'Beta Team' }),
+				createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
+				createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
 			],
 			isLoading: false,
 			isError: false,
@@ -144,8 +73,8 @@ describe('TeamsPageView', () => {
 	it('сортировка — команда с большим числом участников идёт первой', () => {
 		mockUseTeamsList.mockReturnValue({
 			data: [
-				createTeamListItem({ id: 'small', name: 'Small Team', membersCount: 2 }),
-				createTeamListItem({ id: 'big', name: 'Big Team', membersCount: 10 }),
+				createTeamListItemFixture({ id: 'small', name: 'Small Team', membersCount: 2 }),
+				createTeamListItemFixture({ id: 'big', name: 'Big Team', membersCount: 10 }),
 			],
 			isLoading: false,
 			isError: false,
@@ -167,20 +96,20 @@ describe('TeamsPageView', () => {
 		})
 		render(<TeamsPageView />)
 
-		// Кнопка в header всегда присутствует
 		const buttons = screen.getAllByRole('button')
-		const createButton = buttons.find((btn) =>
-			btn.textContent?.includes('Создать команду'),
+		const createButton = buttons.find((button) =>
+			button.textContent?.includes('Создать команду'),
 		)
+
 		expect(createButton).toBeDefined()
 
 		fireEvent.click(createButton!)
-		expect(mockPush).toHaveBeenCalledWith('/teams/new')
+		expect(mockTeamsPagePush).toHaveBeenCalledWith('/teams/new')
 	})
 
 	it('клик по TeamCard → router.push на страницу проектов команды', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [createTeamListItem({ id: 'team-42', name: 'Design Team' })],
+			data: [createTeamListItemFixture({ id: 'team-42', name: 'Design Team' })],
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
@@ -189,7 +118,7 @@ describe('TeamsPageView', () => {
 
 		fireEvent.click(screen.getByTestId('team-card-team-42'))
 
-		expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('team-42'))
+		expect(mockTeamsPagePush).toHaveBeenCalledWith(expect.stringContaining('team-42'))
 	})
 
 	it('error — кнопка "Повторить" вызывает refetch', () => {

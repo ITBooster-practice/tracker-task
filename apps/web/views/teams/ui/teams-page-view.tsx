@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 
-import { Button, EmptyState } from '@repo/ui'
+import { Button, CardSkeleton, EmptyState } from '@repo/ui'
 import { Plus, Users } from '@repo/ui/icons'
 
 import { useTeamsList } from '@/shared/api/use-teams'
@@ -19,7 +19,6 @@ import {
 } from '../lib/styles'
 import type { TeamCardModel } from '../model/types'
 import { TeamCard } from './team-card'
-import { TeamCardSkeleton } from './team-card-skeleton'
 
 function TeamsPageView() {
 	const router = useRouter()
@@ -60,7 +59,7 @@ function TeamsPageView() {
 				{isLoading ? (
 					<div className={teamPageGridClassName} data-testid='teams-page-skeleton'>
 						{Array.from({ length: 4 }).map((_, index) => (
-							<TeamCardSkeleton key={`teams-skeleton-${index}`} />
+							<CardSkeleton key={`teams-skeleton-${index}`} />
 						))}
 					</div>
 				) : isError ? (
