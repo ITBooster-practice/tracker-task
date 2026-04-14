@@ -11,36 +11,37 @@ import { normalizeTeam, type TeamApiResponse } from './teams-normalizers'
 
 export type { CreateTeam, DeleteTeamResponse, Team, TeamListItem, UpdateTeam }
 
-const ENDPOINT = '/teams'
-const CREATE_ENDPOINT = `${ENDPOINT}/new`
+const TEAMS_ENDPOINT = '/teams'
+const TEAM_CREATE_ENDPOINT = `${TEAMS_ENDPOINT}/new`
+const buildTeamEndpoint = (teamId: string) => `${TEAMS_ENDPOINT}/${teamId}`
 
 export const teamsService = {
 	getAll: async (): Promise<TeamListItem[]> => {
-		const response = await client.get<TeamListItem[]>(ENDPOINT)
+		const response = await client.get<TeamListItem[]>(TEAMS_ENDPOINT)
 
 		return response.data
 	},
 
-	getById: async (id: string): Promise<Team> => {
-		const response = await client.get<TeamApiResponse>(`${ENDPOINT}/${id}`)
+	getById: async (teamId: string): Promise<Team> => {
+		const response = await client.get<TeamApiResponse>(buildTeamEndpoint(teamId))
 
 		return normalizeTeam(response.data)
 	},
 
 	create: async (body: CreateTeam): Promise<Team> => {
-		const response = await client.post<TeamApiResponse>(CREATE_ENDPOINT, body)
+		const response = await client.post<TeamApiResponse>(TEAM_CREATE_ENDPOINT, body)
 
 		return normalizeTeam(response.data)
 	},
 
-	update: async (id: string, body: UpdateTeam): Promise<Team> => {
-		const response = await client.patch<TeamApiResponse>(`${ENDPOINT}/${id}`, body)
+	update: async (teamId: string, body: UpdateTeam): Promise<Team> => {
+		const response = await client.patch<TeamApiResponse>(buildTeamEndpoint(teamId), body)
 
 		return normalizeTeam(response.data)
 	},
 
-	delete: async (id: string): Promise<DeleteTeamResponse> => {
-		const response = await client.delete<DeleteTeamResponse>(`${ENDPOINT}/${id}`)
+	delete: async (teamId: string): Promise<DeleteTeamResponse> => {
+		const response = await client.delete<DeleteTeamResponse>(buildTeamEndpoint(teamId))
 
 		return response.data
 	},

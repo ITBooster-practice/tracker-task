@@ -14,6 +14,9 @@ export type { MyInvitation, SendInvitation, Team, TeamInvitation }
 
 const TEAMS_ENDPOINT = '/teams'
 const INVITATIONS_ENDPOINT = '/invitations'
+const buildTeamInvitationsEndpoint = (teamId: string) =>
+	`${TEAMS_ENDPOINT}/${teamId}/invitations`
+const buildInvitationEndpoint = (token: string) => `${INVITATIONS_ENDPOINT}/${token}`
 
 export const teamInvitationsService = {
 	sendInvitation: async (
@@ -21,7 +24,7 @@ export const teamInvitationsService = {
 		body: SendInvitation,
 	): Promise<TeamInvitation> => {
 		const response = await client.post<TeamInvitationApiResponse>(
-			`${TEAMS_ENDPOINT}/${teamId}/invitations`,
+			buildTeamInvitationsEndpoint(teamId),
 			body,
 		)
 
@@ -30,7 +33,7 @@ export const teamInvitationsService = {
 
 	getTeamInvitations: async (teamId: string): Promise<TeamInvitation[]> => {
 		const response = await client.get<TeamInvitationApiResponse[]>(
-			`${TEAMS_ENDPOINT}/${teamId}/invitations`,
+			buildTeamInvitationsEndpoint(teamId),
 		)
 
 		return response.data.map(normalizeTeamInvitation)
@@ -41,7 +44,7 @@ export const teamInvitationsService = {
 		invitationId: string,
 	): Promise<TeamInvitation> => {
 		const response = await client.delete<TeamInvitationApiResponse>(
-			`${TEAMS_ENDPOINT}/${teamId}/invitations/${invitationId}`,
+			`${buildTeamInvitationsEndpoint(teamId)}/${invitationId}`,
 		)
 
 		return normalizeTeamInvitation(response.data)
@@ -57,7 +60,7 @@ export const teamInvitationsService = {
 
 	acceptInvitation: async (token: string): Promise<Team> => {
 		const response = await client.post<TeamApiResponse>(
-			`${INVITATIONS_ENDPOINT}/${token}/accept`,
+			`${buildInvitationEndpoint(token)}/accept`,
 		)
 
 		return normalizeTeam(response.data)
@@ -65,7 +68,7 @@ export const teamInvitationsService = {
 
 	declineInvitation: async (token: string): Promise<TeamInvitation> => {
 		const response = await client.post<TeamInvitationApiResponse>(
-			`${INVITATIONS_ENDPOINT}/${token}/decline`,
+			`${buildInvitationEndpoint(token)}/decline`,
 		)
 
 		return normalizeTeamInvitation(response.data)

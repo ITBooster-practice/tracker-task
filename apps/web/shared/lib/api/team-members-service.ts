@@ -1,20 +1,17 @@
 import type { ChangeRole, DeleteTeamResponse, TeamMember } from '@repo/types'
 
 import { client } from './client'
-import { normalizeTeamMember, type TeamApiMember } from './teams-normalizers'
+import { normalizeTeamMember, type TeamMemberApiResponse } from './teams-normalizers'
 
 export type { ChangeRole, DeleteTeamResponse, TeamMember }
 
-const ENDPOINT = '/teams'
-
-type TeamMemberApiResponse = TeamApiMember & {
-	teamId?: string
-}
+const TEAMS_ENDPOINT = '/teams'
+const buildTeamMembersEndpoint = (teamId: string) => `${TEAMS_ENDPOINT}/${teamId}/members`
 
 export const teamMembersService = {
 	getMembers: async (teamId: string): Promise<TeamMember[]> => {
 		const response = await client.get<TeamMemberApiResponse[]>(
-			`${ENDPOINT}/${teamId}/members`,
+			buildTeamMembersEndpoint(teamId),
 		)
 
 		return response.data.map(normalizeTeamMember)
@@ -26,7 +23,7 @@ export const teamMembersService = {
 		body: ChangeRole,
 	): Promise<TeamMember> => {
 		const response = await client.patch<TeamMemberApiResponse>(
-			`${ENDPOINT}/${teamId}/members/${userId}/role`,
+			`${buildTeamMembersEndpoint(teamId)}/${userId}/role`,
 			body,
 		)
 
@@ -35,7 +32,7 @@ export const teamMembersService = {
 
 	removeMember: async (teamId: string, userId: string): Promise<DeleteTeamResponse> => {
 		const response = await client.delete<DeleteTeamResponse>(
-			`${ENDPOINT}/${teamId}/members/${userId}`,
+			`${buildTeamMembersEndpoint(teamId)}/${userId}`,
 		)
 
 		return response.data

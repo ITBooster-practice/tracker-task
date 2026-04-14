@@ -7,41 +7,81 @@ import type {
 	TeamMember,
 } from '@repo/types'
 
-export type TeamApiMember = Partial<TeamMember> & {
-	user?: {
-		id?: string
-		name?: string | null
-		email?: string
-	} | null
+type TeamMemberUserApiResponse = {
+	id: string
+	name: string | null
+	email: string
 }
+
+type NestedTeamMemberApiResponse = {
+	id?: string
+	userId?: string
+	role: TeamMember['role']
+	joinedAt?: string
+	user: TeamMemberUserApiResponse
+}
+
+export type TeamMemberApiResponse = TeamMember | NestedTeamMemberApiResponse
 
 export type TeamApiResponse = Omit<Team, 'members'> & {
-	members: TeamApiMember[]
+	members: TeamMemberApiResponse[]
 }
 
-export type TeamInvitationApiResponse = Omit<
-	Partial<TeamInvitation>,
-	'team' | 'invitedBy'
-> & {
-	team?: Partial<InvitationTeamSummary> | null
-	invitedBy?: Partial<InvitationInvitedBy> | null
+type InvitationInvitedByApiResponse = {
+	id?: string
+	name?: string | null
+	email?: string
+} | null
+
+type InvitationTeamSummaryApiResponse = {
+	id?: string
+	name?: string
+	avatarUrl?: string | null
+} | null
+
+export type TeamInvitationApiResponse = {
+	id?: string
+	teamId?: string
+	invitedById?: string
+	email?: string
+	role?: TeamInvitation['role']
+	status?: TeamInvitation['status']
+	token?: string
+	expiresAt?: string
+	createdAt?: string
+	updatedAt?: string
+	team?: InvitationTeamSummaryApiResponse
+	invitedBy?: InvitationInvitedByApiResponse
 }
 
-export type MyInvitationApiResponse = Omit<
-	Partial<MyInvitation>,
-	'team' | 'invitedBy'
-> & {
-	team?: Partial<InvitationTeamSummary> | null
-	invitedBy?: Partial<InvitationInvitedBy> | null
+export type MyInvitationApiResponse = {
+	id?: string
+	email?: string
+	role?: MyInvitation['role']
+	token?: string
+	expiresAt?: string
+	createdAt?: string
+	team?: InvitationTeamSummaryApiResponse
+	invitedBy?: InvitationInvitedByApiResponse
 }
 
-export function normalizeTeamMember(member: TeamApiMember): TeamMember {
+function hasNestedUser(
+	member: TeamMemberApiResponse,
+): member is NestedTeamMemberApiResponse {
+	return 'user' in member && member.user !== null && member.user !== undefined
+}
+
+export function normalizeTeamMember(member: TeamMemberApiResponse): TeamMember {
+	if (!hasNestedUser(member)) {
+		return member
+	}
+
 	return {
-		id: member.id ?? member.userId ?? member.user?.id ?? '',
-		userId: member.userId ?? member.user?.id ?? '',
-		name: member.name ?? member.user?.name ?? null,
-		email: member.email ?? member.user?.email ?? '',
-		role: member.role ?? 'MEMBER',
+		id: member.id ?? member.userId ?? member.user.id,
+		userId: member.userId ?? member.user.id,
+		name: member.user.name,
+		email: member.user.email,
+		role: member.role,
 		joinedAt: member.joinedAt ?? '',
 	}
 }
@@ -49,27 +89,31 @@ export function normalizeTeamMember(member: TeamApiMember): TeamMember {
 export function normalizeTeam(team: TeamApiResponse): Team {
 	return {
 		...team,
-		members: Array.isArray(team.members) ? team.members.map(normalizeTeamMember) : [],
+		members: team.members.map(normalizeTeamMember),
 	}
 }
 
-export function normalizeInvitationInvitedBy(
-	invitedBy?: Partial<InvitationInvitedBy> | null,
+function normalizeInvitationInvitedBy(
+	invitedBy?: InvitationInvitedByApiResponse,
 ): InvitationInvitedBy {
+	const source = invitedBy ?? {}
+
 	return {
-		id: invitedBy?.id ?? '',
-		name: invitedBy?.name ?? null,
-		email: invitedBy?.email ?? '',
+		id: source.id ?? '',
+		name: source.name ?? null,
+		email: source.email ?? '',
 	}
 }
 
-export function normalizeInvitationTeamSummary(
-	team?: Partial<InvitationTeamSummary> | null,
+function normalizeInvitationTeamSummary(
+	team?: InvitationTeamSummaryApiResponse,
 ): InvitationTeamSummary {
+	const source = team ?? {}
+
 	return {
-		id: team?.id ?? '',
-		name: team?.name ?? '',
-		avatarUrl: team?.avatarUrl ?? null,
+		id: source.id ?? '',
+		name: source.name ?? '',
+		avatarUrl: source.avatarUrl ?? null,
 	}
 }
 
