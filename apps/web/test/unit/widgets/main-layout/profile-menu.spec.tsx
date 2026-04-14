@@ -5,10 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProfileMenu } from '@/widgets/main-layout/ui/header/profile-menu'
 
 const mockMutateAsync = vi.fn().mockResolvedValue(undefined)
+const mockPush = vi.fn()
 
 vi.mock('@/shared/api/use-auth', () => ({
 	useLogout: () => ({ mutateAsync: mockMutateAsync }),
-	useMe: () => ({ data: { name: 'Тест Юзер' } }),
+	useMe: () => ({ data: { name: 'Тест Юзер', email: 'test@example.com' } }),
+}))
+
+vi.mock('next/navigation', () => ({
+	useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@repo/ui', () => ({
@@ -60,15 +65,22 @@ describe('ProfileMenu', () => {
 		render(<ProfileMenu />, { wrapper: createWrapper() })
 
 		// getAllByText — потому что аватар рендерится дважды
-		expect(screen.getAllByText('AL')).toHaveLength(2)
+		expect(screen.getAllByText('ТЮ')).toHaveLength(2)
 	})
 
 	it('отображает пункты меню', () => {
 		render(<ProfileMenu />, { wrapper: createWrapper() })
 
-		expect(screen.getByText('Профиль')).toBeDefined()
-		expect(screen.getByText('Настройки')).toBeDefined()
+		expect(screen.getByText('Личный кабинет')).toBeDefined()
 		expect(screen.getByText('Выйти')).toBeDefined()
+	})
+
+	it('клик по "Личный кабинет" открывает страницу профиля', () => {
+		render(<ProfileMenu />, { wrapper: createWrapper() })
+
+		fireEvent.click(screen.getByText('Личный кабинет'))
+
+		expect(mockPush).toHaveBeenCalledWith('/profile')
 	})
 
 	it('клик "Выйти" вызывает logout и редиректит', () => {
