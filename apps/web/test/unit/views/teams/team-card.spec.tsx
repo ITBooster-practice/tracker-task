@@ -1,16 +1,24 @@
 import { createTeamCardModel, createTeamMember } from '@/test/mocks/team-card.fixtures'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import '@/test/mocks/team-card-ui.mock'
 
+import type { TeamCardModel } from '@/views/teams/model/types'
 import { TeamCard } from '@/views/teams/ui/team-card'
 
 describe('TeamCard', () => {
-	let onOpen: ReturnType<typeof vi.fn>
+	let onOpen: (team: TeamCardModel) => void
+	let lastOpenedTeam: TeamCardModel | null
+	let openCallCount: number
 
 	beforeEach(() => {
-		onOpen = vi.fn()
+		lastOpenedTeam = null
+		openCallCount = 0
+		onOpen = (team) => {
+			lastOpenedTeam = team
+			openCallCount += 1
+		}
 	})
 
 	afterEach(cleanup)
@@ -39,8 +47,8 @@ describe('TeamCard', () => {
 		render(<TeamCard team={team} onOpen={onOpen} />)
 		fireEvent.click(screen.getByRole('button'))
 
-		expect(onOpen).toHaveBeenCalledOnce()
-		expect(onOpen).toHaveBeenCalledWith(
+		expect(openCallCount).toBe(1)
+		expect(lastOpenedTeam).toEqual(
 			expect.objectContaining({ id: '1', name: 'Dream Team' }),
 		)
 	})
