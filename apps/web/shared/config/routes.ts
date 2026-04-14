@@ -1,4 +1,5 @@
 export const ROUTE_SEGMENTS = {
+	profile: 'profile',
 	teams: 'teams',
 	new: 'new',
 	projects: 'projects',
@@ -16,6 +17,7 @@ export const ROUTES = {
 	home: '/',
 	login: '/login',
 	register: '/register',
+	profile: '/profile',
 	teams: '/teams',
 	teamsNew: '/teams/new',
 	tasks: '/tasks',
@@ -25,6 +27,7 @@ export const ROUTES = {
 export const AUTH_ROUTE_PATHS = [ROUTES.login, ROUTES.register] as const
 
 export const PROTECTED_ROUTE_PREFIXES = [
+	ROUTES.profile,
 	ROUTES.teams,
 	ROUTES.tasks,
 	ROUTES.sprints,

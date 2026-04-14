@@ -71,6 +71,10 @@ describe('isProtectedRoute', () => {
 		expect(isProtectedRoute('/teams')).toBe(true)
 	})
 
+	it("isProtectedRoute('/profile') → true", () => {
+		expect(isProtectedRoute('/profile')).toBe(true)
+	})
+
 	it("isProtectedRoute('/teams/1/projects') → true", () => {
 		expect(isProtectedRoute('/teams/1/projects')).toBe(true)
 	})
