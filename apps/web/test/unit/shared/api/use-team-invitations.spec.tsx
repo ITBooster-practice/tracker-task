@@ -1,3 +1,14 @@
+import '@/test/mocks/api/team-invitations-service.mock'
+
+import {
+	createMyInvitationFixture,
+	createTeamFixture,
+	createTeamInvitationFixture,
+} from '@/test/mocks/api/team-api.fixtures'
+import {
+	resetTeamInvitationsServiceMock,
+	teamInvitationsServiceMock,
+} from '@/test/mocks/api/team-invitations-service.mock'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -5,27 +16,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
 	teamInvitationsKeys,
 	useAcceptInvitation,
+	useDeclineInvitation,
 	useMyInvitations,
+	useRevokeTeamInvitation,
+	useSendTeamInvitation,
 	useTeamInvitations,
 } from '@/shared/api/use-team-invitations'
 import { teamsKeys } from '@/shared/api/use-teams'
-import {
-	teamInvitationsService,
-	type MyInvitation,
-	type Team,
-	type TeamInvitation,
-} from '@/shared/lib/api/team-invitations-service'
-
-vi.mock('@/shared/lib/api/team-invitations-service', () => ({
-	teamInvitationsService: {
-		sendInvitation: vi.fn(),
-		getTeamInvitations: vi.fn(),
-		revokeInvitation: vi.fn(),
-		getMyInvitations: vi.fn(),
-		acceptInvitation: vi.fn(),
-		declineInvitation: vi.fn(),
-	},
-}))
 
 describe('use-team-invitations hooks', () => {
 	let queryClient: QueryClient
@@ -41,26 +38,15 @@ describe('use-team-invitations hooks', () => {
 	}
 
 	beforeEach(() => {
-		vi.clearAllMocks()
+		resetTeamInvitationsServiceMock()
 	})
 
 	it('useTeamInvitations запрашивает invitations команды', async () => {
-		vi.mocked(teamInvitationsService.getTeamInvitations).mockResolvedValue([
-			{
-				id: 'inv-1',
-				teamId: 'team-1',
-				invitedById: 'user-1',
-				email: 'new@test.com',
+		teamInvitationsServiceMock.getTeamInvitations.mockResolvedValue([
+			createTeamInvitationFixture({
 				role: 'ADMIN',
-				status: 'PENDING',
-				token: 'token-1',
-				expiresAt: '2026-04-11T12:00:00.000Z',
-				createdAt: '2026-04-09T12:00:00.000Z',
-				updatedAt: '2026-04-09T12:00:00.000Z',
-				team: { id: 'team-1', name: 'Dream Team', avatarUrl: null },
-				invitedBy: { id: 'user-1', name: 'Alex', email: 'alex@test.com' },
-			},
-		] as TeamInvitation[])
+			}),
+		])
 
 		const { result } = renderHook(() => useTeamInvitations('team-1'), {
 			wrapper: createWrapper(),
@@ -68,23 +54,14 @@ describe('use-team-invitations hooks', () => {
 
 		await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-		expect(teamInvitationsService.getTeamInvitations).toHaveBeenCalledWith('team-1')
+		expect(teamInvitationsServiceMock.getTeamInvitations).toHaveBeenCalledWith('team-1')
 		expect(result.current.data).toHaveLength(1)
 	})
 
 	it('useMyInvitations запрашивает входящие invitations', async () => {
-		vi.mocked(teamInvitationsService.getMyInvitations).mockResolvedValue([
-			{
-				id: 'inv-1',
-				email: 'new@test.com',
-				role: 'MEMBER',
-				token: 'token-1',
-				expiresAt: '2026-04-11T12:00:00.000Z',
-				createdAt: '2026-04-09T12:00:00.000Z',
-				team: { id: 'team-1', name: 'Dream Team', avatarUrl: null },
-				invitedBy: { id: 'user-1', name: 'Alex', email: 'alex@test.com' },
-			},
-		] as MyInvitation[])
+		teamInvitationsServiceMock.getMyInvitations.mockResolvedValue([
+			createMyInvitationFixture(),
+		])
 
 		const { result } = renderHook(() => useMyInvitations(), {
 			wrapper: createWrapper(),
@@ -92,20 +69,45 @@ describe('use-team-invitations hooks', () => {
 
 		await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-		expect(teamInvitationsService.getMyInvitations).toHaveBeenCalledOnce()
+		expect(teamInvitationsServiceMock.getMyInvitations).toHaveBeenCalledOnce()
 		expect(result.current.data).toHaveLength(1)
 	})
 
+	it('useSendTeamInvitation инвалидирует список приглашений команды', async () => {
+		teamInvitationsServiceMock.sendInvitation.mockResolvedValue(
+			createTeamInvitationFixture(),
+		)
+
+		const invalidateSpy = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+
+		const { result } = renderHook(() => useSendTeamInvitation('team-1'), {
+			wrapper: createWrapper(),
+		})
+
+		result.current.mutate({ email: 'new@test.com', role: 'MEMBER' })
+
+		await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+		expect(teamInvitationsServiceMock.sendInvitation).toHaveBeenCalledWith('team-1', {
+			email: 'new@test.com',
+			role: 'MEMBER',
+		})
+		expect(invalidateSpy).toHaveBeenCalledWith({
+			queryKey: teamInvitationsKeys.teamList('team-1'),
+		})
+
+		invalidateSpy.mockRestore()
+	})
+
 	it('useAcceptInvitation кладёт команду в detail cache и инвалидирует списки', async () => {
-		vi.mocked(teamInvitationsService.acceptInvitation).mockResolvedValue({
-			id: 'team-1',
-			name: 'Dream Team',
-			description: null,
-			avatarUrl: null,
-			createdAt: '2024-01-01',
-			updatedAt: '2024-01-02',
-			members: [],
-		} as Team)
+		teamInvitationsServiceMock.acceptInvitation.mockResolvedValue(
+			createTeamFixture({
+				id: 'team-1',
+				name: 'Dream Team',
+				updatedAt: '2024-01-02',
+				members: [],
+			}),
+		)
 
 		const invalidateSpy = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
 
@@ -117,7 +119,7 @@ describe('use-team-invitations hooks', () => {
 
 		await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-		expect(teamInvitationsService.acceptInvitation).toHaveBeenCalledWith(
+		expect(teamInvitationsServiceMock.acceptInvitation).toHaveBeenCalledWith(
 			'token-1',
 			expect.anything(),
 		)
@@ -133,6 +135,64 @@ describe('use-team-invitations hooks', () => {
 		expect(invalidateSpy).toHaveBeenCalledWith({
 			queryKey: teamsKeys.lists(),
 		})
+		expect(invalidateSpy).toHaveBeenCalledWith({
+			queryKey: teamInvitationsKeys.myList(),
+		})
+
+		invalidateSpy.mockRestore()
+	})
+
+	it('useRevokeTeamInvitation инвалидирует список приглашений команды', async () => {
+		teamInvitationsServiceMock.revokeInvitation.mockResolvedValue(
+			createTeamInvitationFixture({
+				status: 'DECLINED',
+				updatedAt: '2026-04-09T12:05:00.000Z',
+			}),
+		)
+
+		const invalidateSpy = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+
+		const { result } = renderHook(() => useRevokeTeamInvitation('team-1'), {
+			wrapper: createWrapper(),
+		})
+
+		result.current.mutate('inv-1')
+
+		await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+		expect(teamInvitationsServiceMock.revokeInvitation).toHaveBeenCalledWith(
+			'team-1',
+			'inv-1',
+		)
+		expect(invalidateSpy).toHaveBeenCalledWith({
+			queryKey: teamInvitationsKeys.teamList('team-1'),
+		})
+
+		invalidateSpy.mockRestore()
+	})
+
+	it('useDeclineInvitation инвалидирует список моих приглашений', async () => {
+		teamInvitationsServiceMock.declineInvitation.mockResolvedValue(
+			createTeamInvitationFixture({
+				status: 'DECLINED',
+				updatedAt: '2026-04-09T12:05:00.000Z',
+			}),
+		)
+
+		const invalidateSpy = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+
+		const { result } = renderHook(() => useDeclineInvitation(), {
+			wrapper: createWrapper(),
+		})
+
+		result.current.mutate('token-1')
+
+		await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+		expect(teamInvitationsServiceMock.declineInvitation).toHaveBeenCalledWith(
+			'token-1',
+			expect.anything(),
+		)
 		expect(invalidateSpy).toHaveBeenCalledWith({
 			queryKey: teamInvitationsKeys.myList(),
 		})
