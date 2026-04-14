@@ -62,6 +62,15 @@ describe('use-team-invitations hooks', () => {
 		expect(result.current.data).toHaveLength(1)
 	})
 
+	it('useTeamInvitations не делает запрос без teamId', () => {
+		const { result } = renderHook(() => useTeamInvitations(''), {
+			wrapper: createWrapper(),
+		})
+
+		expect(teamInvitationsServiceMock.getTeamInvitations).not.toHaveBeenCalled()
+		expect(result.current.fetchStatus).toBe('idle')
+	})
+
 	it('useMyInvitations запрашивает входящие invitations', async () => {
 		teamInvitationsServiceMock.getMyInvitations.mockResolvedValue([
 			createMyInvitationFixture(),

@@ -60,6 +60,15 @@ describe('use-team-members hooks', () => {
 		expect(result.current.data).toHaveLength(1)
 	})
 
+	it('useTeamMembers не делает запрос без teamId', () => {
+		const { result } = renderHook(() => useTeamMembers(''), {
+			wrapper: createWrapper(),
+		})
+
+		expect(teamMembersServiceMock.getMembers).not.toHaveBeenCalled()
+		expect(result.current.fetchStatus).toBe('idle')
+	})
+
 	it('useChangeMemberRole инвалидирует members/detail/list кэш', async () => {
 		teamMembersServiceMock.changeRole.mockResolvedValue(
 			createTeamMemberFixture({
