@@ -33,9 +33,13 @@ describe('use-teams hooks', () => {
 			},
 		})
 
-		return ({ children }: React.PropsWithChildren) => (
+		const QueryClientWrapper = ({ children }: React.PropsWithChildren) => (
 			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 		)
+
+		QueryClientWrapper.displayName = 'UseTeamsQueryClientWrapper'
+
+		return QueryClientWrapper
 	}
 
 	beforeEach(() => {
@@ -177,11 +181,15 @@ describe('use-teams hooks', () => {
 
 			const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
-			const wrapper = ({ children }: React.PropsWithChildren) => (
+			const DeleteTeamQueryClientWrapper = ({ children }: React.PropsWithChildren) => (
 				<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 			)
 
-			const { result } = renderHook(() => useDeleteTeam(), { wrapper })
+			DeleteTeamQueryClientWrapper.displayName = 'UseDeleteTeamQueryClientWrapper'
+
+			const { result } = renderHook(() => useDeleteTeam(), {
+				wrapper: DeleteTeamQueryClientWrapper,
+			})
 
 			result.current.mutate('team-1')
 

@@ -16,9 +16,13 @@ vi.mock('@/shared/lib/api/auth-service', () => ({
 }))
 
 const createWrapper = (queryClient: QueryClient) => {
-	return ({ children }: React.PropsWithChildren) => (
+	const QueryClientWrapper = ({ children }: React.PropsWithChildren) => (
 		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 	)
+
+	QueryClientWrapper.displayName = 'UseAuthQueryClientWrapper'
+
+	return QueryClientWrapper
 }
 
 describe('use-auth hooks', () => {

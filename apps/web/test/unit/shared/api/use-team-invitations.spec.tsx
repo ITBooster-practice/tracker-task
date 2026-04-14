@@ -32,9 +32,13 @@ describe('use-team-invitations hooks', () => {
 			defaultOptions: { queries: { retry: false } },
 		})
 
-		return ({ children }: React.PropsWithChildren) => (
+		const QueryClientWrapper = ({ children }: React.PropsWithChildren) => (
 			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 		)
+
+		QueryClientWrapper.displayName = 'UseTeamInvitationsQueryClientWrapper'
+
+		return QueryClientWrapper
 	}
 
 	beforeEach(() => {
