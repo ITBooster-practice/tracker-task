@@ -51,6 +51,10 @@ const ProfileInvitationsSection = ({
 }: ProfileInvitationsSectionProps) => {
 	const pendingInvitationsCount = invitations.length
 
+	if (!isLoading && !isError && pendingInvitationsCount === 0) {
+		return null
+	}
+
 	return (
 		<ProfileSection
 			icon={<Mail className='size-4' />}
@@ -70,12 +74,6 @@ const ProfileInvitationsSection = ({
 					title={profileCopy.invitations.loadErrorTitle}
 					description={profileCopy.invitations.loadErrorDescription}
 					onRetry={onRetry}
-				/>
-			) : invitations.length === 0 ? (
-				<ProfileSectionState
-					title={profileCopy.invitations.emptyTitle}
-					description={profileCopy.invitations.emptyDescription}
-					centered
 				/>
 			) : (
 				<div
