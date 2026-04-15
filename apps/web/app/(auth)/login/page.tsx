@@ -1,5 +1,11 @@
+import { Suspense } from 'react'
+
 import { LoginPageView } from '@/views/auth'
 
 export default function LoginPage() {
-	return <LoginPageView />
+	return (
+		<Suspense fallback={null}>
+			<LoginPageView />
+		</Suspense>
+	)
 }
