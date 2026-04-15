@@ -1,5 +1,5 @@
 import type { MockInstance } from 'vitest'
 
-type AnyTestFunction = (...args: any[]) => any
+type TestProcedure = (...args: unknown[]) => unknown
 
-export type TestMock = MockInstance<AnyTestFunction> & AnyTestFunction
+export type TestMock = MockInstance<TestProcedure> & TestProcedure

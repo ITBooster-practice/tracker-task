@@ -35,6 +35,9 @@ vi.mock('@repo/ui', () => ({
 	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
 		<button {...props}>{children}</button>
 	),
+	CardSkeleton: (props: React.HTMLAttributes<HTMLDivElement>) => (
+		<div data-testid='card-skeleton' {...props} />
+	),
 	Skeleton: (props: React.HTMLAttributes<HTMLDivElement>) => (
 		<div data-testid='skeleton' {...props} />
 	),

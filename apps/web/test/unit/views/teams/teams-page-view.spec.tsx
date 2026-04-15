@@ -26,7 +26,7 @@ describe('TeamsPageView', () => {
 		render(<TeamsPageView />)
 
 		expect(screen.getByTestId('teams-page-skeleton')).toBeDefined()
-		expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0)
+		expect(screen.getAllByTestId('card-skeleton')).toHaveLength(4)
 	})
 
 	it('error — показывает сообщение об ошибке', () => {
