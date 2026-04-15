@@ -6,11 +6,13 @@ export const ROUTE_SEGMENTS = {
 	settings: 'settings',
 	tasks: 'tasks',
 	sprints: 'sprints',
+	invitations: 'invitations',
 } as const
 
 export const ROUTE_QUERY_PARAMS = {
 	from: 'from',
 	clearAuth: 'clearAuth',
+	autoAccept: 'autoAccept',
 } as const
 
 export const ROUTES = {
@@ -49,6 +51,10 @@ export const teamRoutes = {
 		`${ROUTES.teams}/${encodeRouteParam(teamId)}/${ROUTE_SEGMENTS.settings}`,
 } as const
 
+export const invitationRoutes = {
+	token: (token: string) => `/${ROUTE_SEGMENTS.invitations}/${encodeRouteParam(token)}`,
+} as const
+
 export const SIDEBAR_ROUTE_IDS = {
 	teams: 'teams',
 	teamProjects: 'team.projects',
@@ -59,16 +65,37 @@ export const SIDEBAR_ROUTE_IDS = {
 
 export type SidebarRouteId = (typeof SIDEBAR_ROUTE_IDS)[keyof typeof SIDEBAR_ROUTE_IDS]
 
-export function buildLoginHref(from?: string | null | undefined) {
+function buildAuthHref(route: string, from?: string | null | undefined) {
 	if (!from) {
-		return ROUTES.login
+		return route
 	}
 
 	const searchParams = new URLSearchParams({
 		[ROUTE_QUERY_PARAMS.from]: from,
 	})
 
-	return `${ROUTES.login}?${searchParams.toString()}`
+	return `${route}?${searchParams.toString()}`
+}
+
+export function buildLoginHref(from?: string | null | undefined) {
+	return buildAuthHref(ROUTES.login, from)
+}
+
+export function buildRegisterHref(from?: string | null | undefined) {
+	return buildAuthHref(ROUTES.register, from)
+}
+
+export function getAuthRedirectPath(
+	from?: string | null | undefined,
+	fallbackRoute: string = ROUTES.teams,
+) {
+	if (!from) {
+		return fallbackRoute
+	}
+
+	const isInternalRoute = from.startsWith('/') && !from.startsWith('//')
+
+	return isInternalRoute ? from : fallbackRoute
 }
 
 export function isSameRouteOrDescendant(pathname: string, route: string) {

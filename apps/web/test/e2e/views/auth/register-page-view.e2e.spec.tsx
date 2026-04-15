@@ -3,9 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RegisterPageView } from '@/views/auth/ui/register-page-view'
 
-const { mockRegisterMutateAsync, mockPush } = vi.hoisted(() => ({
+const { mockRegisterMutateAsync, mockPush, mockSearchParamGet } = vi.hoisted(() => ({
 	mockRegisterMutateAsync: vi.fn(),
 	mockPush: vi.fn(),
+	mockSearchParamGet: vi.fn(),
 }))
 
 vi.mock('@/shared/api/use-auth', () => ({
@@ -17,6 +18,9 @@ vi.mock('@/shared/api/use-auth', () => ({
 
 vi.mock('next/navigation', () => ({
 	useRouter: () => ({ push: mockPush }),
+	useSearchParams: () => ({
+		get: mockSearchParamGet,
+	}),
 }))
 
 vi.mock('next/link', () => ({
@@ -53,6 +57,7 @@ function fillRegisterForm({
 describe('RegisterPageView e2e', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockSearchParamGet.mockReturnValue(null)
 	})
 
 	afterEach(cleanup)

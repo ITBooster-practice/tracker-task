@@ -41,6 +41,11 @@ describe('use-auth hooks', () => {
 
 	describe('useRegister', () => {
 		it('mutationFn вызывает authService.register', async () => {
+			vi.mocked(authService.getMe).mockResolvedValue({
+				id: '1',
+				email: 'test@test.com',
+				name: 'Ivan',
+			} as User)
 			vi.mocked(authService.register).mockResolvedValue({
 				user: { id: '1', email: 'test@test.com', name: 'Ivan' },
 				accessToken: 'token',
@@ -69,6 +74,11 @@ describe('use-auth hooks', () => {
 
 	describe('useLogin', () => {
 		it('mutationFn вызывает authService.login', async () => {
+			vi.mocked(authService.getMe).mockResolvedValue({
+				id: '1',
+				email: 'test@test.com',
+				name: null,
+			} as User)
 			vi.mocked(authService.login).mockResolvedValue({
 				user: { id: '1', email: 'test@test.com', name: null },
 				accessToken: 'token',

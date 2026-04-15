@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest, type ProxyConfig } from 'next/server'
 
 import {
+	getAuthRedirectPath,
 	isAuthRoute,
 	isProtectedRoute,
 	ROUTE_QUERY_PARAMS,
@@ -46,7 +47,7 @@ const shouldClearAuthCookies = (request: NextRequest) => {
 }
 
 const handleRefresh = async (request: NextRequest) => {
-	const { pathname } = request.nextUrl
+	const { pathname, searchParams } = request.nextUrl
 	try {
 		const refreshResult: AuthRefreshResult | null = await refreshAuthSession()
 
@@ -55,7 +56,12 @@ const handleRefresh = async (request: NextRequest) => {
 		}
 
 		const response = isAuthRoute(pathname)
-			? NextResponse.redirect(new URL(ROUTES.teams, request.url))
+			? NextResponse.redirect(
+					new URL(
+						getAuthRedirectPath(searchParams.get(ROUTE_QUERY_PARAMS.from)),
+						request.url,
+					),
+				)
 			: NextResponse.next()
 
 		appendSetCookieHeaders(response, refreshResult.setCookies)
@@ -68,7 +74,7 @@ const handleRefresh = async (request: NextRequest) => {
 }
 
 export async function proxy(request: NextRequest) {
-	const { pathname } = request.nextUrl
+	const { pathname, searchParams } = request.nextUrl
 
 	if (shouldClearAuthCookies(request)) {
 		await clearAuthCookies()
@@ -82,7 +88,12 @@ export async function proxy(request: NextRequest) {
 	const accessToken = request.cookies.get('accessToken')?.value
 
 	if (accessToken && isAuthRoute(pathname)) {
-		return NextResponse.redirect(new URL(ROUTES.teams, request.url))
+		return NextResponse.redirect(
+			new URL(
+				getAuthRedirectPath(searchParams.get(ROUTE_QUERY_PARAMS.from)),
+				request.url,
+			),
+		)
 	}
 
 	if (!accessToken && isProtectedRoute(pathname)) {

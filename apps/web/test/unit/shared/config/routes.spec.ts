@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	buildLoginHref,
+	buildRegisterHref,
+	getAuthRedirectPath,
 	getSidebarRouteId,
+	invitationRoutes,
 	isAuthRoute,
 	isProtectedRoute,
 	SIDEBAR_ROUTE_IDS,
@@ -45,6 +48,38 @@ describe('buildLoginHref', () => {
 		const result = buildLoginHref('')
 
 		expect(result).toBe('/login')
+	})
+})
+
+describe('buildRegisterHref', () => {
+	it('без параметра from', () => {
+		expect(buildRegisterHref()).toBe('/register')
+	})
+
+	it('с параметром from', () => {
+		expect(buildRegisterHref('/invitations/token-1')).toBe(
+			'/register?from=%2Finvitations%2Ftoken-1',
+		)
+	})
+})
+
+describe('getAuthRedirectPath', () => {
+	it('возвращает fallback без from', () => {
+		expect(getAuthRedirectPath(null)).toBe('/teams')
+	})
+
+	it('возвращает внутренний путь', () => {
+		expect(getAuthRedirectPath('/invitations/token-1')).toBe('/invitations/token-1')
+	})
+
+	it('не пропускает внешний путь', () => {
+		expect(getAuthRedirectPath('//evil.com')).toBe('/teams')
+	})
+})
+
+describe('invitationRoutes', () => {
+	it('строит ссылку по токену', () => {
+		expect(invitationRoutes.token('token-1')).toBe('/invitations/token-1')
 	})
 })
 
