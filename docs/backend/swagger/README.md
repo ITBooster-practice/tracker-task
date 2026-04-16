@@ -21,7 +21,7 @@ Swagger разбит на два файла:
 
 ```
 src/
-├── utils/swagger.util.ts       # setupSwagger(app) — вызывается в main.ts
+├── utils/swagger.util.ts       # setupSwagger(app) + reusable helpers для Swagger response
 └── auth/config/swagger.config.ts  # getSwaggerConfig() — DocumentBuilder
 ```
 
@@ -43,7 +43,12 @@ export function getSwaggerConfig() {
 ### `swagger.util.ts`
 
 ```typescript
-import { SwaggerModule } from '@nestjs/swagger'
+import {
+	ApiExtraModels,
+	ApiOkResponse,
+	getSchemaPath,
+	SwaggerModule,
+} from '@nestjs/swagger'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
 import { getSwaggerConfig } from 'src/auth/config/swagger.config'
 
@@ -57,6 +62,30 @@ export function setupSwagger(app: INestApplication) {
 	})
 }
 ```
+
+### Пагинированные ответы
+
+Для list endpoint-ов используется единый helper `ApiPaginatedOkResponse(...)` из `src/utils/swagger.util.ts`.
+
+Он нужен, чтобы Swagger корректно показывал:
+
+- `data` как массив конкретного DTO
+- `meta` как объект с полями `page`, `limit`, `total`, `totalPages`
+
+Пример использования:
+
+```typescript
+@ApiPaginatedOkResponse(TeamListItemResponse, 'Пагинированный список команд')
+@Get()
+getUserTeams(
+	@Authorized('id') userId: string,
+	@Query() pagination: PaginationQueryDto,
+) {
+	return this.teamsService.getUserTeams(userId, pagination)
+}
+```
+
+Если описывать paginated response вручную без `ApiExtraModels(...)` и `getSchemaPath(...)`, Swagger UI может отобразить `data` как `string[]` или показать пустой `meta`.
 
 ### `main.ts`
 
