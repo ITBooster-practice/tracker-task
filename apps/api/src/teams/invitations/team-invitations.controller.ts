@@ -7,6 +7,7 @@ import {
 	HttpStatus,
 	Param,
 	Post,
+	Query,
 	UseGuards,
 } from '@nestjs/common'
 import {
@@ -25,6 +26,7 @@ import { RolesGuard } from '../../guards/roles.guard'
 import { TeamInvitationResponse } from './dto/invitation-response.dto'
 import { SendInvitationDto } from './dto/send-invitation.dto'
 import { TeamInvitationsService } from './team-invitations.service'
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
 
 @ApiTags('Team Invitations')
 @ApiBearerAuth()
@@ -49,13 +51,37 @@ export class TeamInvitationsController {
 	}
 
 	@ApiOperation({ summary: 'Получить список приглашений команды' })
-	@ApiOkResponse({ type: [TeamInvitationResponse] })
+	@ApiOkResponse({
+		description: 'Пагинированный список приглашений команды',
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: { $ref: '#/components/schemas/TeamInvitationResponse' },
+				},
+				meta: {
+					type: 'object',
+					properties: {
+						page: { type: 'number', example: 1 },
+						limit: { type: 'number', example: 10 },
+						total: { type: 'number', example: 1 },
+						totalPages: { type: 'number', example: 1 },
+					},
+				},
+			},
+		},
+	})
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для управления приглашениями' })
 	@Get()
 	@UseGuards(RolesGuard)
 	@Roles('OWNER', 'ADMIN')
-	getTeamInvitations(@Param('id') teamId: string, @Authorized('id') actorId: string) {
-		return this.teamInvitationsService.getTeamInvitations(teamId, actorId)
+	getTeamInvitations(
+		@Param('id') teamId: string,
+		@Authorized('id') actorId: string,
+		@Query() pagination: PaginationQueryDto,
+	) {
+		return this.teamInvitationsService.getTeamInvitations(teamId, actorId, pagination)
 	}
 
 	@ApiOperation({ summary: 'Отозвать приглашение в команду' })

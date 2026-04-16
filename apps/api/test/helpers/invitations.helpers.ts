@@ -28,6 +28,7 @@ export type InvitationsPrismaMock = PrismaService & {
 		findFirst: MockFn
 		findUnique: MockFn
 		findMany: MockFn
+		count: MockFn
 		create: MockFn
 		update: MockFn
 		updateMany: MockFn
@@ -45,6 +46,7 @@ export const INVITATION_ID = 'invitation-id-1'
 export const INVITATION_TOKEN = '550e8400-e29b-41d4-a716-446655440000'
 export const INVITED_EMAIL = 'invitee@example.com'
 export const INVITER_ID = USER_ID
+const PENDING_INVITATION_EXPIRES_IN_MS = 24 * 60 * 60 * 1000
 export const INVITER = {
 	id: INVITER_ID,
 	teamId: TEAM_ID,
@@ -89,7 +91,7 @@ export const PENDING_INVITATION = {
 	role: 'MEMBER' as const,
 	status: 'PENDING' as const,
 	token: INVITATION_TOKEN,
-	expiresAt: new Date('2026-04-11T10:00:00.000Z'),
+	expiresAt: new Date(Date.now() + PENDING_INVITATION_EXPIRES_IN_MS),
 	createdAt: new Date('2026-04-09T10:00:00.000Z'),
 	updatedAt: new Date('2026-04-09T10:00:00.000Z'),
 	team: {
@@ -126,6 +128,7 @@ export function createInvitationsPrismaMock(): InvitationsPrismaMock {
 			findFirst: vi.fn(),
 			findUnique: vi.fn(),
 			findMany: vi.fn(),
+			count: vi.fn(),
 			create: vi.fn(),
 			update: vi.fn(),
 			updateMany: vi.fn(),
