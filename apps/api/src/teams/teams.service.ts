@@ -2,6 +2,11 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service'
 import { CreateTeamDto } from './dto/create-team.dto'
 import { UpdateTeamDto } from './dto/update-team.dto'
+import {
+	buildPaginatedResponse,
+	getPaginationPrismaParams,
+	type PaginationOptions,
+} from '../utils/pagination.util'
 
 @Injectable()
 export class TeamsService {
@@ -34,19 +39,26 @@ export class TeamsService {
 		return team
 	}
 
-	async getUserTeams(userId: string) {
-		const memberships = await this.prisma.teamMember.findMany({
-			where: { userId },
-			include: {
-				team: {
-					include: {
-						_count: { select: { members: true } },
+	async getUserTeams(userId: string, pagination: PaginationOptions) {
+		const paginationParams = getPaginationPrismaParams(pagination)
+
+		const [memberships, total] = await Promise.all([
+			this.prisma.teamMember.findMany({
+				where: { userId },
+				include: {
+					team: {
+						include: {
+							_count: { select: { members: true } },
+						},
 					},
 				},
-			},
-		})
+				orderBy: { joinedAt: 'desc' },
+				...paginationParams,
+			}),
+			this.prisma.teamMember.count({ where: { userId } }),
+		])
 
-		return memberships.map((m) => ({
+		const teams = memberships.map((m) => ({
 			id: m.team.id,
 			name: m.team.name,
 			description: m.team.description,
@@ -56,6 +68,8 @@ export class TeamsService {
 			createdAt: m.team.createdAt,
 			updatedAt: m.team.updatedAt,
 		}))
+
+		return buildPaginatedResponse(teams, pagination, total)
 	}
 
 	async getTeamById(teamId: string, userId: string) {

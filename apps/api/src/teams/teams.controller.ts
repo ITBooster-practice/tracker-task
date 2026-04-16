@@ -8,6 +8,7 @@ import {
 	Param,
 	Patch,
 	Post,
+	Query,
 } from '@nestjs/common'
 import {
 	ApiBearerAuth,
@@ -26,6 +27,8 @@ import { UpdateTeamDto } from './dto/update-team.dto'
 import { TeamResponse, TeamListItemResponse } from './dto/team-response.dto'
 import { Authorization } from '../auth/decorators/authorization.decorator'
 import { Authorized } from '../auth/decorators/authorized.decorator'
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto'
+import { ApiPaginatedOkResponse } from '../utils/swagger.util'
 
 @ApiTags('Teams')
 @ApiBearerAuth()
@@ -44,10 +47,13 @@ export class TeamsController {
 	}
 
 	@ApiOperation({ summary: 'Список команд текущего пользователя' })
-	@ApiOkResponse({ type: [TeamListItemResponse], description: 'Список команд' })
+	@ApiPaginatedOkResponse(TeamListItemResponse, 'Пагинированный список команд')
 	@Get()
-	getUserTeams(@Authorized('id') userId: string) {
-		return this.teamsService.getUserTeams(userId)
+	getUserTeams(
+		@Authorized('id') userId: string,
+		@Query() pagination: PaginationQueryDto,
+	) {
+		return this.teamsService.getUserTeams(userId, pagination)
 	}
 
 	@ApiOperation({ summary: 'Получить команду по ID' })

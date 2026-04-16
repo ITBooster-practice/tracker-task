@@ -77,7 +77,7 @@ describe('Teams (e2e)', () => {
 
 	// ── GET /teams ────────────────────────────────────────────────────────────
 	describe('GET /teams', () => {
-		it('должен вернуть список команд текущего пользователя', async () => {
+		it('должен вернуть пагинированный список команд текущего пользователя', async () => {
 			// Создаём команду
 			await request(server)
 				.post('/teams/new')
@@ -90,21 +90,62 @@ describe('Teams (e2e)', () => {
 				.set('Cookie', ownerCookies)
 				.expect(200)
 
-			expect(res.body).toHaveLength(1)
-			expect(res.body[0]).toMatchObject({
+			expect(res.body.meta).toEqual({
+				page: 1,
+				limit: 10,
+				total: 1,
+				totalPages: 1,
+			})
+			expect(res.body.data).toHaveLength(1)
+			expect(res.body.data[0]).toMatchObject({
 				name: 'Dream Team',
 				membersCount: 1,
 				currentUserRole: 'OWNER',
 			})
 		})
 
-		it('должен вернуть пустой массив если у пользователя нет команд', async () => {
+		it('должен вернуть пустой paginated response если у пользователя нет команд', async () => {
 			const res = await request(server)
 				.get('/teams')
 				.set('Cookie', ownerCookies)
 				.expect(200)
 
-			expect(res.body).toEqual([])
+			expect(res.body).toEqual({
+				data: [],
+				meta: {
+					page: 1,
+					limit: 10,
+					total: 0,
+					totalPages: 0,
+				},
+			})
+		})
+
+		it('должен применять page и limit для списка команд', async () => {
+			await request(server)
+				.post('/teams/new')
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Dream Team 1' })
+				.expect(201)
+
+			await request(server)
+				.post('/teams/new')
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Dream Team 2' })
+				.expect(201)
+
+			const res = await request(server)
+				.get('/teams?page=2&limit=1')
+				.set('Cookie', ownerCookies)
+				.expect(200)
+
+			expect(res.body.meta).toEqual({
+				page: 2,
+				limit: 1,
+				total: 2,
+				totalPages: 2,
+			})
+			expect(res.body.data).toHaveLength(1)
 		})
 	})
 
