@@ -24,6 +24,7 @@ import { MemberResponse } from './dto/member-response.dto'
 import { Authorization } from '../../auth/decorators/authorization.decorator'
 import { Authorized } from '../../auth/decorators/authorized.decorator'
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
+import { ApiPaginatedOkResponse } from '../../utils/swagger.util'
 
 @ApiTags('Team Members')
 @ApiBearerAuth()
@@ -33,24 +34,7 @@ export class TeamMembersController {
 	constructor(private readonly teamMembersService: TeamMembersService) {}
 
 	@ApiOperation({ summary: 'Список участников команды' })
-	@ApiOkResponse({
-		description: 'Пагинированный список участников',
-		schema: {
-			type: 'object',
-			properties: {
-				data: { type: 'array', items: { $ref: '#/components/schemas/MemberResponse' } },
-				meta: {
-					type: 'object',
-					properties: {
-						page: { type: 'number', example: 1 },
-						limit: { type: 'number', example: 10 },
-						total: { type: 'number', example: 3 },
-						totalPages: { type: 'number', example: 1 },
-					},
-				},
-			},
-		},
-	})
+	@ApiPaginatedOkResponse(MemberResponse, 'Пагинированный список участников')
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@ApiNotFoundResponse({ description: 'Команда не найдена' })
 	@Get()

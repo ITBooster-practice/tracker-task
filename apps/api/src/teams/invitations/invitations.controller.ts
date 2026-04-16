@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common'
+import { Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import { Authorization } from '../../auth/decorators/authorization.decorator'
@@ -9,6 +9,8 @@ import {
 	TeamInvitationResponse,
 } from './dto/invitation-response.dto'
 import { TeamInvitationsService } from './team-invitations.service'
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
+import { ApiPaginatedOkResponse } from '../../utils/swagger.util'
 
 @ApiTags('Invitations')
 @ApiBearerAuth()
@@ -18,13 +20,17 @@ export class InvitationsController {
 	constructor(private readonly teamInvitationsService: TeamInvitationsService) {}
 
 	@ApiOperation({ summary: 'Получить мои входящие приглашения' })
-	@ApiOkResponse({ type: [MyInvitationResponse] })
+	@ApiPaginatedOkResponse(
+		MyInvitationResponse,
+		'Пагинированный список входящих приглашений',
+	)
 	@Get('me')
 	getMyInvitations(
 		@Authorized('id') userId: string,
 		@Authorized('email') userEmail: string,
+		@Query() pagination: PaginationQueryDto,
 	) {
-		return this.teamInvitationsService.getMyInvitations(userId, userEmail)
+		return this.teamInvitationsService.getMyInvitations(userId, userEmail, pagination)
 	}
 
 	@ApiOperation({ summary: 'Принять приглашение по токену' })

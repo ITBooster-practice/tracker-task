@@ -139,13 +139,26 @@ describe('TeamInvitationsService', () => {
 	})
 
 	describe('getMyInvitations', () => {
-		it('должен возвращать входящие приглашения пользователя', async () => {
+		it('должен возвращать пагинированные входящие приглашения пользователя', async () => {
 			prisma.teamInvitation.findMany.mockResolvedValue([PENDING_INVITATION])
+			prisma.teamInvitation.count.mockResolvedValue(1)
 
-			const result = await service.getMyInvitations(USER_ID, INVITED_EMAIL)
+			const result = await service.getMyInvitations(USER_ID, INVITED_EMAIL, {
+				page: 1,
+				limit: 10,
+			})
 
 			expect(prisma.teamInvitation.findMany).toHaveBeenCalledOnce()
-			expect(result).toEqual([PENDING_INVITATION])
+			expect(prisma.teamInvitation.count).toHaveBeenCalledOnce()
+			expect(result).toEqual({
+				data: [PENDING_INVITATION],
+				meta: {
+					page: 1,
+					limit: 10,
+					total: 1,
+					totalPages: 1,
+				},
+			})
 		})
 	})
 

@@ -27,6 +27,7 @@ import { TeamInvitationResponse } from './dto/invitation-response.dto'
 import { SendInvitationDto } from './dto/send-invitation.dto'
 import { TeamInvitationsService } from './team-invitations.service'
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
+import { ApiPaginatedOkResponse } from '../../utils/swagger.util'
 
 @ApiTags('Team Invitations')
 @ApiBearerAuth()
@@ -51,27 +52,10 @@ export class TeamInvitationsController {
 	}
 
 	@ApiOperation({ summary: 'Получить список приглашений команды' })
-	@ApiOkResponse({
-		description: 'Пагинированный список приглашений команды',
-		schema: {
-			type: 'object',
-			properties: {
-				data: {
-					type: 'array',
-					items: { $ref: '#/components/schemas/TeamInvitationResponse' },
-				},
-				meta: {
-					type: 'object',
-					properties: {
-						page: { type: 'number', example: 1 },
-						limit: { type: 'number', example: 10 },
-						total: { type: 'number', example: 1 },
-						totalPages: { type: 'number', example: 1 },
-					},
-				},
-			},
-		},
-	})
+	@ApiPaginatedOkResponse(
+		TeamInvitationResponse,
+		'Пагинированный список приглашений команды',
+	)
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для управления приглашениями' })
 	@Get()
 	@UseGuards(RolesGuard)

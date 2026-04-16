@@ -234,25 +234,38 @@ export class TeamInvitationsService {
 		return buildPaginatedResponse(invitations, pagination, total)
 	}
 
-	async getMyInvitations(userId: string, userEmail: string) {
+	async getMyInvitations(
+		userId: string,
+		userEmail: string,
+		pagination: PaginationOptions,
+	) {
 		void userId
+		const paginationParams = getPaginationPrismaParams(pagination)
 
-		return this.prisma.teamInvitation.findMany({
-			where: {
-				email: userEmail,
-				status: 'PENDING',
-				expiresAt: { gt: new Date() },
-			},
-			include: {
-				team: {
-					select: { id: true, name: true, avatarUrl: true },
+		const where = {
+			email: userEmail,
+			status: 'PENDING' as const,
+			expiresAt: { gt: new Date() },
+		}
+
+		const [invitations, total] = await Promise.all([
+			this.prisma.teamInvitation.findMany({
+				where,
+				include: {
+					team: {
+						select: { id: true, name: true, avatarUrl: true },
+					},
+					invitedBy: {
+						select: { id: true, name: true, email: true },
+					},
 				},
-				invitedBy: {
-					select: { id: true, name: true, email: true },
-				},
-			},
-			orderBy: { createdAt: 'desc' },
-		})
+				orderBy: { createdAt: 'desc' },
+				...paginationParams,
+			}),
+			this.prisma.teamInvitation.count({ where }),
+		])
+
+		return buildPaginatedResponse(invitations, pagination, total)
 	}
 
 	async acceptInvitation(token: string, userId: string, userEmail: string) {

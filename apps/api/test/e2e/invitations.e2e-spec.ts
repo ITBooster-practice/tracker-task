@@ -186,7 +186,7 @@ describe('Invitations (e2e)', () => {
 	})
 
 	describe('GET /invitations/me', () => {
-		it('должен возвращать входящие приглашения текущего пользователя', async () => {
+		it('должен возвращать пагинированные входящие приглашения текущего пользователя', async () => {
 			await prisma.teamInvitation.create({
 				data: {
 					teamId,
@@ -204,12 +204,56 @@ describe('Invitations (e2e)', () => {
 				.set('Cookie', inviteeCookies)
 				.expect(200)
 
-			expect(res.body).toHaveLength(1)
-			expect(res.body[0]).toMatchObject({
+			expect(res.body.meta).toEqual({
+				page: 1,
+				limit: 10,
+				total: 1,
+				totalPages: 1,
+			})
+			expect(res.body.data).toHaveLength(1)
+			expect(res.body.data[0]).toMatchObject({
 				email: 'invitee-invite@test.com',
 				team: expect.objectContaining({ id: teamId, name: 'Invitations Team' }),
 				invitedBy: expect.objectContaining({ id: ownerId }),
 			})
+		})
+
+		it('должен применять page и limit для входящих приглашений', async () => {
+			await prisma.teamInvitation.createMany({
+				data: [
+					{
+						teamId,
+						invitedById: ownerId,
+						email: 'invitee-invite@test.com',
+						role: 'MEMBER',
+						status: 'PENDING',
+						token: 'token-my-invites-1',
+						expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+					},
+					{
+						teamId,
+						invitedById: ownerId,
+						email: 'invitee-invite@test.com',
+						role: 'MEMBER',
+						status: 'PENDING',
+						token: 'token-my-invites-2',
+						expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+					},
+				],
+			})
+
+			const res = await request(server)
+				.get('/invitations/me?page=2&limit=1')
+				.set('Cookie', inviteeCookies)
+				.expect(200)
+
+			expect(res.body.meta).toEqual({
+				page: 2,
+				limit: 1,
+				total: 2,
+				totalPages: 2,
+			})
+			expect(res.body.data).toHaveLength(1)
 		})
 	})
 
