@@ -2,6 +2,11 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../../../prisma/prisma.service'
 import { ChangeRoleDto } from './dto/change-role.dto'
 import { TeamRole } from '@repo/types'
+import {
+	buildPaginatedResponse,
+	getPaginationPrismaParams,
+	type PaginationOptions,
+} from '../../utils/pagination.util'
 
 const ROLE_WEIGHT: Record<TeamRole, number> = {
 	OWNER: 3,
@@ -13,29 +18,40 @@ const ROLE_WEIGHT: Record<TeamRole, number> = {
 export class TeamMembersService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async getMembers(teamId: string, userId: string) {
-		const team = await this.prisma.team.findUnique({
-			where: { id: teamId },
-			include: {
-				members: {
-					include: {
-						user: { select: { id: true, name: true, email: true } },
-					},
-					orderBy: { joinedAt: 'asc' },
-				},
-			},
-		})
+	async getMembers(teamId: string, userId: string, pagination: PaginationOptions) {
+		const [team, actor] = await Promise.all([
+			this.prisma.team.findUnique({
+				where: { id: teamId },
+				select: { id: true },
+			}),
+			this.prisma.teamMember.findUnique({
+				where: { teamId_userId: { teamId, userId } },
+			}),
+		])
 
 		if (!team) {
 			throw new NotFoundException('Команда не найдена')
 		}
 
-		const isMember = team.members.some((m) => m.userId === userId)
-		if (!isMember) {
+		if (!actor) {
 			throw new ForbiddenException('Вы не являетесь участником этой команды')
 		}
 
-		return team.members
+		const paginationParams = getPaginationPrismaParams(pagination)
+
+		const [members, total] = await Promise.all([
+			this.prisma.teamMember.findMany({
+				where: { teamId },
+				include: {
+					user: { select: { id: true, name: true, email: true } },
+				},
+				orderBy: { joinedAt: 'asc' },
+				...paginationParams,
+			}),
+			this.prisma.teamMember.count({ where: { teamId } }),
+		])
+
+		return buildPaginatedResponse(members, pagination, total)
 	}
 
 	async changeRole(

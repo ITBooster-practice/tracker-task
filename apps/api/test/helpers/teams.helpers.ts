@@ -12,6 +12,7 @@ export function createPrismaMock() {
 		teamMember: {
 			findUnique: vi.fn(),
 			findMany: vi.fn(),
+			count: vi.fn(),
 			update: vi.fn(),
 			delete: vi.fn(),
 		},
@@ -25,6 +26,7 @@ export function createPrismaMock() {
 		teamMember: {
 			findUnique: ReturnType<typeof vi.fn>
 			findMany: ReturnType<typeof vi.fn>
+			count: ReturnType<typeof vi.fn>
 			update: ReturnType<typeof vi.fn>
 			delete: ReturnType<typeof vi.fn>
 		}
