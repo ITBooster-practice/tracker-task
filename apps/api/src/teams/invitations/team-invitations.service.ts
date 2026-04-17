@@ -18,6 +18,11 @@ import {
 	TEAM_INVITATION_EXPIRES_IN_HOURS,
 } from '../../common/constants/invitations.constants'
 import { MailService } from '../../mail/mail.service'
+import {
+	buildPaginatedResponse,
+	getPaginationPrismaParams,
+	type PaginationOptions,
+} from '../../utils/pagination.util'
 
 import { SendInvitationDto } from './dto/send-invitation.dto'
 
@@ -201,42 +206,66 @@ export class TeamInvitationsService {
 		return invitation
 	}
 
-	async getTeamInvitations(teamId: string, actorId: string) {
+	async getTeamInvitations(
+		teamId: string,
+		actorId: string,
+		pagination: PaginationOptions,
+	) {
 		await this.assertCanManageInvitations(teamId, actorId)
+		const paginationParams = getPaginationPrismaParams(pagination)
 
-		return this.prisma.teamInvitation.findMany({
-			where: { teamId },
-			include: {
-				team: {
-					select: { id: true, name: true, avatarUrl: true },
+		const [invitations, total] = await Promise.all([
+			this.prisma.teamInvitation.findMany({
+				where: { teamId },
+				include: {
+					team: {
+						select: { id: true, name: true, avatarUrl: true },
+					},
+					invitedBy: {
+						select: { id: true, name: true, email: true },
+					},
 				},
-				invitedBy: {
-					select: { id: true, name: true, email: true },
-				},
-			},
-			orderBy: { createdAt: 'desc' },
-		})
+				orderBy: { createdAt: 'desc' },
+				...paginationParams,
+			}),
+			this.prisma.teamInvitation.count({ where: { teamId } }),
+		])
+
+		return buildPaginatedResponse(invitations, pagination, total)
 	}
 
-	async getMyInvitations(userId: string, userEmail: string) {
+	async getMyInvitations(
+		userId: string,
+		userEmail: string,
+		pagination: PaginationOptions,
+	) {
 		void userId
+		const paginationParams = getPaginationPrismaParams(pagination)
 
-		return this.prisma.teamInvitation.findMany({
-			where: {
-				email: userEmail,
-				status: 'PENDING',
-				expiresAt: { gt: new Date() },
-			},
-			include: {
-				team: {
-					select: { id: true, name: true, avatarUrl: true },
+		const where = {
+			email: userEmail,
+			status: 'PENDING' as const,
+			expiresAt: { gt: new Date() },
+		}
+
+		const [invitations, total] = await Promise.all([
+			this.prisma.teamInvitation.findMany({
+				where,
+				include: {
+					team: {
+						select: { id: true, name: true, avatarUrl: true },
+					},
+					invitedBy: {
+						select: { id: true, name: true, email: true },
+					},
 				},
-				invitedBy: {
-					select: { id: true, name: true, email: true },
-				},
-			},
-			orderBy: { createdAt: 'desc' },
-		})
+				orderBy: { createdAt: 'desc' },
+				...paginationParams,
+			}),
+			this.prisma.teamInvitation.count({ where }),
+		])
+
+		return buildPaginatedResponse(invitations, pagination, total)
 	}
 
 	async acceptInvitation(token: string, userId: string, userEmail: string) {

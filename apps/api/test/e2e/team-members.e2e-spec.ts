@@ -89,20 +89,41 @@ describe('TeamMembers (e2e)', () => {
 
 	// ── GET /teams/:id/members ────────────────────────────────────────────────
 	describe('GET /teams/:id/members', () => {
-		it('должен вернуть 200 и список участников для члена команды', async () => {
+		it('должен вернуть 200 и пагинированный список участников для члена команды', async () => {
 			const res = await request(server)
 				.get(`/teams/${teamId}/members`)
 				.set('Cookie', ownerCookies)
 				.expect(200)
 
-			expect(res.body).toHaveLength(3)
-			expect(res.body).toEqual(
+			expect(res.body.meta).toEqual({
+				page: 1,
+				limit: 10,
+				total: 3,
+				totalPages: 1,
+			})
+			expect(res.body.data).toHaveLength(3)
+			expect(res.body.data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({ userId: ownerId, role: 'OWNER' }),
 					expect.objectContaining({ userId: adminId, role: 'ADMIN' }),
 					expect.objectContaining({ userId: memberId, role: 'MEMBER' }),
 				]),
 			)
+		})
+
+		it('должен применять page и limit для списка участников', async () => {
+			const res = await request(server)
+				.get(`/teams/${teamId}/members?page=2&limit=1`)
+				.set('Cookie', ownerCookies)
+				.expect(200)
+
+			expect(res.body.meta).toEqual({
+				page: 2,
+				limit: 1,
+				total: 3,
+				totalPages: 3,
+			})
+			expect(res.body.data).toHaveLength(1)
 		})
 
 		it('должен вернуть 401 без токена', async () => {

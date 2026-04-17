@@ -1,16 +1,3 @@
-export interface PaginationMeta {
-	page: number
-	limit: number
-	total: number
-	totalPages: number
-}
-
-export interface PaginatedResponse<T> {
-	data: T[]
-	meta: PaginationMeta
-}
-
-export interface PaginationParams {
-	page?: number
-	limit?: number
-}
+export * from './constants/pagination.constants'
+export * from './schemas/pagination-query.schema'
+export * from './types/pagination.types'

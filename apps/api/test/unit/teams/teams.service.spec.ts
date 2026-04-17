@@ -65,7 +65,7 @@ describe('TeamsService', () => {
 
 	// ── getUserTeams ──────────────────────────────────────────────────────────
 	describe('getUserTeams', () => {
-		it('должен вернуть список команд с ролью и кол-вом участников', async () => {
+		it('должен вернуть пагинированный список команд с ролью и кол-вом участников', async () => {
 			prisma.teamMember.findMany.mockResolvedValue([
 				{
 					role: 'OWNER',
@@ -80,27 +80,51 @@ describe('TeamsService', () => {
 					},
 				},
 			])
+			prisma.teamMember.count.mockResolvedValue(1)
 
-			const result = await service.getUserTeams(USER_ID)
+			const result = await service.getUserTeams(USER_ID, { page: 1, limit: 10 })
 
 			expect(prisma.teamMember.findMany).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { userId: USER_ID } }),
+				expect.objectContaining({
+					where: { userId: USER_ID },
+					orderBy: { joinedAt: 'desc' },
+					skip: 0,
+					take: 10,
+				}),
 			)
-			expect(result).toHaveLength(1)
-			expect(result[0]).toMatchObject({
-				id: TEAM_ID,
-				name: 'Dream Team',
-				membersCount: 3,
-				currentUserRole: 'OWNER',
+			expect(result).toEqual({
+				data: [
+					expect.objectContaining({
+						id: TEAM_ID,
+						name: 'Dream Team',
+						membersCount: 3,
+						currentUserRole: 'OWNER',
+					}),
+				],
+				meta: {
+					page: 1,
+					limit: 10,
+					total: 1,
+					totalPages: 1,
+				},
 			})
 		})
 
-		it('должен вернуть пустой массив если пользователь не состоит ни в одной команде', async () => {
+		it('должен вернуть пустой paginated response если пользователь не состоит ни в одной команде', async () => {
 			prisma.teamMember.findMany.mockResolvedValue([])
+			prisma.teamMember.count.mockResolvedValue(0)
 
-			const result = await service.getUserTeams(USER_ID)
+			const result = await service.getUserTeams(USER_ID, { page: 1, limit: 10 })
 
-			expect(result).toEqual([])
+			expect(result).toEqual({
+				data: [],
+				meta: {
+					page: 1,
+					limit: 10,
+					total: 0,
+					totalPages: 0,
+				},
+			})
 		})
 	})
 

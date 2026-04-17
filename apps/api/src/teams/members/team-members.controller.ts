@@ -7,6 +7,7 @@ import {
 	HttpStatus,
 	Param,
 	Patch,
+	Query,
 } from '@nestjs/common'
 import {
 	ApiBearerAuth,
@@ -22,6 +23,8 @@ import { ChangeRoleDto } from './dto/change-role.dto'
 import { MemberResponse } from './dto/member-response.dto'
 import { Authorization } from '../../auth/decorators/authorization.decorator'
 import { Authorized } from '../../auth/decorators/authorized.decorator'
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
+import { ApiPaginatedOkResponse } from '../../utils/swagger.util'
 
 @ApiTags('Team Members')
 @ApiBearerAuth()
@@ -31,12 +34,16 @@ export class TeamMembersController {
 	constructor(private readonly teamMembersService: TeamMembersService) {}
 
 	@ApiOperation({ summary: 'Список участников команды' })
-	@ApiOkResponse({ type: [MemberResponse], description: 'Список участников' })
+	@ApiPaginatedOkResponse(MemberResponse, 'Пагинированный список участников')
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@ApiNotFoundResponse({ description: 'Команда не найдена' })
 	@Get()
-	getMembers(@Param('id') teamId: string, @Authorized('id') userId: string) {
-		return this.teamMembersService.getMembers(teamId, userId)
+	getMembers(
+		@Param('id') teamId: string,
+		@Authorized('id') userId: string,
+		@Query() pagination: PaginationQueryDto,
+	) {
+		return this.teamMembersService.getMembers(teamId, userId, pagination)
 	}
 
 	@ApiOperation({ summary: 'Изменить роль участника (OWNER / ADMIN)' })

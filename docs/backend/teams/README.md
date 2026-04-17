@@ -4,26 +4,47 @@
 
 ## Реализовано
 
+## Пагинация списков
+
+Все list endpoint-ы модуля команд теперь поддерживают query-параметры пагинации:
+
+- `page` — номер страницы, по умолчанию `1`
+- `limit` — размер страницы, по умолчанию `10`
+
+Формат ответа для списков единый:
+
+```json
+{
+	"data": [],
+	"meta": {
+		"page": 1,
+		"limit": 10,
+		"total": 0,
+		"totalPages": 0
+	}
+}
+```
+
 ### Команды
 
 - `POST /teams/new` — создать команду
-- `GET /teams` — список команд текущего пользователя
+- `GET /teams` — пагинированный список команд текущего пользователя
 - `GET /teams/:id` — получить команду по id
 - `PATCH /teams/:id` — обновить команду
 - `DELETE /teams/:id` — удалить команду
 
 ### Участники
 
-- `GET /teams/:id/members` — список участников команды
+- `GET /teams/:id/members` — пагинированный список участников команды
 - `PATCH /teams/:id/members/:userId/role` — сменить роль участника
 - `DELETE /teams/:id/members/:userId` — исключить участника или выйти из команды
 
 ### Приглашения
 
 - `POST /teams/:id/invitations` — отправить приглашение по email
-- `GET /teams/:id/invitations` — список приглашений команды
+- `GET /teams/:id/invitations` — пагинированный список приглашений команды
 - `DELETE /teams/:id/invitations/:invId` — отозвать приглашение
-- `GET /invitations/me` — мои входящие приглашения
+- `GET /invitations/me` — пагинированные входящие приглашения
 - `POST /invitations/:token/accept` — принять приглашение
 - `POST /invitations/:token/decline` — отклонить приглашение
 

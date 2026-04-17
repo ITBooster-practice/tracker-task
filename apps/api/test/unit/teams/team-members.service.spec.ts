@@ -45,29 +45,60 @@ describe('TeamMembersService', () => {
 
 	// ── getMembers ────────────────────────────────────────────────────────────
 	describe('getMembers', () => {
-		it('должен вернуть список участников команды', async () => {
-			prisma.team.findUnique.mockResolvedValue(TEAM_WITH_MEMBERS)
+		it('должен вернуть пагинированный список участников команды', async () => {
+			prisma.team.findUnique.mockResolvedValue({ id: TEAM_ID })
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.teamMember.findMany.mockResolvedValue(TEAM_WITH_MEMBERS.members)
+			prisma.teamMember.count.mockResolvedValue(TEAM_WITH_MEMBERS.members.length)
 
-			const result = await service.getMembers(TEAM_ID, USER_ID)
+			const result = await service.getMembers(TEAM_ID, USER_ID, {
+				page: 1,
+				limit: 10,
+			})
 
-			expect(prisma.team.findUnique).toHaveBeenCalledOnce()
-			expect(result).toEqual(TEAM_WITH_MEMBERS.members)
+			expect(prisma.team.findUnique).toHaveBeenCalledWith({
+				where: { id: TEAM_ID },
+				select: { id: true },
+			})
+			expect(prisma.teamMember.findUnique).toHaveBeenCalledWith({
+				where: { teamId_userId: { teamId: TEAM_ID, userId: USER_ID } },
+			})
+			expect(prisma.teamMember.findMany).toHaveBeenCalledWith({
+				where: { teamId: TEAM_ID },
+				include: {
+					user: { select: { id: true, name: true, email: true } },
+				},
+				orderBy: { joinedAt: 'asc' },
+				skip: 0,
+				take: 10,
+			})
+			expect(result).toEqual({
+				data: TEAM_WITH_MEMBERS.members,
+				meta: {
+					page: 1,
+					limit: 10,
+					total: 3,
+					totalPages: 1,
+				},
+			})
 		})
 
 		it('должен выбросить 404 если команда не найдена', async () => {
 			prisma.team.findUnique.mockResolvedValue(null)
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
 
-			await expect(service.getMembers(TEAM_ID, USER_ID)).rejects.toThrow(
-				NotFoundException,
-			)
+			await expect(
+				service.getMembers(TEAM_ID, USER_ID, { page: 1, limit: 10 }),
+			).rejects.toThrow(NotFoundException)
 		})
 
 		it('должен выбросить 403 если пользователь не участник команды', async () => {
-			prisma.team.findUnique.mockResolvedValue(TEAM_WITH_MEMBERS)
+			prisma.team.findUnique.mockResolvedValue({ id: TEAM_ID })
+			prisma.teamMember.findUnique.mockResolvedValue(null)
 
-			await expect(service.getMembers(TEAM_ID, 'stranger-id')).rejects.toThrow(
-				ForbiddenException,
-			)
+			await expect(
+				service.getMembers(TEAM_ID, 'stranger-id', { page: 1, limit: 10 }),
+			).rejects.toThrow(ForbiddenException)
 		})
 	})
 

@@ -100,14 +100,65 @@ describe('TeamInvitationsService', () => {
 		})
 	})
 
-	describe('getMyInvitations', () => {
-		it('должен возвращать входящие приглашения пользователя', async () => {
+	describe('getTeamInvitations', () => {
+		it('должен возвращать пагинированный список приглашений команды', async () => {
+			prisma.team.findUnique.mockResolvedValue(TEAM)
+			prisma.teamMember.findUnique.mockResolvedValue(INVITER)
 			prisma.teamInvitation.findMany.mockResolvedValue([PENDING_INVITATION])
+			prisma.teamInvitation.count.mockResolvedValue(1)
 
-			const result = await service.getMyInvitations(USER_ID, INVITED_EMAIL)
+			const result = await service.getTeamInvitations(TEAM_ID, USER_ID, {
+				page: 1,
+				limit: 10,
+			})
+
+			expect(prisma.teamInvitation.findMany).toHaveBeenCalledWith({
+				where: { teamId: TEAM_ID },
+				include: {
+					team: {
+						select: { id: true, name: true, avatarUrl: true },
+					},
+					invitedBy: {
+						select: { id: true, name: true, email: true },
+					},
+				},
+				orderBy: { createdAt: 'desc' },
+				skip: 0,
+				take: 10,
+			})
+			expect(result).toEqual({
+				data: [PENDING_INVITATION],
+				meta: {
+					page: 1,
+					limit: 10,
+					total: 1,
+					totalPages: 1,
+				},
+			})
+		})
+	})
+
+	describe('getMyInvitations', () => {
+		it('должен возвращать пагинированные входящие приглашения пользователя', async () => {
+			prisma.teamInvitation.findMany.mockResolvedValue([PENDING_INVITATION])
+			prisma.teamInvitation.count.mockResolvedValue(1)
+
+			const result = await service.getMyInvitations(USER_ID, INVITED_EMAIL, {
+				page: 1,
+				limit: 10,
+			})
 
 			expect(prisma.teamInvitation.findMany).toHaveBeenCalledOnce()
-			expect(result).toEqual([PENDING_INVITATION])
+			expect(prisma.teamInvitation.count).toHaveBeenCalledOnce()
+			expect(result).toEqual({
+				data: [PENDING_INVITATION],
+				meta: {
+					page: 1,
+					limit: 10,
+					total: 1,
+					totalPages: 1,
+				},
+			})
 		})
 	})
 
