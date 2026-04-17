@@ -56,6 +56,13 @@ vi.mock('@repo/ui', () => ({
 			{action}
 		</div>
 	),
+	Pagination: () => <nav data-testid='pagination' />,
+	usePagination: () => ({
+		page: 1,
+		limit: 10,
+		setPage: vi.fn(),
+		paginationParams: { page: 1, limit: 10 },
+	}),
 }))
 
 vi.mock('@repo/ui/icons', () => ({

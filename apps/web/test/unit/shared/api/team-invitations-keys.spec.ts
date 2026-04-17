@@ -17,6 +17,7 @@ describe('teamInvitationsKeys', () => {
 			'invitations',
 			'team-list',
 			'team-1',
+			undefined,
 		])
 	})
 

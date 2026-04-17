@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+	keepPreviousData,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from '@tanstack/react-query'
+
+import type { PaginationParams } from '@repo/types'
 
 import {
 	teamMembersService,
@@ -13,17 +20,19 @@ import { teamsKeys } from './use-teams'
 export const teamMembersKeys = {
 	all: ['teams', 'members'] as const,
 	lists: () => [...teamMembersKeys.all, 'list'] as const,
-	list: (teamId: string) => [...teamMembersKeys.lists(), teamId] as const,
+	list: (teamId: string, params?: PaginationParams) =>
+		[...teamMembersKeys.lists(), teamId, params] as const,
 	changeRole: (teamId: string) =>
 		[...teamMembersKeys.all, 'change-role', teamId] as const,
 	remove: (teamId: string) => [...teamMembersKeys.all, 'remove', teamId] as const,
 } as const
 
-export const useTeamMembers = (teamId: string) => {
+export const useTeamMembers = (teamId: string, params?: PaginationParams) => {
 	return useQuery({
-		queryKey: teamMembersKeys.list(teamId),
-		queryFn: () => teamMembersService.getMembers(teamId),
+		queryKey: teamMembersKeys.list(teamId, params),
+		queryFn: () => teamMembersService.getMembers(teamId, params),
 		enabled: Boolean(teamId),
+		placeholderData: keepPreviousData,
 	})
 }
 
@@ -35,7 +44,7 @@ export const useChangeMemberRole = (teamId: string) => {
 		mutationFn: ({ userId, data }) => teamMembersService.changeRole(teamId, userId, data),
 		onSuccess: async () => {
 			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: teamMembersKeys.list(teamId) }),
+				queryClient.invalidateQueries({ queryKey: teamMembersKeys.lists() }),
 				queryClient.invalidateQueries({ queryKey: teamsKeys.detail(teamId) }),
 				queryClient.invalidateQueries({ queryKey: teamsKeys.lists() }),
 			])
@@ -51,7 +60,7 @@ export const useRemoveTeamMember = (teamId: string) => {
 		mutationFn: (userId) => teamMembersService.removeMember(teamId, userId),
 		onSuccess: async () => {
 			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: teamMembersKeys.list(teamId) }),
+				queryClient.invalidateQueries({ queryKey: teamMembersKeys.lists() }),
 				queryClient.invalidateQueries({ queryKey: teamsKeys.detail(teamId) }),
 				queryClient.invalidateQueries({ queryKey: teamsKeys.lists() }),
 			])

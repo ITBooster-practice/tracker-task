@@ -39,16 +39,19 @@ describe('use-team-members hooks', () => {
 	})
 
 	it('useTeamMembers запрашивает участников команды', async () => {
-		teamMembersServiceMock.getMembers.mockResolvedValue([
-			createTeamMemberFixture({
-				id: 'member-1',
-				userId: 'user-1',
-				name: 'Alex',
-				email: 'alex@test.com',
-				role: 'ADMIN',
-				joinedAt: '2024-02-01',
-			}),
-		])
+		teamMembersServiceMock.getMembers.mockResolvedValue({
+			data: [
+				createTeamMemberFixture({
+					id: 'member-1',
+					userId: 'user-1',
+					name: 'Alex',
+					email: 'alex@test.com',
+					role: 'ADMIN',
+					joinedAt: '2024-02-01',
+				}),
+			],
+			meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+		})
 
 		const { result } = renderHook(() => useTeamMembers('team-1'), {
 			wrapper: createWrapper(),
@@ -56,8 +59,8 @@ describe('use-team-members hooks', () => {
 
 		await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-		expect(teamMembersServiceMock.getMembers).toHaveBeenCalledWith('team-1')
-		expect(result.current.data).toHaveLength(1)
+		expect(teamMembersServiceMock.getMembers).toHaveBeenCalledWith('team-1', undefined)
+		expect(result.current.data?.data).toHaveLength(1)
 	})
 
 	it('useTeamMembers не делает запрос без teamId', () => {
@@ -98,7 +101,7 @@ describe('use-team-members hooks', () => {
 			role: 'MEMBER',
 		})
 		expect(invalidateSpy).toHaveBeenCalledWith({
-			queryKey: teamMembersKeys.list('team-1'),
+			queryKey: teamMembersKeys.lists(),
 		})
 		expect(invalidateSpy).toHaveBeenCalledWith({
 			queryKey: teamsKeys.detail('team-1'),
@@ -128,7 +131,7 @@ describe('use-team-members hooks', () => {
 
 		expect(teamMembersServiceMock.removeMember).toHaveBeenCalledWith('team-1', 'user-1')
 		expect(invalidateSpy).toHaveBeenCalledWith({
-			queryKey: teamMembersKeys.list('team-1'),
+			queryKey: teamMembersKeys.lists(),
 		})
 		expect(invalidateSpy).toHaveBeenCalledWith({
 			queryKey: teamsKeys.detail('team-1'),

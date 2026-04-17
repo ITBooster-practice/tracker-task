@@ -46,11 +46,10 @@ describe('use-team-invitations hooks', () => {
 	})
 
 	it('useTeamInvitations запрашивает invitations команды', async () => {
-		teamInvitationsServiceMock.getTeamInvitations.mockResolvedValue([
-			createTeamInvitationFixture({
-				role: 'ADMIN',
-			}),
-		])
+		teamInvitationsServiceMock.getTeamInvitations.mockResolvedValue({
+			data: [createTeamInvitationFixture({ role: 'ADMIN' })],
+			meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+		})
 
 		const { result } = renderHook(() => useTeamInvitations('team-1'), {
 			wrapper: createWrapper(),
@@ -58,8 +57,11 @@ describe('use-team-invitations hooks', () => {
 
 		await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-		expect(teamInvitationsServiceMock.getTeamInvitations).toHaveBeenCalledWith('team-1')
-		expect(result.current.data).toHaveLength(1)
+		expect(teamInvitationsServiceMock.getTeamInvitations).toHaveBeenCalledWith(
+			'team-1',
+			undefined,
+		)
+		expect(result.current.data?.data).toHaveLength(1)
 	})
 
 	it('useTeamInvitations не делает запрос без teamId', () => {
@@ -106,7 +108,7 @@ describe('use-team-invitations hooks', () => {
 			role: 'MEMBER',
 		})
 		expect(invalidateSpy).toHaveBeenCalledWith({
-			queryKey: teamInvitationsKeys.teamList('team-1'),
+			queryKey: teamInvitationsKeys.teamLists(),
 		})
 
 		invalidateSpy.mockRestore()
@@ -178,7 +180,7 @@ describe('use-team-invitations hooks', () => {
 			'inv-1',
 		)
 		expect(invalidateSpy).toHaveBeenCalledWith({
-			queryKey: teamInvitationsKeys.teamList('team-1'),
+			queryKey: teamInvitationsKeys.teamLists(),
 		})
 
 		invalidateSpy.mockRestore()

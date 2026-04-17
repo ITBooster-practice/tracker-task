@@ -63,14 +63,17 @@ describe('ProfilePageView', () => {
 			refetch: vi.fn(),
 		})
 		mockProfileUseTeamsList.mockReturnValue({
-			data: [
-				createTeam(),
-				createTeam({
-					id: 'team-2',
-					name: 'Design Squad',
-					currentUserRole: TEAM_ROLES.ADMIN,
-				}),
-			],
+			data: {
+				data: [
+					createTeam(),
+					createTeam({
+						id: 'team-2',
+						name: 'Design Squad',
+						currentUserRole: TEAM_ROLES.ADMIN,
+					}),
+				],
+				meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
+			},
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),

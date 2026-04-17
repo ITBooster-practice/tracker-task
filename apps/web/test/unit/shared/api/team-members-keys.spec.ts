@@ -12,7 +12,13 @@ describe('teamMembersKeys', () => {
 	})
 
 	it('list', () => {
-		expect(teamMembersKeys.list('team-1')).toEqual(['teams', 'members', 'list', 'team-1'])
+		expect(teamMembersKeys.list('team-1')).toEqual([
+			'teams',
+			'members',
+			'list',
+			'team-1',
+			undefined,
+		])
 	})
 
 	it('changeRole', () => {

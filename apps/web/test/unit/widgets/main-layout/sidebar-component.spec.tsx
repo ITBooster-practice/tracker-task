@@ -132,7 +132,9 @@ describe('Sidebar', () => {
 		vi.clearAllMocks()
 		mockUsePathname.mockReturnValue('/')
 		mockUseParams.mockReturnValue({})
-		mockUseTeamsList.mockReturnValue({ data: [] })
+		mockUseTeamsList.mockReturnValue({
+			data: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } },
+		})
 		mockUseMe.mockReturnValue({
 			data: {
 				id: 'user-1',
@@ -160,18 +162,21 @@ describe('Sidebar', () => {
 	it('показывает имя текущей команды под заголовком когда sidebar открыт', () => {
 		mockUseParams.mockReturnValue({ id: 'team-1' })
 		mockUseTeamsList.mockReturnValue({
-			data: [
-				{
-					id: 'team-1',
-					name: 'Design Team',
-					description: null,
-					avatarUrl: null,
-					membersCount: 5,
-					currentUserRole: 'MEMBER',
-					createdAt: '2024-01-01',
-					updatedAt: '2024-01-01',
-				},
-			],
+			data: {
+				data: [
+					{
+						id: 'team-1',
+						name: 'Design Team',
+						description: null,
+						avatarUrl: null,
+						membersCount: 5,
+						currentUserRole: 'MEMBER',
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+					},
+				],
+				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			},
 		})
 
 		render(<Sidebar forceOpen={true} />)

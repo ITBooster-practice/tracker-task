@@ -110,13 +110,22 @@ export function setupTeamSettingsPage({
 		refetch: vi.fn(),
 	})
 	mockUseTeamMembers.mockReturnValue({
-		data: teamPending || teamError ? undefined : members,
+		data:
+			teamPending || teamError
+				? undefined
+				: {
+						data: members,
+						meta: { page: 1, limit: 10, total: members.length, totalPages: 1 },
+					},
 		isLoading: false,
 		isError: false,
 		refetch: vi.fn(),
 	})
 	mockUseTeamInvitations.mockReturnValue({
-		data: invitations,
+		data: {
+			data: invitations,
+			meta: { page: 1, limit: 10, total: invitations.length, totalPages: 1 },
+		},
 		isLoading: false,
 		isError: false,
 		refetch: vi.fn(),
@@ -169,6 +178,12 @@ vi.mock('@/shared/api/use-team-invitations', () => ({
 }))
 
 vi.mock('@repo/ui', () => ({
+	usePagination: () => ({
+		page: 1,
+		limit: 10,
+		setPage: vi.fn(),
+		paginationParams: { page: 1, limit: 10 },
+	}),
 	Button: ({
 		children,
 		...props

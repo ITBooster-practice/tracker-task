@@ -18,10 +18,13 @@ describe('TeamsPageView e2e', () => {
 
 	it('рендерит список команд из мока useTeamsList', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [
-				createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
-				createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
-			],
+			data: {
+				data: [
+					createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
+					createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
+				],
+				meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
+			},
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
@@ -48,7 +51,7 @@ describe('TeamsPageView e2e', () => {
 
 	it('при пустом массиве рендерит EmptyState', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [],
+			data: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } },
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
@@ -64,7 +67,7 @@ describe('TeamsPageView e2e', () => {
 
 	it('кнопка создания ведёт на страницу создания команды', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [],
+			data: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } },
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),

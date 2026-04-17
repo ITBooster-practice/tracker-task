@@ -89,7 +89,7 @@ const ProfilePageView = () => {
 	const acceptInvitationMutation = useAcceptInvitation()
 	const declineInvitationMutation = useDeclineInvitation()
 
-	const teams = teamsQuery.data ?? []
+	const teams = teamsQuery.data?.data ?? []
 	const invitations = invitationsQuery.data ?? []
 	const displayName = getUserDisplayName(profileQuery.data)
 	const initials = getNameInitials(displayName)

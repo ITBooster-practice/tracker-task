@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useMemo, useState, type FormEvent } from 'react'
 
 import { TEAM_ROLES, userEmailSchema, type TeamMember } from '@repo/types'
-import { Button, ConfirmDialog, EmptyState, toast } from '@repo/ui'
+import { Button, ConfirmDialog, EmptyState, toast, usePagination } from '@repo/ui'
 import { UserPlus, Users } from '@repo/ui/icons'
 
 import { useMe } from '@/shared/api/use-auth'
@@ -58,12 +58,15 @@ function TeamSettingsPageView() {
 	const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null)
 	const [isDeleteTeamDialogOpen, setIsDeleteTeamDialogOpen] = useState(false)
 
+	const membersPagination = usePagination()
+	const invitationsPagination = usePagination()
+
 	const profileQuery = useMe()
 	const teamQuery = useTeamDetail(teamId)
-	const membersQuery = useTeamMembers(teamId)
+	const membersQuery = useTeamMembers(teamId, membersPagination.paginationParams)
 
 	const members = useMemo(
-		() => membersQuery.data ?? teamQuery.data?.members ?? [],
+		() => membersQuery.data?.data ?? teamQuery.data?.members ?? [],
 		[membersQuery.data, teamQuery.data?.members],
 	)
 
@@ -74,9 +77,11 @@ function TeamSettingsPageView() {
 	const canManageTeam = isTeamManagerRole(currentUserRole)
 	const canDeleteCurrentTeam = canDeleteTeam(currentUserRole)
 
-	const invitationsQuery = useTeamInvitations(teamId, {
-		enabled: canManageTeam,
-	})
+	const invitationsQuery = useTeamInvitations(
+		teamId,
+		{ enabled: canManageTeam },
+		invitationsPagination.paginationParams,
+	)
 	const changeMemberRoleMutation = useChangeMemberRole(teamId)
 	const removeTeamMemberMutation = useRemoveTeamMember(teamId)
 	const sendTeamInvitationMutation = useSendTeamInvitation(teamId)
@@ -274,16 +279,20 @@ function TeamSettingsPageView() {
 						isLoading={membersQuery.isLoading && members.length === 0}
 						isMutatingRoleForUserId={isRoleMutationPending}
 						members={members}
+						meta={membersQuery.data?.meta}
 						onOpenRemoveDialog={setMemberToDelete}
+						onPageChange={membersPagination.setPage}
 						onRetry={() => void membersQuery.refetch()}
 						onRoleChange={handleRoleChange}
 					/>
 
 					{canManageTeam ? (
 						<TeamSettingsInvitationsSection
-							invitations={invitationsQuery.data ?? []}
+							invitations={invitationsQuery.data?.data ?? []}
 							isError={invitationsQuery.isError}
 							isLoading={invitationsQuery.isLoading}
+							meta={invitationsQuery.data?.meta}
+							onPageChange={invitationsPagination.setPage}
 							onRetry={() => void invitationsQuery.refetch()}
 							onRevoke={(invitation) => void handleRevokeInvitation(invitation.id)}
 							pendingInvitationId={revokePendingInvitationId}

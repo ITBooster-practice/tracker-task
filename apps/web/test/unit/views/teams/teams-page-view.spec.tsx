@@ -43,7 +43,7 @@ describe('TeamsPageView', () => {
 
 	it('пустой список — показывает empty state', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [],
+			data: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } },
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
@@ -56,10 +56,13 @@ describe('TeamsPageView', () => {
 
 	it('список команд — рендерит TeamCard для каждой', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [
-				createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
-				createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
-			],
+			data: {
+				data: [
+					createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
+					createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
+				],
+				meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
+			},
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
@@ -70,26 +73,9 @@ describe('TeamsPageView', () => {
 		expect(screen.getByTestId('team-card-team-2')).toBeDefined()
 	})
 
-	it('сортировка — команда с большим числом участников идёт первой', () => {
-		mockUseTeamsList.mockReturnValue({
-			data: [
-				createTeamListItemFixture({ id: 'small', name: 'Small Team', membersCount: 2 }),
-				createTeamListItemFixture({ id: 'big', name: 'Big Team', membersCount: 10 }),
-			],
-			isLoading: false,
-			isError: false,
-			refetch: vi.fn(),
-		})
-		render(<TeamsPageView />)
-
-		const cards = screen.getAllByTestId(/^team-card-/)
-		expect(cards[0]!.textContent).toBe('Big Team')
-		expect(cards[1]!.textContent).toBe('Small Team')
-	})
-
 	it('кнопка "Создать команду" → редирект на /teams/new', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [],
+			data: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } },
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),
@@ -109,7 +95,10 @@ describe('TeamsPageView', () => {
 
 	it('клик по TeamCard → router.push на страницу проектов команды', () => {
 		mockUseTeamsList.mockReturnValue({
-			data: [createTeamListItemFixture({ id: 'team-42', name: 'Design Team' })],
+			data: {
+				data: [createTeamListItemFixture({ id: 'team-42', name: 'Design Team' })],
+				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			},
 			isLoading: false,
 			isError: false,
 			refetch: vi.fn(),

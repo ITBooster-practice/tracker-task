@@ -1,4 +1,4 @@
-import { type TeamMember, type TeamRole } from '@repo/types'
+import { type PaginationMeta, type TeamMember, type TeamRole } from '@repo/types'
 import {
 	Avatar,
 	AvatarFallback,
@@ -6,6 +6,7 @@ import {
 	Button,
 	cn,
 	EmptyState,
+	Pagination,
 	Select,
 	SelectContent,
 	SelectItem,
@@ -52,7 +53,9 @@ type TeamSettingsMembersSectionProps = {
 	isLoading: boolean
 	isMutatingRoleForUserId: string | null
 	members: TeamMember[]
+	meta?: PaginationMeta
 	onOpenRemoveDialog: (member: TeamMember) => void
+	onPageChange?: (page: number) => void
 	onRoleChange: (member: TeamMember, nextRole: TeamAssignableRole) => void
 	onRetry: () => void
 }
@@ -64,13 +67,17 @@ const TeamSettingsMembersSection = ({
 	isLoading,
 	isMutatingRoleForUserId,
 	members,
+	meta,
 	onOpenRemoveDialog,
+	onPageChange,
 	onRoleChange,
 	onRetry,
 }: TeamSettingsMembersSectionProps) => {
+	const totalCount = meta?.total ?? members.length
+
 	return (
 		<TeamSettingsSection
-			title={`${TEAM_SETTINGS_TEXT.members.title} (${members.length})`}
+			title={`${TEAM_SETTINGS_TEXT.members.title} (${totalCount})`}
 			icon={TEAM_SETTINGS_SECTION_ICONS.members}
 		>
 			{isLoading ? (
@@ -182,6 +189,10 @@ const TeamSettingsMembersSection = ({
 							</div>
 						)
 					})}
+
+					{meta && meta.totalPages > 1 && onPageChange && (
+						<Pagination meta={meta} onPageChange={onPageChange} className='py-3' />
+					)}
 				</div>
 			)}
 		</TeamSettingsSection>
