@@ -7,7 +7,7 @@ const { mockFeatures } = vi.hoisted(() => ({
 	mockFeatures: {
 		PROJECTS: true,
 		TASKS: true,
-		SPRINTS: true,
+		BOARDS: true,
 		TEAM_SETTINGS: true,
 	},
 }))
@@ -17,14 +17,14 @@ vi.mock('@/shared/config', () => ({
 	ROUTES: {
 		teams: '/teams',
 		tasks: '/tasks',
-		sprints: '/sprints',
+		boards: '/boards',
 	},
 	SIDEBAR_ROUTE_IDS: {
 		teams: 'teams',
 		teamProjects: 'team.projects',
 		teamSettings: 'team.settings',
 		tasks: 'tasks',
-		sprints: 'sprints',
+		boards: 'boards',
 	},
 	teamRoutes: {
 		projects: (teamId: string) => `/teams/${teamId}/projects`,
@@ -53,6 +53,14 @@ describe('getSidebarSections', () => {
 		const item = findItem(sections, 'Проекты')
 
 		expect(item?.href).toBe('#')
+	})
+
+	it('Доска ведёт на канонический /boards', () => {
+		const sections = getSidebarSections('team-1')
+		const item = findItem(sections, 'Доска')
+
+		expect(item?.href).toBe('/boards')
+		expect(item?.routeId).toBe('boards')
 	})
 
 	it('Настройки: TEAM_SETTINGS включён', () => {

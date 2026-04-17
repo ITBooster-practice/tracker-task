@@ -2,6 +2,7 @@ import {
 	mockCreateTeamMutateAsync,
 	mockIsApiError,
 	mockRouterReplace,
+	mockTeamCreatePendingState,
 	mockToastError,
 	resetCreateTeamDialogUnitMocks,
 } from '@/test/mocks/views/teams/create-team-dialog.unit.mock'
@@ -63,6 +64,19 @@ describe('CreateTeamDialog', () => {
 		})
 	})
 
+	it('submit с пробелами не вызывает mutateAsync', () => {
+		render(<CreateTeamDialog />)
+
+		fireEvent.change(screen.getByPlaceholderText('Например: Product Team'), {
+			target: { value: '   ' },
+		})
+		fireEvent.submit(
+			screen.getByPlaceholderText('Например: Product Team').closest('form')!,
+		)
+
+		expect(mockCreateTeamMutateAsync).not.toHaveBeenCalled()
+	})
+
 	it('успешный submit — редирект на /teams', async () => {
 		mockCreateTeamMutateAsync.mockResolvedValue({ id: 'new-team', name: 'Design Team' })
 		render(<CreateTeamDialog />)
@@ -96,6 +110,22 @@ describe('CreateTeamDialog', () => {
 		await waitFor(() => {
 			expect(mockToastError).toHaveBeenCalledWith('Команда с таким именем уже существует')
 		})
+	})
+
+	it('закрытие drawer через onOpenChange ведет на /teams', () => {
+		render(<CreateTeamDialog />)
+
+		fireEvent.click(screen.getByTestId('drawer-close'))
+
+		expect(mockRouterReplace).toHaveBeenCalledWith('/teams')
+	})
+
+	it('pending состояние меняет текст кнопки на "Создание..."', () => {
+		mockTeamCreatePendingState.value = true
+
+		render(<CreateTeamDialog />)
+
+		expect(screen.getByRole('button', { name: 'Создание...' })).toBeDefined()
 	})
 
 	it('кнопка "Отмена" — редирект на /teams', () => {
