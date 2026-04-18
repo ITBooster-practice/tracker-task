@@ -48,8 +48,8 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 				},
 				{
 					title: 'Доска',
-					href: ROUTES.sprints,
-					routeId: SIDEBAR_ROUTE_IDS.sprints,
+					href: ROUTES.boards,
+					routeId: SIDEBAR_ROUTE_IDS.boards,
 					icon: KanbanSquare,
 				},
 				{

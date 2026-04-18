@@ -5,7 +5,7 @@ export const ROUTE_SEGMENTS = {
 	projects: 'projects',
 	settings: 'settings',
 	tasks: 'tasks',
-	sprints: 'sprints',
+	boards: 'boards',
 	invitations: 'invitations',
 } as const
 
@@ -23,6 +23,14 @@ export const ROUTES = {
 	teams: '/teams',
 	teamsNew: '/teams/new',
 	tasks: '/tasks',
+	boards: '/boards',
+} as const
+
+const LEGACY_ROUTE_SEGMENTS = {
+	sprints: 'sprints',
+} as const
+
+const LEGACY_ROUTES = {
 	sprints: '/sprints',
 } as const
 
@@ -32,7 +40,8 @@ export const PROTECTED_ROUTE_PREFIXES = [
 	ROUTES.profile,
 	ROUTES.teams,
 	ROUTES.tasks,
-	ROUTES.sprints,
+	ROUTES.boards,
+	LEGACY_ROUTES.sprints,
 ] as const
 
 function encodeRouteParam(value: string) {
@@ -60,7 +69,7 @@ export const SIDEBAR_ROUTE_IDS = {
 	teamProjects: 'team.projects',
 	teamSettings: 'team.settings',
 	tasks: 'tasks',
-	sprints: 'sprints',
+	boards: 'boards',
 } as const
 
 export type SidebarRouteId = (typeof SIDEBAR_ROUTE_IDS)[keyof typeof SIDEBAR_ROUTE_IDS]
@@ -126,8 +135,11 @@ export function getSidebarRouteId(
 		return SIDEBAR_ROUTE_IDS.tasks
 	}
 
-	if (firstSegment === ROUTE_SEGMENTS.sprints) {
-		return SIDEBAR_ROUTE_IDS.sprints
+	if (
+		firstSegment === ROUTE_SEGMENTS.boards ||
+		firstSegment === LEGACY_ROUTE_SEGMENTS.sprints
+	) {
+		return SIDEBAR_ROUTE_IDS.boards
 	}
 
 	if (firstSegment !== ROUTE_SEGMENTS.teams) {
