@@ -19,7 +19,8 @@ apps/web/app/
 │   ├── layout.tsx             # Подключает MainLayout (sidebar + header)
 │   ├── projects/page.tsx
 │   ├── tasks/page.tsx
-│   └── sprints/page.tsx
+│   ├── boards/page.tsx
+│   └── sprints/page.tsx       # legacy redirect на /boards
 └── (auth)/
     ├── layout.tsx             # Центрирует auth-страницы
     ├── auth-form-layout.tsx   # Общая обёртка для форм авторизации
@@ -30,7 +31,8 @@ apps/web/app/
 Важно:
 
 - Имя группы в скобках не попадает в URL.
-- `/projects`, `/tasks`, `/sprints` отрисовываются внутри `MainLayout`.
+- `/projects`, `/tasks`, `/boards` отрисовываются внутри `MainLayout`.
+- `/sprints` оставлен как legacy redirect на `/boards`.
 - `/login`, `/register` используют отдельный auth-layout и не показывают sidebar/header.
 
 ## 2) Где лежат Sidebar/Header
