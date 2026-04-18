@@ -1,4 +1,10 @@
-import type { ChangeRole, DeleteTeamResponse, TeamMember } from '@repo/types'
+import type {
+	ChangeRole,
+	DeleteTeamResponse,
+	PaginatedResponse,
+	PaginationParams,
+	TeamMember,
+} from '@repo/types'
 
 import { client } from './client'
 import { normalizeTeamMember, type TeamMemberApiResponse } from './teams-normalizers'
@@ -9,12 +15,19 @@ const TEAMS_ENDPOINT = '/teams'
 const buildTeamMembersEndpoint = (teamId: string) => `${TEAMS_ENDPOINT}/${teamId}/members`
 
 export const teamMembersService = {
-	getMembers: async (teamId: string): Promise<TeamMember[]> => {
-		const response = await client.get<TeamMemberApiResponse[]>(
-			buildTeamMembersEndpoint(teamId),
-		)
+	getMembers: async (
+		teamId: string,
+		params?: PaginationParams,
+	): Promise<PaginatedResponse<TeamMember>> => {
+		const response = await client.get<{
+			data: TeamMemberApiResponse[]
+			meta: PaginatedResponse<TeamMember>['meta']
+		}>(buildTeamMembersEndpoint(teamId), { params })
 
-		return response.data.map(normalizeTeamMember)
+		return {
+			data: response.data.data.map(normalizeTeamMember),
+			meta: response.data.meta,
+		}
 	},
 
 	changeRole: async (

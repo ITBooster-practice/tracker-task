@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+	keepPreviousData,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from '@tanstack/react-query'
+
+import type { PaginationParams } from '@repo/types'
 
 import {
 	teamInvitationsService,
@@ -13,7 +20,8 @@ import { teamsKeys } from './use-teams'
 export const teamInvitationsKeys = {
 	all: ['teams', 'invitations'] as const,
 	teamLists: () => [...teamInvitationsKeys.all, 'team-list'] as const,
-	teamList: (teamId: string) => [...teamInvitationsKeys.teamLists(), teamId] as const,
+	teamList: (teamId: string, params?: PaginationParams) =>
+		[...teamInvitationsKeys.teamLists(), teamId, params] as const,
 	send: (teamId: string) => [...teamInvitationsKeys.all, 'send', teamId] as const,
 	revoke: (teamId: string) => [...teamInvitationsKeys.all, 'revoke', teamId] as const,
 	myLists: () => [...teamInvitationsKeys.all, 'my-list'] as const,
@@ -29,11 +37,13 @@ type TeamInvitationsQueryOptions = {
 export const useTeamInvitations = (
 	teamId: string,
 	options?: TeamInvitationsQueryOptions,
+	params?: PaginationParams,
 ) => {
 	return useQuery({
-		queryKey: teamInvitationsKeys.teamList(teamId),
-		queryFn: () => teamInvitationsService.getTeamInvitations(teamId),
+		queryKey: teamInvitationsKeys.teamList(teamId, params),
+		queryFn: () => teamInvitationsService.getTeamInvitations(teamId, params),
 		enabled: Boolean(teamId) && (options?.enabled ?? true),
+		placeholderData: keepPreviousData,
 	})
 }
 
@@ -45,7 +55,7 @@ export const useSendTeamInvitation = (teamId: string) => {
 		mutationFn: (data) => teamInvitationsService.sendInvitation(teamId, data),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
-				queryKey: teamInvitationsKeys.teamList(teamId),
+				queryKey: teamInvitationsKeys.teamLists(),
 			}),
 	})
 }
@@ -59,7 +69,7 @@ export const useRevokeTeamInvitation = (teamId: string) => {
 			teamInvitationsService.revokeInvitation(teamId, invitationId),
 		onSuccess: () =>
 			queryClient.invalidateQueries({
-				queryKey: teamInvitationsKeys.teamList(teamId),
+				queryKey: teamInvitationsKeys.teamLists(),
 			}),
 	})
 }

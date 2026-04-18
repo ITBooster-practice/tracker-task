@@ -1,6 +1,8 @@
 import type {
 	CreateTeam,
 	DeleteTeamResponse,
+	PaginatedResponse,
+	PaginationParams,
 	Team,
 	TeamListItem,
 	UpdateTeam,
@@ -16,8 +18,10 @@ const TEAM_CREATE_ENDPOINT = `${TEAMS_ENDPOINT}/new`
 const buildTeamEndpoint = (teamId: string) => `${TEAMS_ENDPOINT}/${teamId}`
 
 export const teamsService = {
-	getAll: async (): Promise<TeamListItem[]> => {
-		const response = await client.get<TeamListItem[]>(TEAMS_ENDPOINT)
+	getAll: async (params?: PaginationParams): Promise<PaginatedResponse<TeamListItem>> => {
+		const response = await client.get<PaginatedResponse<TeamListItem>>(TEAMS_ENDPOINT, {
+			params,
+		})
 
 		return response.data
 	},

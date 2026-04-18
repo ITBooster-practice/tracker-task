@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+	keepPreviousData,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from '@tanstack/react-query'
+
+import type { PaginationParams } from '@repo/types'
 
 import {
 	teamsService,
@@ -12,7 +19,7 @@ import type { ApiError } from '@/shared/lib/api/types'
 export const teamsKeys = {
 	all: ['teams'] as const,
 	lists: () => [...teamsKeys.all, 'list'] as const,
-	list: () => [...teamsKeys.lists()] as const,
+	list: (params?: PaginationParams) => [...teamsKeys.lists(), params] as const,
 	details: () => [...teamsKeys.all, 'detail'] as const,
 	detail: (id: string) => [...teamsKeys.details(), id] as const,
 	create: () => [...teamsKeys.all, 'create'] as const,
@@ -20,10 +27,11 @@ export const teamsKeys = {
 	delete: (id: string) => [...teamsKeys.all, 'delete', id] as const,
 } as const
 
-export const useTeamsList = () => {
+export const useTeamsList = (params?: PaginationParams) => {
 	return useQuery({
-		queryKey: teamsKeys.list(),
-		queryFn: teamsService.getAll,
+		queryKey: teamsKeys.list(params),
+		queryFn: () => teamsService.getAll(params),
+		placeholderData: keepPreviousData,
 	})
 }
 

@@ -1,4 +1,11 @@
-import type { MyInvitation, SendInvitation, Team, TeamInvitation } from '@repo/types'
+import type {
+	MyInvitation,
+	PaginatedResponse,
+	PaginationParams,
+	SendInvitation,
+	Team,
+	TeamInvitation,
+} from '@repo/types'
 
 import { client } from './client'
 import {
@@ -31,12 +38,19 @@ export const teamInvitationsService = {
 		return normalizeTeamInvitation(response.data)
 	},
 
-	getTeamInvitations: async (teamId: string): Promise<TeamInvitation[]> => {
-		const response = await client.get<TeamInvitationApiResponse[]>(
-			buildTeamInvitationsEndpoint(teamId),
-		)
+	getTeamInvitations: async (
+		teamId: string,
+		params?: PaginationParams,
+	): Promise<PaginatedResponse<TeamInvitation>> => {
+		const response = await client.get<{
+			data: TeamInvitationApiResponse[]
+			meta: PaginatedResponse<TeamInvitation>['meta']
+		}>(buildTeamInvitationsEndpoint(teamId), { params })
 
-		return response.data.map(normalizeTeamInvitation)
+		return {
+			data: response.data.data.map(normalizeTeamInvitation),
+			meta: response.data.meta,
+		}
 	},
 
 	revokeInvitation: async (
