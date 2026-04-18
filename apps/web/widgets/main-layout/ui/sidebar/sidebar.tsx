@@ -40,7 +40,8 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const pathname = usePathname()
 	const params = useParams<{ id?: string; projectId?: string }>()
 	const profileQuery = useMe()
-	const { data: teams } = useTeamsList()
+	const { data: teamsData } = useTeamsList()
+	const teams = teamsData?.data
 	const isOpen = forceOpen ?? isDesktopOpen
 	const selectedTeamId = typeof params.id === 'string' ? params.id : null
 	const teamId = selectedTeamId ?? teams?.[0]?.id ?? null
