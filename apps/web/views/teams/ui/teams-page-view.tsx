@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 
-import { Button, CardSkeleton, EmptyState } from '@repo/ui'
+import { Button, CardSkeleton, EmptyState, Pagination, usePagination } from '@repo/ui'
 import { Plus, Users } from '@repo/ui/icons'
 
 import { useTeamsList } from '@/shared/api/use-teams'
@@ -22,13 +22,11 @@ import { TeamCard } from './team-card'
 
 function TeamsPageView() {
 	const router = useRouter()
-	const { data, isLoading, isError, refetch } = useTeamsList()
+	const { paginationParams, setPage } = usePagination()
+	const { data, isLoading, isError, refetch } = useTeamsList(paginationParams)
 
-	const sortedTeams = useMemo(
-		() =>
-			(data ?? [])
-				.map(mapTeamListItemToTeamCardModel)
-				.sort((first, second) => second.members.length - first.members.length),
+	const teams = useMemo(
+		() => (data?.data ?? []).map(mapTeamListItemToTeamCardModel),
 		[data],
 	)
 
@@ -79,7 +77,7 @@ function TeamsPageView() {
 							className='max-w-[420px] border-border bg-card'
 						/>
 					</div>
-				) : sortedTeams.length === 0 ? (
+				) : teams.length === 0 ? (
 					<div className='flex justify-center py-16'>
 						<EmptyState
 							icon={<Users className='size-7' />}
@@ -98,11 +96,17 @@ function TeamsPageView() {
 						/>
 					</div>
 				) : (
-					<section className={teamPageGridClassName}>
-						{sortedTeams.map((team) => (
-							<TeamCard key={team.id} team={team} onOpen={handleOpenTeam} />
-						))}
-					</section>
+					<>
+						<section className={teamPageGridClassName}>
+							{teams.map((team) => (
+								<TeamCard key={team.id} team={team} onOpen={handleOpenTeam} />
+							))}
+						</section>
+
+						{data?.meta && data.meta.totalPages > 1 && (
+							<Pagination meta={data.meta} onPageChange={setPage} className='mt-6' />
+						)}
+					</>
 				)}
 			</div>
 		</div>
