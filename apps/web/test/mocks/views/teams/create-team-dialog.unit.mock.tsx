@@ -59,10 +59,22 @@ vi.mock('@repo/ui', () => ({
 	),
 	DialogDrawer: ({
 		children,
+		onOpenChange,
 	}: React.PropsWithChildren<{
 		open: boolean
 		onOpenChange: (value: boolean) => void
-	}>) => <div data-testid='dialog'>{children}</div>,
+	}>) => (
+		<div data-testid='dialog'>
+			<button
+				type='button'
+				data-testid='drawer-close'
+				onClick={() => onOpenChange(false)}
+			>
+				close-drawer
+			</button>
+			{children}
+		</div>
+	),
 	DialogDrawerContent: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 	DialogDrawerHeader: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 	DialogDrawerTitle: ({ children }: React.PropsWithChildren) => <h2>{children}</h2>,

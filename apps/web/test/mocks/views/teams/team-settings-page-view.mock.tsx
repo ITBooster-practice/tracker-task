@@ -11,10 +11,13 @@ import { TEAM_ROLES, type TeamInvitation, type TeamMember, type User } from '@re
 type TeamSettingsPageMockState = {
 	mockChangeRoleMutateAsync: TestMock
 	mockDeleteTeamMutateAsync: TestMock
+	mockInvitationsRefetch: TestMock
+	mockMembersRefetch: TestMock
 	mockRemoveMemberMutateAsync: TestMock
 	mockRevokeInvitationMutateAsync: TestMock
 	mockRouterReplace: TestMock
 	mockSendInvitationMutateAsync: TestMock
+	mockTeamDetailRefetch: TestMock
 	mockToastError: TestMock
 	mockToastSuccess: TestMock
 	mockUseMe: TestMock
@@ -27,10 +30,13 @@ const teamSettingsPageMockState = vi.hoisted(
 	(): TeamSettingsPageMockState => ({
 		mockChangeRoleMutateAsync: vi.fn(),
 		mockDeleteTeamMutateAsync: vi.fn(),
+		mockInvitationsRefetch: vi.fn(),
+		mockMembersRefetch: vi.fn(),
 		mockRemoveMemberMutateAsync: vi.fn(),
 		mockRevokeInvitationMutateAsync: vi.fn(),
 		mockRouterReplace: vi.fn(),
 		mockSendInvitationMutateAsync: vi.fn(),
+		mockTeamDetailRefetch: vi.fn(),
 		mockToastError: vi.fn(),
 		mockToastSuccess: vi.fn(),
 		mockUseMe: vi.fn(),
@@ -44,6 +50,9 @@ export const mockChangeRoleMutateAsync: TestMock =
 	teamSettingsPageMockState.mockChangeRoleMutateAsync
 export const mockDeleteTeamMutateAsync: TestMock =
 	teamSettingsPageMockState.mockDeleteTeamMutateAsync
+export const mockInvitationsRefetch: TestMock =
+	teamSettingsPageMockState.mockInvitationsRefetch
+export const mockMembersRefetch: TestMock = teamSettingsPageMockState.mockMembersRefetch
 export const mockRemoveMemberMutateAsync: TestMock =
 	teamSettingsPageMockState.mockRemoveMemberMutateAsync
 export const mockRevokeInvitationMutateAsync: TestMock =
@@ -51,6 +60,8 @@ export const mockRevokeInvitationMutateAsync: TestMock =
 export const mockRouterReplace: TestMock = teamSettingsPageMockState.mockRouterReplace
 export const mockSendInvitationMutateAsync: TestMock =
 	teamSettingsPageMockState.mockSendInvitationMutateAsync
+export const mockTeamDetailRefetch: TestMock =
+	teamSettingsPageMockState.mockTeamDetailRefetch
 export const mockToastError: TestMock = teamSettingsPageMockState.mockToastError
 export const mockToastSuccess: TestMock = teamSettingsPageMockState.mockToastSuccess
 export const mockUseMe: TestMock = teamSettingsPageMockState.mockUseMe
@@ -107,7 +118,7 @@ export function setupTeamSettingsPage({
 			teamPending || teamError ? undefined : createTeamFixture({ id: 'team-1', members }),
 		isPending: teamPending,
 		isError: teamError,
-		refetch: vi.fn(),
+		refetch: mockTeamDetailRefetch,
 	})
 	mockUseTeamMembers.mockReturnValue({
 		data:
@@ -119,7 +130,7 @@ export function setupTeamSettingsPage({
 					},
 		isLoading: false,
 		isError: false,
-		refetch: vi.fn(),
+		refetch: mockMembersRefetch,
 	})
 	mockUseTeamInvitations.mockReturnValue({
 		data: {
@@ -128,7 +139,7 @@ export function setupTeamSettingsPage({
 		},
 		isLoading: false,
 		isError: false,
-		refetch: vi.fn(),
+		refetch: mockInvitationsRefetch,
 	})
 }
 
@@ -255,19 +266,23 @@ vi.mock('@/views/teams/ui/team-settings-members-section', () => ({
 		isError,
 		isLoading,
 		members,
+		onRetry,
 		onOpenRemoveDialog,
+		onRoleChange,
 	}: {
 		isError: boolean
 		isLoading: boolean
 		members: TeamMember[]
+		onRetry: () => void
 		onOpenRemoveDialog: (member: TeamMember) => void
+		onRoleChange: (member: TeamMember, nextRole: 'ADMIN' | 'MEMBER') => void
 	}) => {
 		if (isLoading) {
 			return <div>Загрузка участников...</div>
 		}
 
 		if (isError) {
-			return <div>member-error</div>
+			return <button onClick={onRetry}>Повторить участников</button>
 		}
 
 		return (
@@ -275,6 +290,9 @@ vi.mock('@/views/teams/ui/team-settings-members-section', () => ({
 				{members.map((member) => (
 					<div key={member.id}>
 						<span>{member.email}</span>
+						<button onClick={() => onRoleChange(member, TEAM_ROLES.ADMIN)}>
+							Сделать админом {member.email}
+						</button>
 						<button onClick={() => onOpenRemoveDialog(member)}>
 							Удалить {member.email}
 						</button>
@@ -318,6 +336,7 @@ vi.mock('@/views/teams/ui/team-invite-member-dialog', () => ({
 		isOpen,
 		onClose,
 		onEmailChange,
+		onOpenChange,
 		onSubmit,
 	}: {
 		email: string
@@ -339,6 +358,12 @@ vi.mock('@/views/teams/ui/team-invite-member-dialog', () => ({
 					onChange={(event) => onEmailChange(event.target.value)}
 				/>
 				<button type='submit'>Отправить приглашение</button>
+				<button type='button' onClick={() => onOpenChange(false)}>
+					Скрыть
+				</button>
+				<button type='button' onClick={() => onOpenChange(true)}>
+					Открыть снова
+				</button>
 				<button type='button' onClick={onClose}>
 					Закрыть
 				</button>

@@ -114,6 +114,10 @@ describe('isProtectedRoute', () => {
 		expect(isProtectedRoute('/teams/1/projects')).toBe(true)
 	})
 
+	it("isProtectedRoute('/boards') → true", () => {
+		expect(isProtectedRoute('/boards')).toBe(true)
+	})
+
 	it("isProtectedRoute('/login') → false", () => {
 		expect(isProtectedRoute('/login')).toBe(false)
 	})
@@ -144,8 +148,12 @@ describe('getSidebarRouteId', () => {
 		expect(getSidebarRouteId('/tasks')).toBe(SIDEBAR_ROUTE_IDS.tasks)
 	})
 
-	it("getSidebarRouteId('/sprints') → 'sprints'", () => {
-		expect(getSidebarRouteId('/sprints')).toBe(SIDEBAR_ROUTE_IDS.sprints)
+	it("getSidebarRouteId('/boards') → 'boards'", () => {
+		expect(getSidebarRouteId('/boards')).toBe(SIDEBAR_ROUTE_IDS.boards)
+	})
+
+	it("getSidebarRouteId('/sprints') → legacy alias для 'boards'", () => {
+		expect(getSidebarRouteId('/sprints')).toBe(SIDEBAR_ROUTE_IDS.boards)
 	})
 
 	it("getSidebarRouteId('/teams') → 'teams'", () => {
