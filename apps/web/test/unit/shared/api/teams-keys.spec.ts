@@ -12,7 +12,7 @@ describe('teamsKeys', () => {
 	})
 
 	it('list', () => {
-		expect(teamsKeys.list()).toEqual(teamsKeys.lists())
+		expect(teamsKeys.list()).toEqual([...teamsKeys.lists(), undefined])
 	})
 
 	it('detail', () => {

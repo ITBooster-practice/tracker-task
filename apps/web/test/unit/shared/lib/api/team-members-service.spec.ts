@@ -18,13 +18,18 @@ describe('teamMembersService', () => {
 
 	it('getMembers нормализует nested user в плоский TeamMember', async () => {
 		mockApiClient.get.mockResolvedValue(
-			axiosResponse([createNestedTeamMemberApiFixture()]),
+			axiosResponse({
+				data: [createNestedTeamMemberApiFixture()],
+				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			}),
 		)
 
 		const result = await teamMembersService.getMembers('team-1')
 
-		expect(mockApiClient.get).toHaveBeenCalledWith('/teams/team-1/members')
-		expect(result).toEqual([
+		expect(mockApiClient.get).toHaveBeenCalledWith('/teams/team-1/members', {
+			params: undefined,
+		})
+		expect(result.data).toEqual([
 			createTeamMemberFixture({
 				id: 'member-1',
 				userId: 'user-1',

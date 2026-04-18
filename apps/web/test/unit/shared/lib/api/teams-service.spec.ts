@@ -20,18 +20,16 @@ describe('teamsService', () => {
 
 	it('getAll возвращает список команд без дополнительных преобразований', async () => {
 		mockApiClient.get.mockResolvedValue(
-			axiosResponse([
-				createTeamListItemFixture({
-					name: 'Team',
-					currentUserRole: 'OWNER',
-				}),
-			]),
+			axiosResponse({
+				data: [createTeamListItemFixture({ name: 'Team', currentUserRole: 'OWNER' })],
+				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			}),
 		)
 
 		const result = await teamsService.getAll()
 
-		expect(mockApiClient.get).toHaveBeenCalledWith('/teams')
-		expect(result).toEqual([
+		expect(mockApiClient.get).toHaveBeenCalledWith('/teams', { params: undefined })
+		expect(result.data).toEqual([
 			createTeamListItemFixture({
 				name: 'Team',
 				currentUserRole: 'OWNER',

@@ -42,14 +42,19 @@ describe('teamInvitationsService', () => {
 
 	it('getTeamInvitations загружает список приглашений команды и нормализует его', async () => {
 		mockApiClient.get.mockResolvedValue(
-			axiosResponse([createTeamInvitationApiFixture({ role: 'ADMIN' })]),
+			axiosResponse({
+				data: [createTeamInvitationApiFixture({ role: 'ADMIN' })],
+				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			}),
 		)
 
 		const result = await teamInvitationsService.getTeamInvitations('team-1')
 
-		expect(mockApiClient.get).toHaveBeenCalledWith('/teams/team-1/invitations')
-		expect(result).toHaveLength(1)
-		expect(result[0]).toMatchObject({
+		expect(mockApiClient.get).toHaveBeenCalledWith('/teams/team-1/invitations', {
+			params: undefined,
+		})
+		expect(result.data).toHaveLength(1)
+		expect(result.data[0]).toMatchObject({
 			id: 'inv-1',
 			status: 'PENDING',
 			team: { id: 'team-1', name: 'Dream Team', avatarUrl: null },
