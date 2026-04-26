@@ -18,6 +18,8 @@ export default mergeConfig(
 					'**/decorators/**',
 					'swagger.util.ts',
 					'**/constants/**',
+					'**/guards/auth.guard.ts',
+					'**/mail/templates/**',
 				],
 			},
 		},
