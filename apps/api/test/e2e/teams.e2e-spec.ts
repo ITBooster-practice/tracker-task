@@ -5,7 +5,7 @@ import request from 'supertest'
 import type { Redis } from 'ioredis'
 
 import { PrismaService } from '../../prisma/prisma.service'
-import { createTestApp, registerAndLogin } from '../helpers/e2e.helpers'
+import { createTestApp, registerAndLogin, resetE2eState } from '../helpers/e2e.helpers'
 
 describe('Teams (e2e)', () => {
 	let app: INestApplication
@@ -32,11 +32,8 @@ describe('Teams (e2e)', () => {
 	})
 
 	beforeEach(async () => {
-		// Чистим таблицы и Redis перед каждым тестом чтобы не было конфликтов
-		await prisma.teamMember.deleteMany()
-		await prisma.team.deleteMany()
-		await prisma.user.deleteMany()
-		await redisClient.flushall()
+		// Чистим БД и Redis перед каждым тестом чтобы не было конфликтов
+		await resetE2eState(prisma, redisClient)
 
 		// Создаём двух пользователей
 		const owner = await registerAndLogin(app, 'owner@example.com')
