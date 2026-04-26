@@ -55,6 +55,17 @@ function create401Error(config: Partial<RetryableConfig> = {}) {
 describe('client', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+
+		// В unit-тестах интерсепторов запрещаем реальные HTTP-запросы,
+		// чтобы JSDOM не выбрасывал AggregateError из XHR-слоя.
+		client.defaults.adapter = vi.fn(async (config) => ({
+			data: { ok: true },
+			status: 200,
+			statusText: 'OK',
+			headers: {},
+			config,
+			request: {},
+		}))
 	})
 
 	describe('request interceptor', () => {
@@ -108,13 +119,14 @@ describe('client', () => {
 
 			const interceptor = getResponseInterceptor()
 			const error = create401Error({ _retry: false })
+			const result = await interceptor.rejected(error)
 
-			// retry вызовет client() который упадёт без сервера — ловим
-			try {
-				await interceptor.rejected(error)
-			} catch {
-				// ожидаемо
-			}
+			expect(result).toEqual(
+				expect.objectContaining({
+					status: 200,
+					data: { ok: true },
+				}),
+			)
 
 			expect(mockRefreshAuthSession).toHaveBeenCalledTimes(1)
 			expect(mockSetCookieHeader).toHaveBeenCalledWith(error.config)
