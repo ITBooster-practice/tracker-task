@@ -8,6 +8,7 @@ import {
 	Param,
 	Patch,
 	Query,
+	UseGuards,
 } from '@nestjs/common'
 import {
 	ApiBearerAuth,
@@ -23,7 +24,9 @@ import { ChangeRoleDto } from './dto/change-role.dto'
 import { MemberResponse } from './dto/member-response.dto'
 import { Authorization } from '../../auth/decorators/authorization.decorator'
 import { Authorized } from '../../auth/decorators/authorized.decorator'
+import { Roles } from '../../auth/decorators/roles.decorator'
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
+import { RolesGuard } from '../../guards/roles.guard'
 import { ApiPaginatedOkResponse } from '../../utils/swagger.util'
 
 @ApiTags('Team Members')
@@ -54,6 +57,8 @@ export class TeamMembersController {
 	@ApiNotFoundResponse({ description: 'Команда или участник не найден' })
 	@Patch(':userId/role')
 	@HttpCode(HttpStatus.OK)
+	@UseGuards(RolesGuard)
+	@Roles('OWNER', 'ADMIN')
 	changeRole(
 		@Param('id') teamId: string,
 		@Param('userId') targetUserId: string,

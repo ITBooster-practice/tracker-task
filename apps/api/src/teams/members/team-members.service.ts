@@ -1,18 +1,11 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
 import { ChangeRoleDto } from './dto/change-role.dto'
-import { TeamRole } from '@repo/types'
 import {
 	buildPaginatedResponse,
 	getPaginationPrismaParams,
 	type PaginationOptions,
 } from '../../utils/pagination.util'
-
-const ROLE_WEIGHT: Record<TeamRole, number> = {
-	OWNER: 3,
-	ADMIN: 2,
-	MEMBER: 1,
-}
 
 @Injectable()
 export class TeamMembersService {
@@ -64,18 +57,11 @@ export class TeamMembersService {
 			throw new ForbiddenException('Нельзя изменить свою собственную роль')
 		}
 
-		const [actor, target] = await Promise.all([
-			this.prisma.teamMember.findUnique({
-				where: { teamId_userId: { teamId, userId: actorId } },
-			}),
-			this.prisma.teamMember.findUnique({
-				where: { teamId_userId: { teamId, userId: targetUserId } },
-			}),
-		])
+		void actorId
 
-		if (!actor) {
-			throw new ForbiddenException('Вы не являетесь участником этой команды')
-		}
+		const target = await this.prisma.teamMember.findUnique({
+			where: { teamId_userId: { teamId, userId: targetUserId } },
+		})
 
 		if (!target) {
 			throw new NotFoundException('Участник не найден в команде')
@@ -84,20 +70,6 @@ export class TeamMembersService {
 		// OWNER не может быть понижен
 		if (target.role === 'OWNER') {
 			throw new ForbiddenException('Нельзя изменить роль владельца команды')
-		}
-
-		// ADMIN не может назначить роль выше своей (т.е. не может дать OWNER)
-		if (ROLE_WEIGHT[actor.role] <= ROLE_WEIGHT[dto.role as TeamRole]) {
-			// actor.role = MEMBER: не может назначать вообще
-			// actor.role = ADMIN: не может назначить OWNER (но OWNER в dto недоступен — схема запрещает)
-			if (actor.role !== 'OWNER' && actor.role !== 'ADMIN') {
-				throw new ForbiddenException('Недостаточно прав для изменения ролей')
-			}
-		}
-
-		// только OWNER или ADMIN могут менять роли
-		if (actor.role !== 'OWNER' && actor.role !== 'ADMIN') {
-			throw new ForbiddenException('Недостаточно прав для изменения ролей')
 		}
 
 		return this.prisma.teamMember.update({

@@ -104,43 +104,22 @@ describe('TeamMembersService', () => {
 
 	// ── changeRole ────────────────────────────────────────────────────────────
 	describe('changeRole', () => {
-		it('OWNER успешно меняет роль MEMBER', async () => {
+		it('успешно меняет роль участника (права проверяются в RolesGuard)', async () => {
 			const updated = {
 				...MEMBER_PLAIN,
 				role: 'ADMIN' as const,
 				user: { id: MEMBER_PLAIN.userId, name: 'Charlie', email: 'charlie@example.com' },
 			}
-			prisma.teamMember.findUnique
-				.mockResolvedValueOnce(MEMBER_OWNER) // actor
-				.mockResolvedValueOnce(MEMBER_PLAIN) // target
+			prisma.teamMember.findUnique.mockResolvedValueOnce(MEMBER_PLAIN) // target
 			prisma.teamMember.update.mockResolvedValue(updated)
 
 			const result = await service.changeRole(TEAM_ID, USER_ID, MEMBER_PLAIN.userId, {
 				role: 'ADMIN',
 			})
 
-			expect(prisma.teamMember.update).toHaveBeenCalledOnce()
-			expect(result).toEqual(updated)
-		})
-
-		it('ADMIN успешно меняет роль MEMBER', async () => {
-			const updated = {
-				...MEMBER_PLAIN,
-				role: 'ADMIN' as const,
-				user: { id: MEMBER_PLAIN.userId, name: 'Charlie', email: 'charlie@example.com' },
-			}
-			prisma.teamMember.findUnique
-				.mockResolvedValueOnce(MEMBER_ADMIN) // actor
-				.mockResolvedValueOnce(MEMBER_PLAIN) // target
-			prisma.teamMember.update.mockResolvedValue(updated)
-
-			const result = await service.changeRole(
-				TEAM_ID,
-				MEMBER_ADMIN.userId,
-				MEMBER_PLAIN.userId,
-				{ role: 'ADMIN' },
-			)
-
+			expect(prisma.teamMember.findUnique).toHaveBeenCalledWith({
+				where: { teamId_userId: { teamId: TEAM_ID, userId: MEMBER_PLAIN.userId } },
+			})
 			expect(prisma.teamMember.update).toHaveBeenCalledOnce()
 			expect(result).toEqual(updated)
 		})
@@ -152,31 +131,15 @@ describe('TeamMembersService', () => {
 		})
 
 		it('должен выбросить 403 если target является OWNER', async () => {
-			prisma.teamMember.findUnique
-				.mockResolvedValueOnce(MEMBER_ADMIN) // actor
-				.mockResolvedValueOnce(MEMBER_OWNER) // target is OWNER
+			prisma.teamMember.findUnique.mockResolvedValueOnce(MEMBER_OWNER)
 
 			await expect(
 				service.changeRole(TEAM_ID, MEMBER_ADMIN.userId, USER_ID, { role: 'MEMBER' }),
 			).rejects.toThrow(ForbiddenException)
 		})
 
-		it('должен выбросить 403 если MEMBER пытается менять роли', async () => {
-			prisma.teamMember.findUnique
-				.mockResolvedValueOnce(MEMBER_PLAIN) // actor is MEMBER
-				.mockResolvedValueOnce(MEMBER_ADMIN) // target
-
-			await expect(
-				service.changeRole(TEAM_ID, MEMBER_PLAIN.userId, MEMBER_ADMIN.userId, {
-					role: 'MEMBER',
-				}),
-			).rejects.toThrow(ForbiddenException)
-		})
-
 		it('должен выбросить 404 если target не в команде', async () => {
-			prisma.teamMember.findUnique
-				.mockResolvedValueOnce(MEMBER_OWNER) // actor
-				.mockResolvedValueOnce(null) // target not found
+			prisma.teamMember.findUnique.mockResolvedValueOnce(null)
 
 			await expect(
 				service.changeRole(TEAM_ID, USER_ID, 'unknown-id', { role: 'MEMBER' }),
