@@ -256,3 +256,33 @@ const DeleteButton = ({ id }: { id: string }) => {
 
 - Сервис: `apps/web/lib/api/example-service.ts`
 - Хуки: `apps/web/hooks/api/use-example.ts`
+
+## Тестирование API-клиента и interceptors
+
+Для unit-тестов `apps/web/shared/lib/api/client.ts` важно полностью отключать реальную сеть.
+
+### Почему это важно
+
+Если в тесте выполняется retry-путь (`return client(originalRequest)`), JSDOM может попытаться сделать реальный XHR-запрос и вывести `AggregateError` в консоль.
+
+### Рекомендуемый подход
+
+В `beforeEach` подменяйте `client.defaults.adapter` на мок-реализацию:
+
+```typescript
+beforeEach(() => {
+	vi.clearAllMocks()
+
+	// В unit-тестах интерсепторов запрещаем реальные HTTP-запросы.
+	client.defaults.adapter = vi.fn(async (config) => ({
+		data: { ok: true },
+		status: 200,
+		statusText: 'OK',
+		headers: {},
+		config,
+		request: {},
+	}))
+})
+```
+
+Так тест остаётся детерминированным и проверяет только логику интерсепторов, а не поведение сети/браузерной среды.
