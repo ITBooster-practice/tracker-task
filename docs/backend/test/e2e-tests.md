@@ -21,10 +21,11 @@
 
 **`test/helpers/e2e.helpers.ts`**
 
-| Хелпер                                           | Что делает                                                                   |
-| ------------------------------------------------ | ---------------------------------------------------------------------------- |
-| `createTestApp()`                                | Поднимает `AppModule`, подключает пайпы/интерцепторы, мокирует `MailService` |
-| `registerAndLogin(app, email, password?, name?)` | Регистрирует пользователя, возвращает `{ cookies }`                          |
+| Хелпер                                           | Что делает                                                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `createTestApp()`                                | Поднимает `AppModule`, подключает пайпы/интерцепторы, мокирует `MailService`                   |
+| `registerAndLogin(app, email, password?, name?)` | Регистрирует пользователя, возвращает `{ cookies }`                                            |
+| `resetE2eState(prisma, redisClient)`             | Очищает БД в порядке FK (teamInvitation → teamMember → team → user) + `redisClient.flushall()` |
 
 `MailService` в e2e мокируется с методами `sendWelcomeEmail()` и `sendTeamInvitationEmail()`, чтобы тесты не ходили во внешний email-провайдер.
 
@@ -46,11 +47,8 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
-	// Очищаем таблицы и Redis перед каждым тестом
-	await prisma.teamMember.deleteMany()
-	await prisma.team.deleteMany()
-	await prisma.user.deleteMany()
-	await redisClient.flushall()
+	// Очищаем БД и Redis перед каждым тестом
+	await resetE2eState(prisma, redisClient)
 })
 ```
 
