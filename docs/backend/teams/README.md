@@ -51,8 +51,17 @@
 ## Роли и защита
 
 - Все team-scoped routes работают под `@Authorization()`
-- Routes управления invitations дополнительно защищены `@Roles('OWNER', 'ADMIN')` и `RolesGuard`
 - `RolesGuard` поддерживает маршруты с `params.teamId` и `params.id`
+- Следующие routes дополнительно защищены `@Roles(...)` и `RolesGuard` на уровне контроллера:
+
+| Route                                   | Требуемые роли   |
+| --------------------------------------- | ---------------- |
+| `PATCH /teams/:id`                      | `OWNER`, `ADMIN` |
+| `DELETE /teams/:id`                     | `OWNER`          |
+| `PATCH /teams/:id/members/:userId/role` | `OWNER`, `ADMIN` |
+| `POST /teams/:id/invitations`           | `OWNER`, `ADMIN` |
+| `GET /teams/:id/invitations`            | `OWNER`, `ADMIN` |
+| `DELETE /teams/:id/invitations/:invId`  | `OWNER`, `ADMIN` |
 
 ## Бизнес-правила invitations
 

@@ -42,42 +42,38 @@ vi.mock('argon2', async () => await import('../../mocks/argon2'))
 Файл: `test/unit/teams/teams.service.spec.ts`
 Хелперы: `test/helpers/teams.helpers.ts` — `createPrismaMock`, `TEAM`, `TEAM_ID`, `USER_ID`, `MEMBER_OWNER/ADMIN/PLAIN`
 
-| Метод          | Сценарий                       | Ожидание                                    |
-| -------------- | ------------------------------ | ------------------------------------------- |
-| `createTeam`   | Создание команды               | Команда с участником OWNER                  |
-| `createTeam`   | С полями description/avatarUrl | Поля сохраняются                            |
-| `getUserTeams` | Пользователь в командах        | Список с `membersCount` и `currentUserRole` |
-| `getUserTeams` | Нет команд                     | Пустой массив                               |
-| `getTeamById`  | Пользователь — участник        | Объект команды                              |
-| `getTeamById`  | Команда не найдена             | `NotFoundException`                         |
-| `getTeamById`  | Пользователь не участник       | `ForbiddenException`                        |
-| `updateTeam`   | OWNER или ADMIN                | Обновлённая команда                         |
-| `updateTeam`   | MEMBER                         | `ForbiddenException`                        |
-| `updateTeam`   | Не в команде                   | `ForbiddenException`                        |
-| `deleteTeam`   | OWNER                          | Подтверждение удаления                      |
-| `deleteTeam`   | Не OWNER                       | `ForbiddenException`                        |
+| Метод          | Сценарий                                                                   | Ожидание                                    |
+| -------------- | -------------------------------------------------------------------------- | ------------------------------------------- |
+| `createTeam`   | Создание команды                                                           | Команда с участником OWNER                  |
+| `createTeam`   | С полями description/avatarUrl                                             | Поля сохраняются                            |
+| `getUserTeams` | Пользователь в командах                                                    | Список с `membersCount` и `currentUserRole` |
+| `getUserTeams` | Нет команд                                                                 | Пустой массив                               |
+| `getTeamById`  | Пользователь — участник                                                    | Объект команды                              |
+| `getTeamById`  | Команда не найдена                                                         | `NotFoundException`                         |
+| `getTeamById`  | Пользователь не участник                                                   | `ForbiddenException`                        |
+| `updateTeam`   | Обновление данных команды (доступ проверяется `RolesGuard` на контроллере) | Обновлённая команда                         |
+| `deleteTeam`   | Удаление команды (доступ проверяется `RolesGuard` на контроллере)          | Подтверждение удаления                      |
 
 ## TeamMembersService
 
 Файл: `test/unit/teams/team-members.service.spec.ts`
 Хелперы: те же из `test/helpers/teams.helpers.ts`
 
-| Метод          | Сценарий                         | Ожидание                                   |
-| -------------- | -------------------------------- | ------------------------------------------ |
-| `getMembers`   | Участник команды                 | Список участников                          |
-| `getMembers`   | Команда не найдена               | `NotFoundException`                        |
-| `getMembers`   | Не участник                      | `ForbiddenException`                       |
-| `changeRole`   | OWNER/ADMIN меняет роль MEMBER   | Обновлённый участник                       |
-| `changeRole`   | Самостоятельная смена своей роли | `ForbiddenException`                       |
-| `changeRole`   | Target — OWNER                   | `ForbiddenException`                       |
-| `changeRole`   | Actor — MEMBER                   | `ForbiddenException`                       |
-| `changeRole`   | Target не в команде              | `NotFoundException`                        |
-| `removeMember` | OWNER/ADMIN удаляет MEMBER       | `{ message: 'Участник успешно исключён' }` |
-| `removeMember` | Самовыход (self-leave)           | `{ message: 'Вы покинули команду' }`       |
-| `removeMember` | Попытка удалить OWNER            | `ForbiddenException`                       |
-| `removeMember` | MEMBER удаляет другого           | `ForbiddenException`                       |
-| `removeMember` | ADMIN удаляет другого ADMIN      | `ForbiddenException`                       |
-| `removeMember` | Target не в команде              | `NotFoundException`                        |
+| Метод          | Сценарий                                                                          | Ожидание                                   |
+| -------------- | --------------------------------------------------------------------------------- | ------------------------------------------ |
+| `getMembers`   | Участник команды                                                                  | Список участников                          |
+| `getMembers`   | Команда не найдена                                                                | `NotFoundException`                        |
+| `getMembers`   | Не участник                                                                       | `ForbiddenException`                       |
+| `changeRole`   | Смена роли участника (доступ OWNER/ADMIN проверяется `RolesGuard` на контроллере) | Обновлённый участник                       |
+| `changeRole`   | Самостоятельная смена своей роли                                                  | `ForbiddenException`                       |
+| `changeRole`   | Target — OWNER                                                                    | `ForbiddenException`                       |
+| `changeRole`   | Target не в команде                                                               | `NotFoundException`                        |
+| `removeMember` | OWNER/ADMIN удаляет MEMBER                                                        | `{ message: 'Участник успешно исключён' }` |
+| `removeMember` | Самовыход (self-leave)                                                            | `{ message: 'Вы покинули команду' }`       |
+| `removeMember` | Попытка удалить OWNER                                                             | `ForbiddenException`                       |
+| `removeMember` | MEMBER удаляет другого                                                            | `ForbiddenException`                       |
+| `removeMember` | ADMIN удаляет другого ADMIN                                                       | `ForbiddenException`                       |
+| `removeMember` | Target не в команде                                                               | `NotFoundException`                        |
 
 ## TeamInvitationsService
 

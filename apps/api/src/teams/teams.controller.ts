@@ -9,6 +9,7 @@ import {
 	Patch,
 	Post,
 	Query,
+	UseGuards,
 } from '@nestjs/common'
 import {
 	ApiBearerAuth,
@@ -27,7 +28,9 @@ import { UpdateTeamDto } from './dto/update-team.dto'
 import { TeamResponse, TeamListItemResponse } from './dto/team-response.dto'
 import { Authorization } from '../auth/decorators/authorization.decorator'
 import { Authorized } from '../auth/decorators/authorized.decorator'
+import { Roles } from '../auth/decorators/roles.decorator'
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto'
+import { RolesGuard } from '../guards/roles.guard'
 import { ApiPaginatedOkResponse } from '../utils/swagger.util'
 
 @ApiTags('Teams')
@@ -71,6 +74,8 @@ export class TeamsController {
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для обновления команды' })
 	@ApiNotFoundResponse({ description: 'Команда не найдена' })
 	@Patch(':id')
+	@UseGuards(RolesGuard)
+	@Roles('OWNER', 'ADMIN')
 	updateTeam(
 		@Param('id') teamId: string,
 		@Authorized('id') userId: string,
@@ -87,6 +92,8 @@ export class TeamsController {
 	@ApiForbiddenResponse({ description: 'Только владелец может удалить команду' })
 	@ApiNotFoundResponse({ description: 'Команда не найдена' })
 	@Delete(':id')
+	@UseGuards(RolesGuard)
+	@Roles('OWNER')
 	deleteTeam(@Param('id') teamId: string, @Authorized('id') userId: string) {
 		return this.teamsService.deleteTeam(teamId, userId)
 	}

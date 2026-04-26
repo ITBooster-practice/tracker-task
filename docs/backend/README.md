@@ -62,7 +62,7 @@
   - `GET /invitations/me`
   - `POST /invitations/:token/accept`
   - `POST /invitations/:token/decline`
-- Team-scoped invitations routes защищены через `@Authorization()` + `@Roles('OWNER', 'ADMIN')` + `RolesGuard`
+- `PATCH /teams/:id`, `DELETE /teams/:id`, `PATCH /teams/:id/members/:userId/role` и все invitations routes защищены через `@Authorization()` + `@Roles(...)` + `RolesGuard` на уровне контроллера
 - Входящие invitations routes защищены через `@Authorization()`
 
 ### Планировщик задач
