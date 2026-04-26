@@ -7,8 +7,6 @@ import {
 	USER_ID,
 	TEAM_ID,
 	TEAM,
-	MEMBER_OWNER,
-	MEMBER_ADMIN,
 	MEMBER_PLAIN,
 } from '../../helpers/teams.helpers'
 
@@ -174,50 +172,45 @@ describe('TeamsService', () => {
 
 	// ── updateTeam ────────────────────────────────────────────────────────────
 	describe('updateTeam', () => {
-		it('OWNER может обновить команду', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+		it('обновляет команду (права проверяются в RolesGuard на уровне контроллера)', async () => {
 			const updated = { ...TEAM, name: 'New Name' }
 			prisma.team.update.mockResolvedValue(updated)
 
 			const result = await service.updateTeam(TEAM_ID, USER_ID, { name: 'New Name' })
 
 			expect(prisma.team.update).toHaveBeenCalledOnce()
+			expect(prisma.team.update).toHaveBeenCalledWith({
+				where: { id: TEAM_ID },
+				data: {
+					name: 'New Name',
+					description: undefined,
+					avatarUrl: undefined,
+				},
+				include: {
+					members: {
+						include: {
+							user: {
+								select: { id: true, name: true, email: true },
+							},
+						},
+					},
+				},
+			})
 			expect(result.name).toBe('New Name')
 		})
 
-		it('ADMIN может обновить команду', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_ADMIN)
+		it('не проверяет роль внутри сервиса', async () => {
 			prisma.team.update.mockResolvedValue(TEAM)
 
 			await expect(
-				service.updateTeam(TEAM_ID, MEMBER_ADMIN.userId, { name: 'New Name' }),
+				service.updateTeam(TEAM_ID, 'any-user-id', { name: 'New Name' }),
 			).resolves.not.toThrow()
-		})
-
-		it('должен выбросить ForbiddenException если роль MEMBER', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_PLAIN)
-
-			await expect(
-				service.updateTeam(TEAM_ID, MEMBER_PLAIN.userId, { name: 'New Name' }),
-			).rejects.toThrow(ForbiddenException)
-			await expect(
-				service.updateTeam(TEAM_ID, MEMBER_PLAIN.userId, { name: 'New Name' }),
-			).rejects.toThrow('Недостаточно прав для обновления команды')
-		})
-
-		it('должен выбросить ForbiddenException если пользователь не состоит в команде', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(null)
-
-			await expect(
-				service.updateTeam(TEAM_ID, 'stranger-id', { name: 'New Name' }),
-			).rejects.toThrow(ForbiddenException)
 		})
 	})
 
 	// ── deleteTeam ────────────────────────────────────────────────────────────
 	describe('deleteTeam', () => {
-		it('OWNER может удалить команду и получает подтверждение', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+		it('удаляет команду и возвращает подтверждение (права проверяются в RolesGuard)', async () => {
 			prisma.team.delete.mockResolvedValue(TEAM)
 
 			const result = await service.deleteTeam(TEAM_ID, USER_ID)
@@ -226,31 +219,13 @@ describe('TeamsService', () => {
 			expect(result).toEqual({ message: 'Команда успешно удалена', success: true })
 		})
 
-		it('должен выбросить ForbiddenException если роль ADMIN', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_ADMIN)
+		it('не проверяет роль внутри сервиса', async () => {
+			prisma.team.delete.mockResolvedValue(TEAM)
 
-			await expect(service.deleteTeam(TEAM_ID, MEMBER_ADMIN.userId)).rejects.toThrow(
-				ForbiddenException,
-			)
-			await expect(service.deleteTeam(TEAM_ID, MEMBER_ADMIN.userId)).rejects.toThrow(
-				'Только владелец может удалить команду',
-			)
-		})
-
-		it('должен выбросить ForbiddenException если роль MEMBER', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_PLAIN)
-
-			await expect(service.deleteTeam(TEAM_ID, MEMBER_PLAIN.userId)).rejects.toThrow(
-				ForbiddenException,
-			)
-		})
-
-		it('должен выбросить ForbiddenException если пользователь не состоит в команде', async () => {
-			prisma.teamMember.findUnique.mockResolvedValue(null)
-
-			await expect(service.deleteTeam(TEAM_ID, 'stranger-id')).rejects.toThrow(
-				ForbiddenException,
-			)
+			await expect(service.deleteTeam(TEAM_ID, 'any-user-id')).resolves.toEqual({
+				message: 'Команда успешно удалена',
+				success: true,
+			})
 		})
 	})
 })
