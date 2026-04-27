@@ -1,5 +1,7 @@
 import { teamRoutes } from '@/shared/config'
 
+// TODO: удалить после подключения API
+
 export type ProjectCatalogItem = {
 	id: string
 	code: string
