@@ -5,7 +5,7 @@ import request from 'supertest'
 import type { Redis } from 'ioredis'
 
 import { PrismaService } from '../../prisma/prisma.service'
-import { createTestApp, registerAndLogin } from '../helpers/e2e.helpers'
+import { createTestApp, registerAndLogin, resetE2eState } from '../helpers/e2e.helpers'
 
 describe('TeamMembers (e2e)', () => {
 	let app: INestApplication
@@ -40,10 +40,7 @@ describe('TeamMembers (e2e)', () => {
 	})
 
 	beforeEach(async () => {
-		await prisma.teamMember.deleteMany()
-		await prisma.team.deleteMany()
-		await prisma.user.deleteMany()
-		await redisClient.flushall()
+		await resetE2eState(prisma, redisClient)
 
 		// Создаём 4 пользователей: owner, admin, member, stranger (не в команде)
 		const ownerAuth = await registerAndLogin(app, 'owner@test.com')

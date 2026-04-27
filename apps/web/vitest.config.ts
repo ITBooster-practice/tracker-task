@@ -1,5 +1,5 @@
 import path from 'path'
-import { defineConfig, mergeConfig } from 'vitest/config'
+import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 
 import { nextConfig } from '@repo/vitest-config/next'
 
@@ -13,7 +13,8 @@ export default mergeConfig(
 		},
 		test: {
 			root: '.',
-			include: ['test/**/*.spec.ts', 'test/**/*.spec.tsx'],
+			include: ['test/unit/**/*.spec.ts', 'test/unit/**/*.spec.tsx'],
+			exclude: [...configDefaults.exclude, 'test/e2e/**'],
 			coverage: {
 				include: ['entities/**', 'features/**', 'views/**', 'widgets/**', 'shared/**'],
 				exclude: [

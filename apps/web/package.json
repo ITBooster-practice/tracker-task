@@ -10,7 +10,9 @@
 		"lint": "eslint \"{app,components,lib,utils}/**/*.{ts,tsx,js,jsx}\"",
 		"check-types": "tsc --noEmit",
 		"pretest": "pnpm --filter @repo/vitest-config build",
-		"test": "vitest run",
+		"test": "vitest run --config ./vitest.config.ts",
+		"pretest:e2e": "pnpm --filter @repo/vitest-config build",
+		"test:e2e": "vitest run --config ./vitest.config.e2e.ts",
 		"test:watch": "vitest"
 	},
 	"dependencies": {

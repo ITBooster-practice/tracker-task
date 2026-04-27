@@ -5,7 +5,7 @@ import request from 'supertest'
 import type { Redis } from 'ioredis'
 
 import { PrismaService } from '../../prisma/prisma.service'
-import { createTestApp, registerAndLogin } from '../helpers/e2e.helpers'
+import { createTestApp, registerAndLogin, resetE2eState } from '../helpers/e2e.helpers'
 
 // Извлекает значение cookie по имени из массива Set-Cookie заголовков
 function getCookieValue(setCookie: string | string[], name: string): string | undefined {
@@ -35,8 +35,7 @@ describe('Auth (e2e)', () => {
 	})
 
 	beforeEach(async () => {
-		await prisma.user.deleteMany()
-		await redisClient.flushall()
+		await resetE2eState(prisma, redisClient)
 	})
 
 	// ── POST /auth/register ───────────────────────────────────────────────────

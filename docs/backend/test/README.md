@@ -16,7 +16,7 @@ apps/api/test/
 │   ├── auth.helpers.ts                  # createPrismaMock, createJwtMock, createConfigMock, makeTokens
 │   ├── teams.helpers.ts                 # createPrismaMock, TEAM, MEMBER_OWNER/ADMIN/PLAIN, USER_ID, TEAM_ID
 │   ├── invitations.helpers.ts           # mocks и фикстуры для invitations service
-│   └── e2e.helpers.ts                   # createTestApp, registerAndLogin
+│   └── e2e.helpers.ts                   # createTestApp, registerAndLogin, resetE2eState
 ├── unit/
 │   ├── app.controller.spec.ts
 │   ├── auth/

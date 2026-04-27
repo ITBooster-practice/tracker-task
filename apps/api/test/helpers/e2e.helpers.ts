@@ -61,3 +61,16 @@ export async function registerAndLogin(
 
 	return { cookies }
 }
+
+// Централизованная очистка тестовых данных для e2e.
+// Важно соблюдать порядок удаления из-за внешних ключей.
+export async function resetE2eState(
+	prisma: PrismaService,
+	redisClient: Redis,
+): Promise<void> {
+	await prisma.teamInvitation.deleteMany()
+	await prisma.teamMember.deleteMany()
+	await prisma.team.deleteMany()
+	await prisma.user.deleteMany()
+	await redisClient.flushall()
+}
