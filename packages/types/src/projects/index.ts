@@ -1,1 +1,1 @@
-export * from './types/project'
+export * from './types/project.types'

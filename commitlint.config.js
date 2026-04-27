@@ -8,7 +8,7 @@ module.exports = {
                 'api',      // изменения в apps/api
                 'web',      // изменения в apps/web
                 'ui',       // изменения в packages/ui
-								'pack',     // изменения в packages
+				'pack',     // изменения в packages
                 'libs',     // изменения в других библиотеках
                 'config',   // настройки eslint, tsconfig и т.д.
                 'repo',     // настройки монорепо, turborepo, ci
