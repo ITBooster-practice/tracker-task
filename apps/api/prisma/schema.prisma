@@ -60,6 +60,7 @@ model Team {
   avatarUrl   String?
   members     TeamMember[]
   invitations TeamInvitation[]
+  projects    Project[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 }
@@ -98,11 +99,15 @@ model Project {
   id          String   @id @default(uuid())
   name        String
   description String?
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
   tasks       Task[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([teamId])
 }
 
 model Task {
@@ -112,7 +117,7 @@ model Task {
   status      TaskStatus @default(TODO)
   priority    Priority   @default(MEDIUM)
   projectId   String
-  project     Project    @relation(fields: [projectId], references: [id])
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assigneeId  String?
   assignee    User?      @relation(fields: [assigneeId], references: [id])
   createdAt   DateTime   @default(now())
