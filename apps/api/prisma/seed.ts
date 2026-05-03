@@ -59,6 +59,38 @@ async function main() {
 
 	console.log(`✅ Создано пользователей: 3`)
 
+	// Создание тестовой команды
+	console.log('👥 Создание команды...')
+	const team = await prisma.team.create({
+		data: {
+			name: 'Команда разработки',
+			description: 'Основная команда разработчиков трекера задач',
+		},
+	})
+
+	// Добавление участников команды
+	await prisma.teamMember.createMany({
+		data: [
+			{
+				teamId: team.id,
+				userId: user1.id,
+				role: 'OWNER',
+			},
+			{
+				teamId: team.id,
+				userId: user2.id,
+				role: 'MEMBER',
+			},
+			{
+				teamId: team.id,
+				userId: user3.id,
+				role: 'ADMIN',
+			},
+		],
+	})
+
+	console.log(`✅ Создана команда "${team.name}" с 3 участниками`)
+
 	// Создание проектов
 	console.log('📁 Создание проектов...')
 	const project1 = await prisma.project.create({
@@ -67,6 +99,7 @@ async function main() {
 			description:
 				'Разработка системы управления задачами с использованием NestJS и Next.js',
 			createdById: user1.id,
+			teamId: team.id,
 		},
 	})
 
@@ -75,6 +108,7 @@ async function main() {
 			name: 'Мобильное приложение',
 			description: 'Разработка мобильного клиента для трекера задач',
 			createdById: user3.id,
+			teamId: team.id,
 		},
 	})
 
@@ -158,38 +192,6 @@ async function main() {
 	})
 
 	console.log(`✅ Создано задач: 8`)
-
-	// Создание тестовой команды
-	console.log('👥 Создание команды...')
-	const team = await prisma.team.create({
-		data: {
-			name: 'Команда разработки',
-			description: 'Основная команда разработчиков трекера задач',
-		},
-	})
-
-	// Добавление участников команды
-	await prisma.teamMember.createMany({
-		data: [
-			{
-				teamId: team.id,
-				userId: user1.id,
-				role: 'OWNER',
-			},
-			{
-				teamId: team.id,
-				userId: user2.id,
-				role: 'MEMBER',
-			},
-			{
-				teamId: team.id,
-				userId: user3.id,
-				role: 'ADMIN',
-			},
-		],
-	})
-
-	console.log(`✅ Создана команда "${team.name}" с 3 участниками`)
 
 	// Создание тестового приглашения
 	await prisma.teamInvitation.create({
