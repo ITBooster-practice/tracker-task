@@ -80,7 +80,7 @@ describe('BoardColumn', () => {
 		const column = createBoardColumnFixture({
 			tasks: [createBoardTaskFixture()],
 		})
-		const { container } = render(
+		render(
 			<BoardColumn
 				column={column}
 				activeDragTaskId={null}
@@ -91,7 +91,9 @@ describe('BoardColumn', () => {
 
 		const state = getBoardColumnMockState()
 
-		expect(container.querySelector('section')?.className).toContain('border-primary/45')
+		expect(screen.getByTestId('sortable-context').parentElement?.className).toContain(
+			'bg-primary/5',
+		)
 		expect(screen.getByTestId('column-card-task-a').getAttribute('data-disabled')).toBe(
 			'true',
 		)

@@ -1,5 +1,5 @@
-import { type PaginationMeta, type TeamInvitation } from '@repo/types'
-import { Badge, Button, cn, EmptyState, Pagination } from '@repo/ui'
+import { type TeamInvitation } from '@repo/types'
+import { Badge, Button, cn, EmptyState } from '@repo/ui'
 
 import {
 	TEAM_SETTINGS_SECTION_ICONS,
@@ -27,8 +27,6 @@ type TeamSettingsInvitationsSectionProps = {
 	invitations: TeamInvitation[]
 	isError: boolean
 	isLoading: boolean
-	meta?: PaginationMeta
-	onPageChange?: (page: number) => void
 	onRetry: () => void
 	onRevoke: (invitation: TeamInvitation) => void
 	pendingInvitationId: string | null
@@ -38,16 +36,14 @@ const TeamSettingsInvitationsSection = ({
 	invitations,
 	isError,
 	isLoading,
-	meta,
-	onPageChange,
 	onRetry,
 	onRevoke,
 	pendingInvitationId,
 }: TeamSettingsInvitationsSectionProps) => {
 	const pendingInvitations = getPendingTeamInvitations(invitations)
-	const totalCount = meta?.total ?? pendingInvitations.length
+	const totalCount = pendingInvitations.length
 
-	if (!isLoading && !isError && pendingInvitations.length === 0 && !meta?.total) {
+	if (!isLoading && !isError && totalCount === 0) {
 		return null
 	}
 
@@ -122,10 +118,6 @@ const TeamSettingsInvitationsSection = ({
 							</div>
 						)
 					})}
-
-					{meta && meta.totalPages > 1 && onPageChange && (
-						<Pagination meta={meta} onPageChange={onPageChange} className='py-3' />
-					)}
 				</div>
 			)}
 		</TeamSettingsSection>
