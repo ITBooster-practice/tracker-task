@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 type BoardMockProps = {
 	columns: Array<{ tasks: Array<{ id: string }> }>
 	disableInteraction?: boolean
+	onCreateTask?: () => void
 	onMoveTask: (input: { taskId: string; toColumnId: string; toIndex: number }) => void
 	onOpenTask: (taskId: string) => void
 }
@@ -104,6 +105,21 @@ vi.mock('@repo/ui', () => ({
 			</div>
 		) : null,
 	cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+	Select: ({
+		children,
+		value,
+		onValueChange,
+	}: React.PropsWithChildren<{ value: string; onValueChange: (v: string) => void }>) => (
+		<div data-testid='select' data-value={value} data-on-change={String(!!onValueChange)}>
+			{children}
+		</div>
+	),
+	SelectTrigger: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+	SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
+	SelectContent: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+	SelectItem: ({ children, value }: React.PropsWithChildren<{ value: string }>) => (
+		<div data-value={value}>{children}</div>
+	),
 }))
 
 vi.mock('@/views/boards/ui/board', () => ({
@@ -114,6 +130,11 @@ vi.mock('@/views/boards/ui/board', () => ({
 		return (
 			<div data-testid='board' data-disabled={String(Boolean(props.disableInteraction))}>
 				{props.columns.flatMap((column) => column.tasks).length}
+				{props.onCreateTask && (
+					<button type='button' onClick={props.onCreateTask}>
+						Создать задачу
+					</button>
+				)}
 			</div>
 		)
 	},

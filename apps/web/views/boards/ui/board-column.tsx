@@ -2,6 +2,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@repo/ui'
+import { Plus } from '@repo/ui/icons'
 
 import { getBoardColumnContainerId } from '../model/constants'
 import type { BoardColumn } from '../model/types'
@@ -10,6 +11,7 @@ import { BoardCard } from './board-card'
 interface BoardColumnProps {
 	column: BoardColumn
 	onOpenTask: (taskId: string) => void
+	onCreateTask?: () => void
 	activeDragTaskId: string | null
 	disabled?: boolean
 }
@@ -17,6 +19,7 @@ interface BoardColumnProps {
 function BoardColumn({
 	column,
 	onOpenTask,
+	onCreateTask,
 	activeDragTaskId,
 	disabled = false,
 }: BoardColumnProps) {
@@ -30,28 +33,38 @@ function BoardColumn({
 	})
 
 	return (
-		<section
-			className={cn(
-				'flex w-[292px] shrink-0 flex-col rounded-[24px] border border-border/80 bg-card/72 backdrop-blur-sm transition-[background-color,border-color,box-shadow] duration-200',
-				isOver &&
-					'border-primary/45 bg-primary/5 shadow-[0_18px_44px_-34px_rgba(46,84,255,0.45)]',
-			)}
-		>
-			<header className='border-b border-border/70 px-4 py-3'>
+		<section className='flex w-[260px] shrink-0 flex-col'>
+			<header className='mb-2 px-2'>
 				<div className='flex items-center justify-between gap-2'>
-					<div className='min-w-0'>
+					<div className='flex items-center gap-2'>
 						<h2 className='text-[13px] font-semibold tracking-[0.01em] text-foreground'>
 							{column.title}
 						</h2>
+						<span className='inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground'>
+							{column.tasks.length}
+						</span>
 					</div>
 
-					<span className='inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-2 text-[11px] font-semibold text-muted-foreground'>
-						{column.tasks.length}
-					</span>
+					{onCreateTask && (
+						<button
+							type='button'
+							onClick={onCreateTask}
+							className='inline-flex size-5 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground'
+							title='Создать задачу'
+						>
+							<Plus className='size-3.5' />
+						</button>
+					)}
 				</div>
 			</header>
 
-			<div ref={setNodeRef} className='flex min-h-[480px] flex-1 flex-col px-3 py-3'>
+			<div
+				ref={setNodeRef}
+				className={cn(
+					'flex min-h-[320px] flex-1 flex-col rounded-[16px] p-2 transition-colors duration-200',
+					isOver && 'bg-primary/5',
+				)}
+			>
 				<SortableContext
 					items={column.tasks.map((task) => task.id)}
 					strategy={verticalListSortingStrategy}
@@ -69,7 +82,7 @@ function BoardColumn({
 								/>
 							))
 						) : (
-							<div className='flex min-h-[148px] flex-1 items-center justify-center rounded-[18px] border border-dashed border-border bg-background/65 px-4 text-center text-[12px] leading-5 text-muted-foreground'>
+							<div className='flex min-h-[100px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-border/60 bg-background/40 px-4 text-center text-[11px] leading-5 text-muted-foreground/60'>
 								{disabled ? 'Нет задач под текущие фильтры' : 'Перетащите карточку сюда'}
 							</div>
 						)}

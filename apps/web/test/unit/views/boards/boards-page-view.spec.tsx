@@ -31,7 +31,6 @@ describe('BoardsPageView', () => {
 
 		render(<BoardsPageView />)
 
-		expect(screen.getByTestId('board-toolbar').textContent).toBe('review:true')
 		expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('true')
 	})
 

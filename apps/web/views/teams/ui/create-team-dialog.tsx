@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
 
 import {
 	Button,
@@ -29,11 +28,12 @@ import {
 	teamDialogSecondaryButtonClassName,
 	teamDialogTitleClassName,
 } from '../lib/styles'
+import { useCreateTeamForm } from '../model/use-create-team-form'
 
 function CreateTeamDialog() {
 	const router = useRouter()
 	const createTeamMutation = useCreateTeam()
-	const [newName, setNewName] = useState('')
+	const { name, nameError, isValid, setName, onSubmit, reset } = useCreateTeamForm()
 
 	const closeDialog = () => {
 		router.replace(ROUTES.teams)
@@ -42,7 +42,7 @@ function CreateTeamDialog() {
 	const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 
-		const trimmedName = newName.trim()
+		const trimmedName = onSubmit()
 
 		if (!trimmedName) {
 			return
@@ -50,7 +50,7 @@ function CreateTeamDialog() {
 
 		try {
 			await createTeamMutation.mutateAsync({ name: trimmedName })
-			setNewName('')
+			reset()
 			router.replace(ROUTES.teams)
 		} catch (error) {
 			if (isApiError(error)) {
@@ -82,11 +82,12 @@ function CreateTeamDialog() {
 						<Input
 							id='team-name'
 							placeholder='Например: Product Team'
-							value={newName}
-							onChange={(event) => setNewName(event.target.value)}
+							value={name}
+							onChange={(event) => setName(event.target.value)}
 							autoFocus
 							className={teamDialogInputClassName}
 						/>
+						{nameError && <p className='mt-1.5 text-sm text-destructive'>{nameError}</p>}
 					</div>
 
 					<DialogDrawerFooter className={teamDialogFooterClassName}>
@@ -100,7 +101,7 @@ function CreateTeamDialog() {
 						</Button>
 						<Button
 							type='submit'
-							disabled={!newName.trim() || createTeamMutation.isPending}
+							disabled={!isValid || createTeamMutation.isPending}
 							className={teamDialogPrimaryButtonClassName}
 						>
 							{createTeamMutation.isPending ? 'Создание...' : 'Создать'}

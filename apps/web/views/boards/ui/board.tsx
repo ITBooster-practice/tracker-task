@@ -22,6 +22,7 @@ interface BoardProps {
 	columns: BoardColumn[]
 	onOpenTask: (taskId: string) => void
 	onMoveTask: (input: BoardTaskMoveInput) => void
+	onCreateTask?: () => void
 	disableInteraction?: boolean
 }
 
@@ -88,6 +89,7 @@ function Board({
 	columns,
 	onOpenTask,
 	onMoveTask,
+	onCreateTask,
 	disableInteraction = false,
 }: BoardProps) {
 	const sensors = useSensors(
@@ -180,12 +182,13 @@ function Board({
 			onDragCancel={resetDragState}
 		>
 			<div className='overflow-x-auto pb-2'>
-				<div className='flex min-w-max items-start gap-3'>
+				<div className='flex min-w-max items-start gap-4'>
 					{renderedColumns.map((column) => (
 						<BoardColumnView
 							key={column.id}
 							column={column}
 							onOpenTask={onOpenTask}
+							onCreateTask={onCreateTask}
 							activeDragTaskId={activeTaskId}
 							disabled={disableInteraction}
 						/>
@@ -195,7 +198,7 @@ function Board({
 
 			<DragOverlay>
 				{activeTask ? (
-					<div className='w-[292px]'>
+					<div className='w-[260px]'>
 						<BoardCard
 							task={activeTask}
 							columnId={activeTask.columnId}

@@ -62,7 +62,9 @@ describe('teamInvitationsService', () => {
 	})
 
 	it('getMyInvitations нормализует список входящих invitations', async () => {
-		mockApiClient.get.mockResolvedValue(axiosResponse([createMyInvitationApiFixture()]))
+		mockApiClient.get.mockResolvedValue(
+			axiosResponse({ data: [createMyInvitationApiFixture()], meta: {} }),
+		)
 
 		const result = await teamInvitationsService.getMyInvitations()
 

@@ -59,7 +59,6 @@ function TeamSettingsPageView() {
 	const [isDeleteTeamDialogOpen, setIsDeleteTeamDialogOpen] = useState(false)
 
 	const membersPagination = usePagination()
-	const invitationsPagination = usePagination()
 
 	const profileQuery = useMe()
 	const teamQuery = useTeamDetail(teamId)
@@ -77,11 +76,7 @@ function TeamSettingsPageView() {
 	const canManageTeam = isTeamManagerRole(currentUserRole)
 	const canDeleteCurrentTeam = canDeleteTeam(currentUserRole)
 
-	const invitationsQuery = useTeamInvitations(
-		teamId,
-		{ enabled: canManageTeam },
-		invitationsPagination.paginationParams,
-	)
+	const invitationsQuery = useTeamInvitations(teamId, { enabled: canManageTeam })
 	const changeMemberRoleMutation = useChangeMemberRole(teamId)
 	const removeTeamMemberMutation = useRemoveTeamMember(teamId)
 	const sendTeamInvitationMutation = useSendTeamInvitation(teamId)
@@ -291,8 +286,6 @@ function TeamSettingsPageView() {
 							invitations={invitationsQuery.data?.data ?? []}
 							isError={invitationsQuery.isError}
 							isLoading={invitationsQuery.isLoading}
-							meta={invitationsQuery.data?.meta}
-							onPageChange={invitationsPagination.setPage}
 							onRetry={() => void invitationsQuery.refetch()}
 							onRevoke={(invitation) => void handleRevokeInvitation(invitation.id)}
 							pendingInvitationId={revokePendingInvitationId}
