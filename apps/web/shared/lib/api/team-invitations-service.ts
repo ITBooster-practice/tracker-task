@@ -65,11 +65,12 @@ export const teamInvitationsService = {
 	},
 
 	getMyInvitations: async (): Promise<MyInvitation[]> => {
-		const response = await client.get<MyInvitationApiResponse[]>(
-			`${INVITATIONS_ENDPOINT}/me`,
-		)
+		const response = await client.get<{
+			data: MyInvitationApiResponse[]
+			meta: unknown
+		}>(`${INVITATIONS_ENDPOINT}/me`)
 
-		return response.data.map(normalizeMyInvitation)
+		return response.data.data.map(normalizeMyInvitation)
 	},
 
 	acceptInvitation: async (token: string): Promise<Team> => {
