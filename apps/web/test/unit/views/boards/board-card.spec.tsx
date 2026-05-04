@@ -34,9 +34,7 @@ describe('BoardCard', () => {
 
 		expect(screen.getByText('TT-1')).toBeDefined()
 		expect(screen.getByText('Проверить карточку задачи')).toBeDefined()
-		expect(screen.getByText('Высокий')).toBeDefined()
 		expect(screen.getByText('1/3')).toBeDefined()
-		expect(screen.getByText('Алексей Морозов')).toBeDefined()
 		expect(openedTaskId).toBe('task-a')
 		expect(getBoardCardSortableCalls().at(-1)).toMatchObject({
 			data: {

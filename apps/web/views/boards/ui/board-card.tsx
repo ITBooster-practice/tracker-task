@@ -2,11 +2,10 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
 import { Avatar, AvatarFallback, Card, CardContent, cn } from '@repo/ui'
-import { GripVertical, MessageSquare, SquareCheckBig } from '@repo/ui/icons'
+import { MessageSquare, SquareCheckBig } from '@repo/ui/icons'
 
 import { TaskPriorityBadge, TaskTypeBadge } from '@/entities/task'
 
-import { BOARD_PRIORITY_LABELS } from '../model/constants'
 import type { BoardColumnId, BoardTask } from '../model/types'
 
 interface BoardCardProps {
@@ -25,39 +24,32 @@ function BoardCardBody({
 	return (
 		<Card
 			className={cn(
-				'gap-0 rounded-[calc(var(--radius-surface)-4px)] border-border/80 bg-card py-0 shadow-[0_14px_32px_-28px_rgba(12,18,32,0.78)] transition-[box-shadow,border-color,transform] duration-200',
+				'gap-0 rounded-[12px] border-border/70 bg-card py-0 shadow-[0_4px_16px_-8px_rgba(12,18,32,0.6)] transition-[box-shadow,border-color,transform] duration-200',
 				isDragOverlay &&
 					'border-primary/30 shadow-[0_24px_56px_-28px_rgba(46,84,255,0.55)]',
 			)}
 		>
-			<CardContent className='space-y-3 px-3 py-3'>
-				<div className='flex items-start justify-between gap-2'>
-					<div className='flex min-w-0 items-center gap-2'>
-						<TaskTypeBadge
-							type={task.type}
-							className='h-5 rounded-full px-2 text-[10px] font-semibold'
-						/>
-						<span className='text-[11px] font-medium tracking-[0.02em] text-muted-foreground'>
-							{task.key}
-						</span>
-					</div>
-
-					<span className='inline-flex size-6 shrink-0 items-center justify-center rounded-[calc(var(--radius-control)-4px)] text-muted-foreground/80'>
-						<GripVertical className='size-3.5' />
+			<CardContent className='space-y-2.5 px-3 py-3'>
+				<div className='flex min-w-0 items-center gap-2'>
+					<TaskTypeBadge
+						type={task.type}
+						className='h-[18px] rounded-full px-1.5 text-[9px] font-semibold'
+					/>
+					<span className='text-[10px] font-medium tracking-[0.02em] text-muted-foreground'>
+						{task.key}
 					</span>
 				</div>
 
-				<p className='text-[14px] font-medium leading-5 text-foreground'>{task.title}</p>
+				<p className='text-[13px] font-medium leading-[1.4] text-foreground'>
+					{task.title}
+				</p>
 
-				<div className='flex items-center gap-3 text-[11px] text-muted-foreground'>
-					<div className='inline-flex items-center gap-1.5'>
-						<TaskPriorityBadge priority={task.priority} />
-						<span>{BOARD_PRIORITY_LABELS[task.priority]}</span>
-					</div>
+				<div className='flex items-center gap-2.5 text-[11px] text-muted-foreground'>
+					<TaskPriorityBadge priority={task.priority} />
 
 					{task.checklist ? (
-						<div className='inline-flex items-center gap-1.5'>
-							<SquareCheckBig className='size-3.5' />
+						<div className='inline-flex items-center gap-1'>
+							<SquareCheckBig className='size-3' />
 							<span>
 								{task.checklist.completed}/{task.checklist.total}
 							</span>
@@ -65,40 +57,30 @@ function BoardCardBody({
 					) : null}
 
 					{task.comments.length > 0 ? (
-						<div className='inline-flex items-center gap-1.5'>
-							<MessageSquare className='size-3.5' />
+						<div className='inline-flex items-center gap-1'>
+							<MessageSquare className='size-3' />
 							<span>{task.comments.length}</span>
 						</div>
 					) : null}
 				</div>
 
-				<div className='flex items-center justify-between gap-3'>
-					<div className='flex min-w-0 flex-wrap gap-1.5'>
+				<div className='flex items-center justify-between gap-2'>
+					<div className='flex min-w-0 flex-wrap gap-1'>
 						{task.tags.map((tag) => (
 							<span
 								key={tag}
-								className='rounded-full border border-border/80 bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground'
+								className='rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground'
 							>
 								{tag}
 							</span>
 						))}
 					</div>
 
-					<div className='flex shrink-0 items-center gap-2'>
-						<Avatar className='size-7 border border-border/80'>
-							<AvatarFallback className='bg-primary/10 text-[10px] font-semibold text-primary'>
-								{task.assignee.initials}
-							</AvatarFallback>
-						</Avatar>
-						<div className='hidden text-right md:block'>
-							<div className='text-[11px] font-medium leading-none text-foreground'>
-								{task.assignee.name}
-							</div>
-							<div className='mt-1 text-[10px] leading-none text-muted-foreground'>
-								Исполнитель
-							</div>
-						</div>
-					</div>
+					<Avatar className='size-6 shrink-0 border border-border/70'>
+						<AvatarFallback className='bg-primary/10 text-[9px] font-semibold text-primary'>
+							{task.assignee.initials}
+						</AvatarFallback>
+					</Avatar>
 				</div>
 			</CardContent>
 		</Card>
