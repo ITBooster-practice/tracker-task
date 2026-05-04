@@ -45,9 +45,9 @@ const TeamSettingsInvitationsSection = ({
 	pendingInvitationId,
 }: TeamSettingsInvitationsSectionProps) => {
 	const pendingInvitations = getPendingTeamInvitations(invitations)
-	const totalCount = meta?.total ?? pendingInvitations.length
+	const totalCount = pendingInvitations.length
 
-	if (!isLoading && !isError && pendingInvitations.length === 0 && !meta?.total) {
+	if (!isLoading && !isError && totalCount === 0) {
 		return null
 	}
 
