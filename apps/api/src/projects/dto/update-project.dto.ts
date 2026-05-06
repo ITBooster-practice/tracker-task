@@ -1,13 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { createProjectSchema } from '@repo/types'
+import { ApiPropertyOptional } from '@nestjs/swagger'
+import { updateProjectSchema } from '@repo/types'
 import { createZodDto } from 'nestjs-zod'
 
-export class createProjectDto extends createZodDto(createProjectSchema) {
-	@ApiProperty({
+export class updateProjectDto extends createZodDto(updateProjectSchema) {
+	@ApiPropertyOptional({
 		example: 'Dream Project',
 		description: 'Название проекта (1–50 символов)',
 	})
-	name: string
+	name?: string
 
 	@ApiPropertyOptional({
 		example: 'My cool project',
