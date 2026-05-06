@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common'
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import type { TeamMember } from 'generated/prisma/client'
 import { CreateProjectDto } from './dto/create-project.dto'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -55,5 +55,21 @@ export class ProjectsService {
 		])
 
 		return buildPaginatedResponse(projects, pagination, totalCount)
+	}
+
+	async findOne(teamId: string, projectId: string, userId: string) {
+		await this.assertTeamMember(teamId, userId)
+
+		const project = await this.prisma.project.findUnique({ where: { id: projectId } })
+
+		if (!project) {
+			throw new NotFoundException('Проект не найден')
+		}
+
+		if (project.teamId !== teamId) {
+			throw new NotFoundException('Проект не относится к этой команде')
+		}
+
+		return project
 	}
 }
