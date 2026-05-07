@@ -43,6 +43,8 @@ dist
 .settings/
 *.sublime-workspace
 
+.claude
+
 # IDE - VSCode
 .vscode/*
 !.vscode/settings.json
