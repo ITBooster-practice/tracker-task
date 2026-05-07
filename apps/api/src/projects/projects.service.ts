@@ -115,6 +115,8 @@ export class ProjectsService {
 
 		this.assertCanModify(member, project, 'delete')
 
-		return this.prisma.project.delete({ where: { id: projectId } })
+		await this.prisma.project.delete({ where: { id: projectId } })
+
+		return { message: 'Проект успешно удалён', success: true }
 	}
 }
