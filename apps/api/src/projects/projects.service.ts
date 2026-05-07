@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import type { TeamMember } from 'generated/prisma/client'
+import type { Project, TeamMember } from 'generated/prisma/client'
 import { CreateProjectDto } from './dto/create-project.dto'
 import { PrismaService } from '../../prisma/prisma.service'
 import {
@@ -7,6 +7,7 @@ import {
 	getPaginationPrismaParams,
 	PaginationOptions,
 } from '../utils/pagination.util'
+import { UpdateProjectDto } from './dto/update-project.dto'
 
 @Injectable()
 export class ProjectsService {
@@ -22,6 +23,35 @@ export class ProjectsService {
 		}
 
 		return member
+	}
+
+	private assertCanModify(
+		member: TeamMember,
+		project: Project,
+		action: 'update' | 'delete',
+	) {
+		const isAdminOrOwner = member.role === 'ADMIN' || member.role === 'OWNER'
+		const isCreator = project.createdById === member.userId
+
+		const canModify = action === 'delete' ? isAdminOrOwner : isAdminOrOwner || isCreator
+
+		if (!canModify) {
+			throw new ForbiddenException('Недостаточно прав для выполнения этого действия')
+		}
+	}
+
+	private async findProjectOrThrow(teamId: string, projectId: string) {
+		const project = await this.prisma.project.findUnique({ where: { id: projectId } })
+
+		if (!project) {
+			throw new NotFoundException('Проект не найден')
+		}
+
+		if (project.teamId !== teamId) {
+			throw new NotFoundException('Проект не относится к этой команде')
+		}
+
+		return project
 	}
 
 	async create(teamId: string, userId: string, dto: CreateProjectDto) {
@@ -60,16 +90,16 @@ export class ProjectsService {
 	async findOne(teamId: string, projectId: string, userId: string) {
 		await this.assertTeamMember(teamId, userId)
 
-		const project = await this.prisma.project.findUnique({ where: { id: projectId } })
+		return this.findProjectOrThrow(teamId, projectId)
+	}
 
-		if (!project) {
-			throw new NotFoundException('Проект не найден')
-		}
+	async update(teamId: string, projectId: string, userId: string, dto: UpdateProjectDto) {
+		const member = await this.assertTeamMember(teamId, userId)
 
-		if (project.teamId !== teamId) {
-			throw new NotFoundException('Проект не относится к этой команде')
-		}
+		const project = await this.findProjectOrThrow(teamId, projectId)
 
-		return project
+		this.assertCanModify(member, project, 'update')
+
+		return this.prisma.project.update({ where: { id: projectId }, data: dto })
 	}
 }
