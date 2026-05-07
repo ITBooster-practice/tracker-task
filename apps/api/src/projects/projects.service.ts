@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 import {
 	buildPaginatedResponse,
 	getPaginationPrismaParams,
-	PaginationOptions,
+	type PaginationOptions,
 } from '../utils/pagination.util'
 import { UpdateProjectDto } from './dto/update-project.dto'
 
@@ -100,6 +100,21 @@ export class ProjectsService {
 
 		this.assertCanModify(member, project, 'update')
 
-		return this.prisma.project.update({ where: { id: projectId }, data: dto })
+		return this.prisma.project.update({
+			where: { id: projectId },
+			data: {
+				name: dto.name,
+				description: dto.description,
+			},
+		})
+	}
+
+	async remove(teamId: string, projectId: string, userId: string) {
+		const member = await this.assertTeamMember(teamId, userId)
+		const project = await this.findProjectOrThrow(teamId, projectId)
+
+		this.assertCanModify(member, project, 'delete')
+
+		return this.prisma.project.delete({ where: { id: projectId } })
 	}
 }
