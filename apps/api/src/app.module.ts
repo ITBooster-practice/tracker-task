@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module'
 import { TeamsModule } from './teams/teams.module'
 import { CustomZodValidationPipe } from './common/providers/zod-validation.provider'
 import { RedisModule } from './common/redis/redis.module'
+import { ProjectsModule } from './projects/projects.module'
 
 @Module({
 	imports: [
@@ -21,6 +22,7 @@ import { RedisModule } from './common/redis/redis.module'
 		RedisModule,
 		AuthModule,
 		TeamsModule,
+		ProjectsModule,
 	],
 	controllers: [AppController],
 	providers: [
