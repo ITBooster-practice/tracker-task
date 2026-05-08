@@ -1,16 +1,17 @@
 'use client'
 
+import type { Project } from '@repo/types'
 import { cn } from '@repo/ui'
-import { ArrowRight, KanbanSquare, ListTodo } from '@repo/ui/icons'
-
-import type { ProjectCatalogItem } from '@/shared/lib/projects'
+import { ArrowRight, FolderKanban } from '@repo/ui/icons'
 
 interface Props {
-	project: ProjectCatalogItem
-	onOpen: (project: ProjectCatalogItem) => void
+	project: Project
+	onOpen: (project: Project) => void
 }
 
 function ProjectCard({ project, onOpen }: Props) {
+	const code = project.name.slice(0, 2).toUpperCase()
+
 	return (
 		<button
 			type='button'
@@ -23,7 +24,7 @@ function ProjectCard({ project, onOpen }: Props) {
 		>
 			<div className='flex items-start justify-between'>
 				<div className='flex size-8 items-center justify-center rounded-[calc(var(--radius-control)-2px)] bg-primary/10 text-[15px] font-semibold text-primary'>
-					{project.code}
+					{code}
 				</div>
 				<ArrowRight className='size-4 text-muted-foreground transition-colors group-hover:text-foreground' />
 			</div>
@@ -34,19 +35,13 @@ function ProjectCard({ project, onOpen }: Props) {
 				</h3>
 
 				<p className='line-clamp-2 text-[12px] leading-5 text-muted-foreground'>
-					{project.description}
+					{project.description ?? (
+						<span className='inline-flex items-center gap-1.5 italic'>
+							<FolderKanban className='size-3' />
+							Нет описания
+						</span>
+					)}
 				</p>
-			</div>
-
-			<div className='flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] leading-4 text-muted-foreground'>
-				<span className='inline-flex items-center gap-2'>
-					<KanbanSquare className='size-[13px]' />
-					{project.boardsCount} досок
-				</span>
-				<span className='inline-flex items-center gap-2'>
-					<ListTodo className='size-[13px]' />
-					{project.tasksCount} задач
-				</span>
 			</div>
 		</button>
 	)
