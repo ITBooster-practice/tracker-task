@@ -3,7 +3,7 @@ import { useState } from 'react'
 import type { Project } from '@repo/types'
 
 import { useProjectsList } from '@/shared/api/use-projects'
-import { useTeamsList } from '@/shared/api/use-teams'
+import { useTeamName } from '@/shared/api/use-teams'
 
 export interface UseProjectsPageResult {
 	teamName: string | undefined
@@ -18,8 +18,7 @@ export interface UseProjectsPageResult {
 
 export function useProjectsPage(teamId: string): UseProjectsPageResult {
 	const [searchQuery, setSearchQuery] = useState('')
-	const { data: teamsData } = useTeamsList({ page: 1, limit: 10 })
-	const teamName = teamsData?.data.find((t) => t.id === teamId)?.name
+	const teamName = useTeamName(teamId)
 	const { data, isLoading, isError, refetch } = useProjectsList(teamId)
 
 	const allProjects = data?.data ?? []

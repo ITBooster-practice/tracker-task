@@ -14,7 +14,7 @@ import {
 } from '@repo/ui/icons'
 
 import { useProjectDetail } from '@/shared/api/use-projects'
-import { useTeamsList } from '@/shared/api/use-teams'
+import { useTeamName } from '@/shared/api/use-teams'
 import { teamRoutes } from '@/shared/config'
 
 import { projectPageSubtitleClassName, projectPageTitleClassName } from '../lib/styles'
@@ -47,8 +47,7 @@ function ProjectDetailPageView() {
 	const params = useParams<{ id: string; projectId: string }>()
 	const teamId = decodeURIComponent(params.id)
 	const projectId = decodeURIComponent(params.projectId)
-	const { data: teamsData } = useTeamsList({ page: 1, limit: 10 })
-	const teamName = teamsData?.data.find((t) => t.id === teamId)?.name
+	const teamName = useTeamName(teamId)
 	const { data: project } = useProjectDetail(teamId, projectId)
 	const projectName = project?.name ?? '...'
 	const projectDescription = project?.description ?? ''
