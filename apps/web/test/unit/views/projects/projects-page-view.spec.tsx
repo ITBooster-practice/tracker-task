@@ -13,12 +13,6 @@ vi.mock('next/navigation', () => ({
 	useParams: () => ({ id: 'team-1' }),
 }))
 
-vi.mock('@/shared/api/use-teams', () => ({
-	useTeamsList: () => ({
-		data: { data: [{ id: 'team-1', name: 'Alpha Team' }], meta: {} },
-	}),
-}))
-
 const mockUseProjectsPage = vi.fn()
 
 vi.mock('@/views/projects/model/use-projects-page', () => ({
@@ -118,6 +112,7 @@ describe('ProjectsPageView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		mockUseProjectsPage.mockReturnValue({
+			teamName: 'Alpha Team',
 			allProjects: mockProjects,
 			filteredProjects: mockProjects,
 			isLoading: false,
@@ -162,6 +157,7 @@ describe('ProjectsPageView', () => {
 
 	it('isLoading — показывает скелетоны', () => {
 		mockUseProjectsPage.mockReturnValueOnce({
+			teamName: undefined,
 			allProjects: [],
 			filteredProjects: [],
 			isLoading: true,
@@ -178,6 +174,7 @@ describe('ProjectsPageView', () => {
 
 	it('isError — показывает EmptyState с кнопкой повтора', () => {
 		mockUseProjectsPage.mockReturnValueOnce({
+			teamName: undefined,
 			allProjects: [],
 			filteredProjects: [],
 			isLoading: false,
@@ -195,6 +192,7 @@ describe('ProjectsPageView', () => {
 
 	it('нет проектов — показывает "У команды ещё нет проектов"', () => {
 		mockUseProjectsPage.mockReturnValueOnce({
+			teamName: undefined,
 			allProjects: [],
 			filteredProjects: [],
 			isLoading: false,
