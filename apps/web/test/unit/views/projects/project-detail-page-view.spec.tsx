@@ -1,9 +1,9 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectDetailPageView } from '@/views/projects/ui/project-detail-page-view'
 
-// ─── Мок: next/link ──────────────────────────────────────────────
 vi.mock('next/link', () => ({
 	default: ({
 		href,
@@ -16,36 +16,34 @@ vi.mock('next/link', () => ({
 	),
 }))
 
-// ─── Мок: useParams ──────────────────────────────────────────────
 vi.mock('next/navigation', () => ({
-	useParams: () => ({ id: 'team-1', projectId: 'my-project' }),
+	useParams: () => ({ id: 'team-1', projectId: 'project-uuid-1' }),
 }))
 
-// ─── Мок: useTeamDetail ──────────────────────────────────────────
 vi.mock('@/shared/api/use-teams', () => ({
 	useTeamDetail: () => ({ data: { id: 'team-1', name: 'Alpha Team' } }),
 }))
 
-// ─── Мок: teamRoutes ─────────────────────────────────────────────
+vi.mock('@/shared/api/use-projects', () => ({
+	useProjectDetail: () => ({
+		data: {
+			id: 'project-uuid-1',
+			name: 'My Project',
+			description: 'Описание',
+			teamId: 'team-1',
+			createdById: 'user-1',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		},
+	}),
+}))
+
 vi.mock('@/shared/config', () => ({
 	teamRoutes: {
 		projects: (teamId: string) => `/teams/${teamId}/projects`,
 	},
 }))
 
-// ─── Мок: getProjectById ─────────────────────────────────────────
-const mockGetProjectById = vi.fn()
-
-vi.mock('@/shared/lib/projects', () => ({
-	getProjectById: (id: string) => mockGetProjectById(id),
-	formatProjectNameFromId: (id: string) =>
-		id
-			.split('-')
-			.map((part) => part[0]?.toUpperCase() + part.slice(1))
-			.join(' '),
-}))
-
-// ─── Мок: UI-компоненты ──────────────────────────────────────────
 vi.mock('@repo/ui', () => ({
 	Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
@@ -61,23 +59,23 @@ vi.mock('@repo/ui/icons', () => ({
 	SquareKanban: () => <span />,
 }))
 
-describe('ProjectDetailPageView', () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
+function createWrapper() {
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
 	})
+	const Wrapper = ({ children }: React.PropsWithChildren) => (
+		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+	)
+	Wrapper.displayName = 'ProjectDetailWrapper'
+	return Wrapper
+}
 
+describe('ProjectDetailPageView', () => {
+	beforeEach(() => vi.clearAllMocks())
 	afterEach(cleanup)
 
 	it('breadcrumb — показывает имя команды как ссылку и название проекта', () => {
-		mockGetProjectById.mockReturnValue({
-			id: 'my-project',
-			name: 'My Project',
-			description: 'Описание',
-			boards: [],
-			recentTasks: [],
-		})
-
-		render(<ProjectDetailPageView />)
+		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 
 		const teamLink = screen.getByRole('link', { name: 'Alpha Team' })
 		expect(teamLink).toBeDefined()
@@ -85,41 +83,17 @@ describe('ProjectDetailPageView', () => {
 		expect(screen.getByRole('heading', { name: 'My Project' })).toBeDefined()
 	})
 
-	it('доски — пустое состояние когда boards: []', () => {
-		mockGetProjectById.mockReturnValue({
-			id: 'my-project',
-			name: 'My Project',
-			description: 'Описание',
-			boards: [],
-			recentTasks: [],
-		})
-
-		render(<ProjectDetailPageView />)
+	it('доски — пустое состояние', () => {
+		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 
 		expect(
 			screen.getByText('Пока нет досок. Создайте первую доску для проекта.'),
 		).toBeDefined()
 	})
 
-	it('последние задачи — рендерит ключ, заголовок и инициалы исполнителя', () => {
-		mockGetProjectById.mockReturnValue({
-			id: 'my-project',
-			name: 'My Project',
-			description: 'Описание',
-			boards: [],
-			recentTasks: [
-				{ id: 'task-1', key: 'MP-1', title: 'Настроить CI', assigneeInitials: 'AB' },
-				{ id: 'task-2', key: 'MP-2', title: 'Написать тесты', assigneeInitials: 'CD' },
-			],
-		})
+	it('задачи — пустое состояние', () => {
+		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 
-		render(<ProjectDetailPageView />)
-
-		expect(screen.getByText('MP-1')).toBeDefined()
-		expect(screen.getByText('Настроить CI')).toBeDefined()
-		expect(screen.getByText('AB')).toBeDefined()
-		expect(screen.getByText('MP-2')).toBeDefined()
-		expect(screen.getByText('Написать тесты')).toBeDefined()
-		expect(screen.getByText('CD')).toBeDefined()
+		expect(screen.getByText('В проекте пока нет задач.')).toBeDefined()
 	})
 })

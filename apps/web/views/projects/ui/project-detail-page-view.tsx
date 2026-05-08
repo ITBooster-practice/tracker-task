@@ -13,9 +13,9 @@ import {
 	SquareKanban,
 } from '@repo/ui/icons'
 
+import { useProjectDetail } from '@/shared/api/use-projects'
 import { useTeamDetail } from '@/shared/api/use-teams'
 import { teamRoutes } from '@/shared/config'
-import { formatProjectNameFromId, getProjectById } from '@/shared/lib/projects'
 
 import { projectPageSubtitleClassName, projectPageTitleClassName } from '../lib/styles'
 
@@ -48,11 +48,16 @@ function ProjectDetailPageView() {
 	const teamId = decodeURIComponent(params.id)
 	const projectId = decodeURIComponent(params.projectId)
 	const { data: team } = useTeamDetail(teamId)
-	const project = getProjectById(projectId)
-	const projectName = project?.name ?? formatProjectNameFromId(projectId)
-	const projectDescription = project?.description ?? 'Новый проект команды'
-	const boards = project?.boards ?? []
-	const recentTasks = project?.recentTasks ?? []
+	const { data: project } = useProjectDetail(teamId, projectId)
+	const projectName = project?.name ?? '...'
+	const projectDescription = project?.description ?? ''
+	const boards: { id: string; name: string; columnCount: number }[] = []
+	const recentTasks: {
+		id: string
+		key: string
+		title: string
+		assigneeInitials: string
+	}[] = []
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
