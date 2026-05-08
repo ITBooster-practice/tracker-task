@@ -87,5 +87,5 @@ vi.mock('@repo/ui', () => ({
 	}: React.PropsWithChildren<React.LabelHTMLAttributes<HTMLLabelElement>>) => (
 		<label {...props}>{children}</label>
 	),
-	toast: { error: mockToastError },
+	toast: { error: mockToastError, success: vi.fn() },
 }))
