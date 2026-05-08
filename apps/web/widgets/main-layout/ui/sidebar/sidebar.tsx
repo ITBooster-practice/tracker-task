@@ -44,12 +44,12 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const pathname = usePathname()
 	const params = useParams<{ id?: string; projectId?: string }>()
 	const profileQuery = useMe()
-	const { data: teamsData } = useTeamsList()
+	const { data: teamsData } = useTeamsList({ page: 1, limit: 10 })
 	const teams = teamsData?.data
 	const isOpen = forceOpen ?? isDesktopOpen
 	const selectedTeamId = typeof params.id === 'string' ? params.id : null
 	const teamId = selectedTeamId ?? teams?.[0]?.id ?? null
-	const { data: projectsData } = useProjectsList(teamId ?? '')
+	const { data: projectsData } = useProjectsList(selectedTeamId ?? '')
 	const sidebarProjects = (projectsData?.data ?? []).map((p) => ({
 		id: p.id,
 		shortName: p.name.slice(0, 2).toUpperCase(),
