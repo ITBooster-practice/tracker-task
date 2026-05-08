@@ -1,6 +1,7 @@
 import type {
 	CreateProjectBody,
 	PaginatedResponse,
+	PaginationParams,
 	Project,
 	UpdateProjectBody,
 } from '@repo/types'
