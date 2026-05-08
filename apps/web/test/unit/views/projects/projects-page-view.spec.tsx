@@ -14,7 +14,9 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/shared/api/use-teams', () => ({
-	useTeamDetail: () => ({ data: { name: 'Alpha Team' } }),
+	useTeamsList: () => ({
+		data: { data: [{ id: 'team-1', name: 'Alpha Team' }], meta: {} },
+	}),
 }))
 
 const mockUseProjectsPage = vi.fn()

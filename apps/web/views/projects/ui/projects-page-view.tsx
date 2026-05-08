@@ -7,7 +7,7 @@ import type { Project } from '@repo/types'
 import { Button, CardSkeleton, EmptyState, Input } from '@repo/ui'
 import { FolderKanban, Plus, Search } from '@repo/ui/icons'
 
-import { useTeamDetail } from '@/shared/api/use-teams'
+import { useTeamsList } from '@/shared/api/use-teams'
 import { teamRoutes } from '@/shared/config'
 
 import {
@@ -26,7 +26,8 @@ function ProjectsPageView() {
 	const router = useRouter()
 	const params = useParams<{ id: string }>()
 	const teamId = decodeURIComponent(params.id)
-	const { data: team } = useTeamDetail(teamId)
+	const { data: teamsData } = useTeamsList({ page: 1, limit: 10 })
+	const teamName = teamsData?.data.find((t) => t.id === teamId)?.name
 	const {
 		allProjects,
 		filteredProjects,
@@ -49,7 +50,7 @@ function ProjectsPageView() {
 					<div>
 						<h1 className={projectPageTitleClassName}>Проекты</h1>
 						<p className={projectPageSubtitleClassName}>
-							{team?.name ?? 'Загрузка команды'}
+							{teamName ?? 'Загрузка команды'}
 						</p>
 					</div>
 

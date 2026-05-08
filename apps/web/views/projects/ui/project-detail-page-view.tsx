@@ -14,7 +14,7 @@ import {
 } from '@repo/ui/icons'
 
 import { useProjectDetail } from '@/shared/api/use-projects'
-import { useTeamDetail } from '@/shared/api/use-teams'
+import { useTeamsList } from '@/shared/api/use-teams'
 import { teamRoutes } from '@/shared/config'
 
 import { projectPageSubtitleClassName, projectPageTitleClassName } from '../lib/styles'
@@ -47,7 +47,8 @@ function ProjectDetailPageView() {
 	const params = useParams<{ id: string; projectId: string }>()
 	const teamId = decodeURIComponent(params.id)
 	const projectId = decodeURIComponent(params.projectId)
-	const { data: team } = useTeamDetail(teamId)
+	const { data: teamsData } = useTeamsList({ page: 1, limit: 10 })
+	const teamName = teamsData?.data.find((t) => t.id === teamId)?.name
 	const { data: project } = useProjectDetail(teamId, projectId)
 	const projectName = project?.name ?? '...'
 	const projectDescription = project?.description ?? ''
@@ -67,7 +68,7 @@ function ProjectDetailPageView() {
 						href={teamRoutes.projects(teamId)}
 						className='transition-colors hover:text-foreground'
 					>
-						{team?.name ?? 'Команда'}
+						{teamName ?? 'Команда'}
 					</Link>
 					<ChevronRight className='size-4 text-muted-foreground/70' />
 					<span className='text-foreground'>{projectName}</span>
