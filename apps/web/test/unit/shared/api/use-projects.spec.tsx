@@ -48,8 +48,12 @@ describe('use-projects hooks', () => {
 				createProjectFixture({ id: 'project-1', name: 'Alpha' }),
 				createProjectFixture({ id: 'project-2', name: 'Beta' }),
 			]
+			const paginatedResponse = {
+				data: projects,
+				meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
+			}
 
-			projectsServiceMock.getAll.mockResolvedValue(projects)
+			projectsServiceMock.getAll.mockResolvedValue(paginatedResponse)
 
 			const { result } = renderHook(() => useProjectsList('team-1'), {
 				wrapper: createWrapper(),
@@ -58,7 +62,7 @@ describe('use-projects hooks', () => {
 			await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
 			expect(projectsServiceMock.getAll).toHaveBeenCalledWith('team-1')
-			expect(result.current.data).toEqual(projects)
+			expect(result.current.data).toEqual(paginatedResponse)
 		})
 
 		it('не делает запрос, если teamId пустой', () => {

@@ -5,7 +5,12 @@ import {
 	useQueryClient,
 } from '@tanstack/react-query'
 
-import type { CreateProjectBody, Project, UpdateProjectBody } from '@repo/types'
+import type {
+	CreateProjectBody,
+	PaginatedResponse,
+	Project,
+	UpdateProjectBody,
+} from '@repo/types'
 
 import { projectsService } from '@/shared/lib/api/projects-service'
 import type { ApiError } from '@/shared/lib/api/types'
@@ -20,7 +25,7 @@ export const projectsKeys = {
 } as const
 
 export const useProjectsList = (teamId: string) => {
-	return useQuery({
+	return useQuery<PaginatedResponse<Project>>({
 		queryKey: projectsKeys.list(teamId),
 		queryFn: () => projectsService.getAll(teamId),
 		enabled: Boolean(teamId),
