@@ -12,9 +12,13 @@ const buildProjectEndpoint = (teamId: string, projectId: string) =>
 	`/teams/${teamId}/projects/${projectId}`
 
 export const projectsService = {
-	getAll: async (teamId: string): Promise<PaginatedResponse<Project>> => {
+	getAll: async (
+		teamId: string,
+		params?: PaginationParams,
+	): Promise<PaginatedResponse<Project>> => {
 		const response = await client.get<PaginatedResponse<Project>>(
 			buildProjectsEndpoint(teamId),
+			{ params },
 		)
 		return response.data
 	},

@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import type { Project } from '@repo/types'
-import { Button, CardSkeleton, EmptyState, Input } from '@repo/ui'
+import { Button, CardSkeleton, EmptyState, Input, Pagination } from '@repo/ui'
 import { FolderKanban, Plus, Search } from '@repo/ui/icons'
 
 import { teamRoutes } from '@/shared/config'
@@ -34,6 +34,8 @@ function ProjectsPageView() {
 		searchQuery,
 		setSearchQuery,
 		refetch,
+		meta,
+		setPage,
 	} = useProjectsPage(teamId)
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
@@ -123,15 +125,21 @@ function ProjectsPageView() {
 						/>
 					</div>
 				) : (
-					<section className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-						{filteredProjects.map((project) => (
-							<ProjectCard
-								key={project.id}
-								project={project}
-								onOpen={handleOpenProject}
-							/>
-						))}
-					</section>
+					<>
+						<section className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+							{filteredProjects.map((project) => (
+								<ProjectCard
+									key={project.id}
+									project={project}
+									onOpen={handleOpenProject}
+								/>
+							))}
+						</section>
+
+						{meta && meta.totalPages > 1 && (
+							<Pagination meta={meta} onPageChange={setPage} className='mt-6' />
+						)}
+					</>
 				)}
 
 				<CreateProjectDialog

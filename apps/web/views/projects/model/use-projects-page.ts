@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
-import type { Project } from '@repo/types'
+import type { PaginationMeta, Project } from '@repo/types'
+import { usePagination } from '@repo/ui'
 
 import { useProjectsList } from '@/shared/api/use-projects'
 import { useTeamName } from '@/shared/api/use-teams'
@@ -14,12 +15,15 @@ export interface UseProjectsPageResult {
 	searchQuery: string
 	setSearchQuery: (query: string) => void
 	refetch: () => void
+	meta: PaginationMeta | undefined
+	setPage: (page: number) => void
 }
 
 export function useProjectsPage(teamId: string): UseProjectsPageResult {
 	const [searchQuery, setSearchQuery] = useState('')
+	const { paginationParams, setPage } = usePagination()
 	const teamName = useTeamName(teamId)
-	const { data, isLoading, isError, refetch } = useProjectsList(teamId)
+	const { data, isLoading, isError, refetch } = useProjectsList(teamId, paginationParams)
 
 	const allProjects = data?.data ?? []
 	const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -32,6 +36,11 @@ export function useProjectsPage(teamId: string): UseProjectsPageResult {
 			)
 		: allProjects
 
+	const handleSetSearchQuery = (query: string) => {
+		setSearchQuery(query)
+		setPage(1)
+	}
+
 	return {
 		teamName,
 		allProjects,
@@ -39,7 +48,9 @@ export function useProjectsPage(teamId: string): UseProjectsPageResult {
 		isLoading,
 		isError,
 		searchQuery,
-		setSearchQuery,
+		setSearchQuery: handleSetSearchQuery,
 		refetch,
+		meta: data?.meta,
+		setPage,
 	}
 }

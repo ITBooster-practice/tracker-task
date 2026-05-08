@@ -18,16 +18,18 @@ import type { ApiError } from '@/shared/lib/api/types'
 export const projectsKeys = {
 	all: ['projects'] as const,
 	lists: () => [...projectsKeys.all, 'list'] as const,
-	list: (teamId: string) => [...projectsKeys.lists(), teamId] as const,
+	teamLists: (teamId: string) => [...projectsKeys.lists(), teamId] as const,
+	list: (teamId: string, params?: PaginationParams) =>
+		[...projectsKeys.teamLists(teamId), params] as const,
 	details: () => [...projectsKeys.all, 'detail'] as const,
 	detail: (teamId: string, projectId: string) =>
 		[...projectsKeys.details(), teamId, projectId] as const,
 } as const
 
-export const useProjectsList = (teamId: string) => {
+export const useProjectsList = (teamId: string, params?: PaginationParams) => {
 	return useQuery<PaginatedResponse<Project>>({
-		queryKey: projectsKeys.list(teamId),
-		queryFn: () => projectsService.getAll(teamId),
+		queryKey: projectsKeys.list(teamId, params),
+		queryFn: () => projectsService.getAll(teamId, params),
 		enabled: Boolean(teamId),
 		placeholderData: keepPreviousData,
 	})
@@ -48,7 +50,7 @@ export const useCreateProject = () => {
 		mutationFn: ({ teamId, data }) => projectsService.create(teamId, data),
 		onSuccess: (project) => {
 			queryClient.setQueryData(projectsKeys.detail(project.teamId, project.id), project)
-			queryClient.invalidateQueries({ queryKey: projectsKeys.list(project.teamId) })
+			queryClient.invalidateQueries({ queryKey: projectsKeys.teamLists(project.teamId) })
 		},
 	})
 }
@@ -68,7 +70,9 @@ export const useUpdateProject = () => {
 				projectsKeys.detail(variables.teamId, variables.projectId),
 				project,
 			)
-			queryClient.invalidateQueries({ queryKey: projectsKeys.list(variables.teamId) })
+			queryClient.invalidateQueries({
+				queryKey: projectsKeys.teamLists(variables.teamId),
+			})
 		},
 	})
 }
@@ -79,7 +83,7 @@ export const useDeleteProject = () => {
 	return useMutation<void, ApiError, { teamId: string; projectId: string }>({
 		mutationFn: ({ teamId, projectId }) => projectsService.delete(teamId, projectId),
 		onSuccess: (_, { teamId, projectId }) => {
-			queryClient.invalidateQueries({ queryKey: projectsKeys.list(teamId) })
+			queryClient.invalidateQueries({ queryKey: projectsKeys.teamLists(teamId) })
 			queryClient.removeQueries({ queryKey: projectsKeys.detail(teamId, projectId) })
 		},
 	})

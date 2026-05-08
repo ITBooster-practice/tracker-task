@@ -61,7 +61,7 @@ describe('use-projects hooks', () => {
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-			expect(projectsServiceMock.getAll).toHaveBeenCalledWith('team-1')
+			expect(projectsServiceMock.getAll).toHaveBeenCalledWith('team-1', undefined)
 			expect(result.current.data).toEqual(paginatedResponse)
 		})
 
@@ -133,7 +133,7 @@ describe('use-projects hooks', () => {
 				queryClient.getQueryData(projectsKeys.detail('team-1', 'project-1')),
 			).toEqual(project)
 			expect(invalidateSpy).toHaveBeenCalledWith({
-				queryKey: projectsKeys.list('team-1'),
+				queryKey: projectsKeys.teamLists('team-1'),
 			})
 
 			invalidateSpy.mockRestore()
@@ -170,7 +170,7 @@ describe('use-projects hooks', () => {
 				queryClient.getQueryData(projectsKeys.detail('team-1', 'project-1')),
 			).toEqual(project)
 			expect(invalidateSpy).toHaveBeenCalledWith({
-				queryKey: projectsKeys.list('team-1'),
+				queryKey: projectsKeys.teamLists('team-1'),
 			})
 
 			invalidateSpy.mockRestore()
@@ -208,7 +208,7 @@ describe('use-projects hooks', () => {
 
 			expect(projectsServiceMock.delete).toHaveBeenCalledWith('team-1', 'project-1')
 			expect(invalidateSpy).toHaveBeenCalledWith({
-				queryKey: projectsKeys.list('team-1'),
+				queryKey: projectsKeys.teamLists('team-1'),
 			})
 			expect(
 				queryClient.getQueryData(projectsKeys.detail('team-1', 'project-1')),
