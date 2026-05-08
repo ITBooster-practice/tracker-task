@@ -11,8 +11,21 @@ describe('projectsKeys', () => {
 		expect(projectsKeys.lists()).toEqual(['projects', 'list'])
 	})
 
+	it('teamLists', () => {
+		expect(projectsKeys.teamLists('team-1')).toEqual(['projects', 'list', 'team-1'])
+	})
+
 	it('list', () => {
-		expect(projectsKeys.list('team-1')).toEqual(['projects', 'list', 'team-1'])
+		expect(projectsKeys.list('team-1')).toEqual(['projects', 'list', 'team-1', undefined])
+	})
+
+	it('list с параметрами', () => {
+		expect(projectsKeys.list('team-1', { page: 2, limit: 10 })).toEqual([
+			'projects',
+			'list',
+			'team-1',
+			{ page: 2, limit: 10 },
+		])
 	})
 
 	it('details', () => {

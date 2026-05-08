@@ -13,9 +13,9 @@ import {
 	SquareKanban,
 } from '@repo/ui/icons'
 
-import { useTeamDetail } from '@/shared/api/use-teams'
+import { useProjectDetail } from '@/shared/api/use-projects'
+import { useTeamName } from '@/shared/api/use-teams'
 import { teamRoutes } from '@/shared/config'
-import { formatProjectNameFromId, getProjectById } from '@/shared/lib/projects'
 
 import { projectPageSubtitleClassName, projectPageTitleClassName } from '../lib/styles'
 
@@ -47,12 +47,17 @@ function ProjectDetailPageView() {
 	const params = useParams<{ id: string; projectId: string }>()
 	const teamId = decodeURIComponent(params.id)
 	const projectId = decodeURIComponent(params.projectId)
-	const { data: team } = useTeamDetail(teamId)
-	const project = getProjectById(projectId)
-	const projectName = project?.name ?? formatProjectNameFromId(projectId)
-	const projectDescription = project?.description ?? 'Новый проект команды'
-	const boards = project?.boards ?? []
-	const recentTasks = project?.recentTasks ?? []
+	const teamName = useTeamName(teamId)
+	const { data: project } = useProjectDetail(teamId, projectId)
+	const projectName = project?.name ?? '...'
+	const projectDescription = project?.description ?? ''
+	const boards: { id: string; name: string; columnCount: number }[] = []
+	const recentTasks: {
+		id: string
+		key: string
+		title: string
+		assigneeInitials: string
+	}[] = []
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
@@ -62,7 +67,7 @@ function ProjectDetailPageView() {
 						href={teamRoutes.projects(teamId)}
 						className='transition-colors hover:text-foreground'
 					>
-						{team?.name ?? 'Команда'}
+						{teamName ?? 'Команда'}
 					</Link>
 					<ChevronRight className='size-4 text-muted-foreground/70' />
 					<span className='text-foreground'>{projectName}</span>

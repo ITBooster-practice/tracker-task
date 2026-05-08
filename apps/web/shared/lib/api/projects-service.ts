@@ -1,4 +1,10 @@
-import type { CreateProjectBody, Project, UpdateProjectBody } from '@repo/types'
+import type {
+	CreateProjectBody,
+	PaginatedResponse,
+	PaginationParams,
+	Project,
+	UpdateProjectBody,
+} from '@repo/types'
 
 import { client } from './client'
 
@@ -7,8 +13,14 @@ const buildProjectEndpoint = (teamId: string, projectId: string) =>
 	`/teams/${teamId}/projects/${projectId}`
 
 export const projectsService = {
-	getAll: async (teamId: string): Promise<Project[]> => {
-		const response = await client.get<Project[]>(buildProjectsEndpoint(teamId))
+	getAll: async (
+		teamId: string,
+		params?: PaginationParams,
+	): Promise<PaginatedResponse<Project>> => {
+		const response = await client.get<PaginatedResponse<Project>>(
+			buildProjectsEndpoint(teamId),
+			{ params },
+		)
 		return response.data
 	},
 

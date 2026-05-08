@@ -5,13 +5,14 @@ import {
 	useQueryClient,
 } from '@tanstack/react-query'
 
-import type { PaginationParams } from '@repo/types'
+import type { PaginatedResponse, PaginationParams } from '@repo/types'
 
 import {
 	teamsService,
 	type CreateTeam,
 	type DeleteTeamResponse,
 	type Team,
+	type TeamListItem,
 	type UpdateTeam,
 } from '@/shared/lib/api/teams-service'
 import type { ApiError } from '@/shared/lib/api/types'
@@ -35,12 +36,29 @@ export const useTeamsList = (params?: PaginationParams) => {
 	})
 }
 
-export const useTeamDetail = (id: string) => {
+export const useTeamDetail = (id: string, options?: { enabled?: boolean }) => {
 	return useQuery({
 		queryKey: teamsKeys.detail(id),
 		queryFn: () => teamsService.getById(id),
-		enabled: Boolean(id),
+		enabled: options?.enabled !== undefined ? options.enabled : Boolean(id),
 	})
+}
+
+export const useTeamName = (teamId: string): string | undefined => {
+	const queryClient = useQueryClient()
+
+	const allListData = queryClient.getQueriesData<PaginatedResponse<TeamListItem>>({
+		queryKey: teamsKeys.lists(),
+	})
+	const nameFromCache = allListData
+		.flatMap(([, data]) => data?.data ?? [])
+		.find((t) => t.id === teamId)?.name
+
+	const { data: teamDetail } = useTeamDetail(teamId, {
+		enabled: !nameFromCache && Boolean(teamId),
+	})
+
+	return nameFromCache ?? teamDetail?.name
 }
 
 export const useCreateTeam = () => {

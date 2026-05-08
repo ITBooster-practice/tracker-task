@@ -1,33 +1,32 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { Project } from '@repo/types'
+
 import { ProjectCard } from '@/views/projects/ui/project-card'
-import type { ProjectCatalogItem } from '@/shared/lib/projects'
 
 vi.mock('@repo/ui/icons', () => ({
 	ArrowRight: () => <span data-testid='arrow-icon' />,
-	KanbanSquare: () => <span data-testid='kanban-icon' />,
-	ListTodo: () => <span data-testid='todo-icon' />,
+	FolderKanban: () => <span data-testid='folder-icon' />,
 }))
 
 vi.mock('@repo/ui', () => ({
 	cn: (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' '),
 }))
 
-const createProject = (overrides?: Partial<ProjectCatalogItem>): ProjectCatalogItem => ({
+const createProject = (overrides?: Partial<Project>): Project => ({
 	id: 'proj-1',
-	code: 'PRJ',
 	name: 'Test Project',
 	description: 'Описание проекта для тестов',
-	boardsCount: 2,
-	tasksCount: 15,
-	boards: [],
-	recentTasks: [],
+	teamId: 'team-1',
+	createdById: 'user-1',
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-01T00:00:00.000Z',
 	...overrides,
 })
 
 describe('ProjectCard', () => {
-	let onOpen: ReturnType<typeof vi.fn<(project: ProjectCatalogItem) => void>>
+	let onOpen: ReturnType<typeof vi.fn<(project: Project) => void>>
 
 	beforeEach(() => {
 		onOpen = vi.fn()
@@ -35,19 +34,18 @@ describe('ProjectCard', () => {
 
 	afterEach(cleanup)
 
-	it('отображает код, название и описание проекта', () => {
+	it('отображает код (первые 2 буквы названия), название и описание', () => {
 		render(<ProjectCard project={createProject()} onOpen={onOpen} />)
 
-		expect(screen.getByText('PRJ')).toBeDefined()
+		expect(screen.getByText('TE')).toBeDefined()
 		expect(screen.getByText('Test Project')).toBeDefined()
 		expect(screen.getByText('Описание проекта для тестов')).toBeDefined()
 	})
 
-	it('отображает количество досок и задач', () => {
-		render(<ProjectCard project={createProject()} onOpen={onOpen} />)
+	it('показывает "Нет описания" когда description равен null', () => {
+		render(<ProjectCard project={createProject({ description: null })} onOpen={onOpen} />)
 
-		expect(screen.getByText(/2 досок/)).toBeDefined()
-		expect(screen.getByText(/15 задач/)).toBeDefined()
+		expect(screen.getByText(/Нет описания/)).toBeDefined()
 	})
 
 	it('клик вызывает onOpen с данными проекта', () => {
@@ -55,8 +53,6 @@ describe('ProjectCard', () => {
 		fireEvent.click(screen.getByRole('button'))
 
 		expect(onOpen).toHaveBeenCalledOnce()
-		expect(onOpen).toHaveBeenCalledWith(
-			expect.objectContaining({ id: 'proj-1', code: 'PRJ' }),
-		)
+		expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'proj-1' }))
 	})
 })

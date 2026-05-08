@@ -48,21 +48,19 @@ describe('use-teams hooks', () => {
 
 	describe('useTeamsList', () => {
 		it('запрашивает список команд', async () => {
-			const teams = [
-				createTeamListItemFixture({
-					id: 'team-1',
-					name: 'Team A',
-				}),
-			]
+			const response = {
+				data: [createTeamListItemFixture({ id: 'team-1', name: 'Team A' })],
+				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			}
 
-			teamsServiceMock.getAll.mockResolvedValue(teams)
+			teamsServiceMock.getAll.mockResolvedValue(response)
 
 			const { result } = renderHook(() => useTeamsList(), { wrapper: createWrapper() })
 
 			await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
 			expect(teamsServiceMock.getAll).toHaveBeenCalledOnce()
-			expect(result.current.data).toEqual(teams)
+			expect(result.current.data).toEqual(response)
 		})
 	})
 

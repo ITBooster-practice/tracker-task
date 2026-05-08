@@ -54,13 +54,12 @@ vi.mock('@/shared/config', () => ({
 	ROUTES: { home: '/' },
 }))
 
-// ─── Мок: shared/lib/projects ────────────────────────────────────
-vi.mock('@/shared/lib/projects', () => ({
-	buildTeamProjectHref: (teamId: string, projectId: string) =>
-		`/teams/${teamId}/projects/${projectId}`,
-	projectCatalog: [],
+// ─── Мок: useProjectsList ────────────────────────────────────────
+vi.mock('@/shared/api/use-projects', () => ({
+	useProjectsList: () => ({ data: { data: [], meta: {} } }),
 }))
 
+// ─── Мок: shared/config ──────────────────────────────────────────
 // ─── Мок: model/sidebar ──────────────────────────────────────────
 vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
 	const original =
@@ -83,7 +82,6 @@ vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
 		],
 		sidebarWorkspace: { title: 'Tracker Task', subtitle: 'Product Team' },
 		sidebarCurrentUser: { initials: 'AI', name: 'Алексей Иванов', role: 'Owner' },
-		sidebarProjects: [],
 	}
 })
 

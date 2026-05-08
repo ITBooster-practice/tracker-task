@@ -50,6 +50,7 @@ function CreateTeamDialog() {
 
 		try {
 			await createTeamMutation.mutateAsync({ name: trimmedName })
+			toast.success('Команда создана')
 			reset()
 			router.replace(ROUTES.teams)
 		} catch (error) {

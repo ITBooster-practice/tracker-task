@@ -1,18 +1,15 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CreateProjectDialog } from '@/views/projects/ui/create-project-dialog'
 
-// ─── Мок: утилиты проекта ────────────────────────────────────────
-vi.mock('@/shared/lib/projects', () => ({
-	isValidProjectCode: (code: string) => code.length >= 2 && code.length <= 5,
-	normalizeProjectCodeInput: (value: string) =>
-		value.toUpperCase().replace(/[^A-Z]/g, ''),
-	PROJECT_CODE_MIN_LENGTH: 2,
-	PROJECT_CODE_MAX_LENGTH: 5,
+const mockMutateAsync = vi.fn()
+
+vi.mock('@/shared/api/use-projects', () => ({
+	useCreateProject: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
 }))
 
-// ─── Мок: UI-компоненты ──────────────────────────────────────────
 vi.mock('@repo/ui', () => ({
 	Button: ({
 		children,
@@ -37,14 +34,26 @@ vi.mock('@repo/ui', () => ({
 		<label {...props}>{children}</label>
 	),
 	VStack: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+	toast: { success: vi.fn(), error: vi.fn() },
 }))
 
+function createWrapper() {
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+	})
+	const Wrapper = ({ children }: React.PropsWithChildren) => (
+		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+	)
+	Wrapper.displayName = 'CreateProjectDialogWrapper'
+	return Wrapper
+}
+
 describe('CreateProjectDialog', () => {
-	const mockOnCreate = vi.fn()
 	const mockOnOpenChange = vi.fn()
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockMutateAsync.mockResolvedValue({})
 	})
 
 	afterEach(cleanup)
@@ -52,10 +61,11 @@ describe('CreateProjectDialog', () => {
 	it('не рендерится когда open=false', () => {
 		render(
 			<CreateProjectDialog
+				teamId='team-1'
 				open={false}
 				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
 			/>,
+			{ wrapper: createWrapper() },
 		)
 
 		expect(screen.queryByTestId('dialog')).toBeNull()
@@ -63,36 +73,26 @@ describe('CreateProjectDialog', () => {
 
 	it('рендерит форму когда open=true', () => {
 		render(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
+			<CreateProjectDialog teamId='team-1' open={true} onOpenChange={mockOnOpenChange} />,
+			{ wrapper: createWrapper() },
 		)
 
 		expect(screen.getByText('Создать проект')).toBeDefined()
 	})
 
-	it('рендерит поля Название и Ключ', () => {
+	it('рендерит поле Название', () => {
 		render(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
+			<CreateProjectDialog teamId='team-1' open={true} onOpenChange={mockOnOpenChange} />,
+			{ wrapper: createWrapper() },
 		)
 
 		expect(screen.getByPlaceholderText('Мой проект')).toBeDefined()
-		expect(screen.getByPlaceholderText('MP')).toBeDefined()
 	})
 
-	it('кнопка "Создать" disabled при пустых полях', () => {
+	it('кнопка "Создать" disabled при пустом названии', () => {
 		render(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
+			<CreateProjectDialog teamId='team-1' open={true} onOpenChange={mockOnOpenChange} />,
+			{ wrapper: createWrapper() },
 		)
 
 		expect(screen.getByRole('button', { name: 'Создать' })).toHaveProperty(
@@ -101,90 +101,53 @@ describe('CreateProjectDialog', () => {
 		)
 	})
 
-	it('ввод кода нормализуется (uppercase, только латиница)', () => {
+	it('submit — вызывает mutate с teamId и name', () => {
 		render(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
-		)
-
-		fireEvent.change(screen.getByPlaceholderText('MP'), {
-			target: { value: 'abc123' },
-		})
-
-		expect((screen.getByPlaceholderText('MP') as HTMLInputElement).value).toBe('ABC')
-	})
-
-	it('submit — вызывает onCreate с name и code', () => {
-		render(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
+			<CreateProjectDialog teamId='team-1' open={true} onOpenChange={mockOnOpenChange} />,
+			{ wrapper: createWrapper() },
 		)
 
 		fireEvent.change(screen.getByPlaceholderText('Мой проект'), {
 			target: { value: 'Новый проект' },
 		})
-		fireEvent.change(screen.getByPlaceholderText('MP'), {
-			target: { value: 'NP' },
-		})
 		fireEvent.submit(screen.getByPlaceholderText('Мой проект').closest('form')!)
 
-		expect(mockOnCreate).toHaveBeenCalledWith({ name: 'Новый проект', code: 'NP' })
+		expect(mockMutateAsync).toHaveBeenCalledWith({
+			teamId: 'team-1',
+			data: { name: 'Новый проект' },
+		})
 	})
 
-	it('submit c невалидным кодом — onCreate не вызывается', () => {
+	it('submit с пустым названием — mutate не вызывается', () => {
 		render(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
+			<CreateProjectDialog teamId='team-1' open={true} onOpenChange={mockOnOpenChange} />,
+			{ wrapper: createWrapper() },
 		)
 
-		fireEvent.change(screen.getByPlaceholderText('Мой проект'), {
-			target: { value: 'Новый проект' },
-		})
-		// Код слишком короткий — 1 символ (< минимума 2)
-		fireEvent.change(screen.getByPlaceholderText('MP'), {
-			target: { value: 'N' },
-		})
-		fireEvent.submit(screen.getByPlaceholderText('Мой проект').closest('form')!)
+		fireEvent.submit(screen.getByTestId('dialog').querySelector('form')!)
 
-		expect(mockOnCreate).not.toHaveBeenCalled()
+		expect(mockMutateAsync).not.toHaveBeenCalled()
 	})
 
-	it('закрытие диалога — очищает поля', () => {
+	it('закрытие диалога — очищает поле названия', () => {
 		const { rerender } = render(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
+			<CreateProjectDialog teamId='team-1' open={true} onOpenChange={mockOnOpenChange} />,
+			{ wrapper: createWrapper() },
 		)
 
 		fireEvent.change(screen.getByPlaceholderText('Мой проект'), {
 			target: { value: 'Тест' },
 		})
 
-		// Закрываем и переоткрываем
 		rerender(
 			<CreateProjectDialog
+				teamId='team-1'
 				open={false}
 				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
 			/>,
 		)
 		rerender(
-			<CreateProjectDialog
-				open={true}
-				onOpenChange={mockOnOpenChange}
-				onCreate={mockOnCreate}
-			/>,
+			<CreateProjectDialog teamId='team-1' open={true} onOpenChange={mockOnOpenChange} />,
 		)
 
 		expect((screen.getByPlaceholderText('Мой проект') as HTMLInputElement).value).toBe('')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 import {
 	Button,
@@ -11,15 +11,12 @@ import {
 	DialogDrawerTitle,
 	Input,
 	Label,
+	toast,
 	VStack,
 } from '@repo/ui'
 
-import {
-	isValidProjectCode,
-	normalizeProjectCodeInput,
-	PROJECT_CODE_MAX_LENGTH,
-	PROJECT_CODE_MIN_LENGTH,
-} from '@/shared/lib/projects'
+import { useCreateProject } from '@/shared/api/use-projects'
+import { isApiError } from '@/shared/lib/api/utils'
 
 import {
 	projectDialogContentClassName,
@@ -30,44 +27,58 @@ import {
 	projectDialogSecondaryButtonClassName,
 	projectDialogTitleClassName,
 } from '../lib/styles'
+import { useCreateProjectForm } from '../model/use-create-project-form'
 
 interface CreateProjectDialogProps {
+	teamId: string
 	open: boolean
 	onOpenChange: (open: boolean) => void
-	onCreate: (payload: { name: string; code: string }) => void
 }
 
-function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDialogProps) {
-	const [name, setName] = useState('')
-	const [code, setCode] = useState('')
+function CreateProjectDialog({ teamId, open, onOpenChange }: CreateProjectDialogProps) {
+	const { mutateAsync: createProject, isPending } = useCreateProject()
+	const {
+		name,
+		description,
+		nameError,
+		descriptionError,
+		isValid,
+		setName,
+		setDescription,
+		onSubmit,
+		reset,
+	} = useCreateProjectForm()
 
 	useEffect(() => {
-		if (!open) {
-			setName('')
-			setCode('')
-		}
+		if (!open) reset()
 	}, [open])
 
-	const normalizedName = name.trim()
-	const normalizedCode = code.trim()
-	const isSubmitDisabled =
-		!normalizedName || !normalizedCode || !isValidProjectCode(normalizedCode)
+	const handleOpenChange = (nextOpen: boolean) => {
+		onOpenChange(nextOpen)
+	}
 
-	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 
-		if (isSubmitDisabled) {
-			return
-		}
+		const data = onSubmit()
+		if (!data) return
 
-		onCreate({
-			name: normalizedName,
-			code: normalizedCode,
-		})
+		try {
+			await createProject({ teamId, data })
+			reset()
+			onOpenChange(false)
+			toast.success('Проект создан')
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+			throw error
+		}
 	}
 
 	return (
-		<DialogDrawer open={open} onOpenChange={onOpenChange}>
+		<DialogDrawer open={open} onOpenChange={handleOpenChange}>
 			<DialogDrawerContent className={projectDialogContentClassName}>
 				<form onSubmit={handleSubmit}>
 					<DialogDrawerHeader>
@@ -85,25 +96,32 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 								id='project-name'
 								placeholder='Мой проект'
 								value={name}
-								onChange={(event) => setName(event.target.value)}
+								onChange={(e) => setName(e.target.value)}
 								autoFocus
 								className={projectDialogInputClassName}
 							/>
+							{nameError && (
+								<p className='mt-1.5 text-sm text-destructive'>{nameError}</p>
+							)}
 						</div>
 
 						<div>
-							<Label htmlFor='project-key' className={projectDialogLabelClassName}>
-								Ключ ({PROJECT_CODE_MIN_LENGTH}-{PROJECT_CODE_MAX_LENGTH} буквы)
+							<Label
+								htmlFor='project-description'
+								className={projectDialogLabelClassName}
+							>
+								Описание
 							</Label>
 							<Input
-								id='project-key'
-								placeholder='MP'
-								value={code}
-								onChange={(event) =>
-									setCode(normalizeProjectCodeInput(event.target.value))
-								}
+								id='project-description'
+								placeholder='Краткое описание проекта'
+								value={description}
+								onChange={(e) => setDescription(e.target.value)}
 								className={projectDialogInputClassName}
 							/>
+							{descriptionError && (
+								<p className='mt-1.5 text-sm text-destructive'>{descriptionError}</p>
+							)}
 						</div>
 					</VStack>
 
@@ -111,17 +129,17 @@ function CreateProjectDialog({ open, onOpenChange, onCreate }: CreateProjectDial
 						<Button
 							type='button'
 							variant='outline'
-							onClick={() => onOpenChange(false)}
+							onClick={() => handleOpenChange(false)}
 							className={projectDialogSecondaryButtonClassName}
 						>
 							Отмена
 						</Button>
 						<Button
 							type='submit'
-							disabled={isSubmitDisabled}
+							disabled={!isValid || isPending}
 							className={projectDialogPrimaryButtonClassName}
 						>
-							Создать
+							{isPending ? 'Создание...' : 'Создать'}
 						</Button>
 					</DialogDrawerFooter>
 				</form>

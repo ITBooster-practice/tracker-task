@@ -3,16 +3,11 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import { Button, EmptyState, Input } from '@repo/ui'
+import type { Project } from '@repo/types'
+import { Button, CardSkeleton, EmptyState, Input, Pagination } from '@repo/ui'
 import { FolderKanban, Plus, Search } from '@repo/ui/icons'
 
-import { useTeamDetail } from '@/shared/api/use-teams'
-import {
-	buildTeamProjectHref,
-	createProjectId,
-	projectCatalog,
-	type ProjectCatalogItem,
-} from '@/shared/lib/projects'
+import { teamRoutes } from '@/shared/config'
 
 import {
 	projectPageHeaderClassName,
@@ -20,50 +15,32 @@ import {
 	projectPageSubtitleClassName,
 	projectPageTitleClassName,
 } from '../lib/styles'
+import { useProjectsPage } from '../model/use-projects-page'
 import { CreateProjectDialog } from './create-project-dialog'
 import { ProjectCard } from './project-card'
+
+const SKELETON_COUNT = 6
 
 function ProjectsPageView() {
 	const router = useRouter()
 	const params = useParams<{ id: string }>()
 	const teamId = decodeURIComponent(params.id)
-	const { data: team } = useTeamDetail(teamId)
-	const [searchQuery, setSearchQuery] = useState('')
+	const {
+		teamName,
+		allProjects,
+		filteredProjects,
+		isLoading,
+		isError,
+		searchQuery,
+		setSearchQuery,
+		refetch,
+		meta,
+		setPage,
+	} = useProjectsPage(teamId)
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-	const [projects, setProjects] = useState<ProjectCatalogItem[]>(projectCatalog)
 
-	const normalizedQuery = searchQuery.trim().toLowerCase()
-	const filteredProjects = projects.filter((project) => {
-		if (!normalizedQuery) {
-			return true
-		}
-
-		return [project.name, project.description, project.code].some((value) =>
-			value.toLowerCase().includes(normalizedQuery),
-		)
-	})
-
-	const handleOpenProject = (project: ProjectCatalogItem) => {
-		router.push(buildTeamProjectHref(teamId, project.id))
-	}
-
-	const handleCreateProject = ({ name, code }: { name: string; code: string }) => {
-		const nextProject: ProjectCatalogItem = {
-			id: createProjectId(
-				name,
-				projects.map((project) => project.id),
-			),
-			code,
-			name,
-			description: 'Новый проект команды',
-			boardsCount: 0,
-			tasksCount: 0,
-			boards: [],
-			recentTasks: [],
-		}
-
-		setProjects((currentProjects) => [nextProject, ...currentProjects])
-		setIsCreateDialogOpen(false)
+	const handleOpenProject = (project: Project) => {
+		router.push(teamRoutes.project(teamId, project.id))
 	}
 
 	return (
@@ -73,7 +50,7 @@ function ProjectsPageView() {
 					<div>
 						<h1 className={projectPageTitleClassName}>Проекты</h1>
 						<p className={projectPageSubtitleClassName}>
-							{team?.name ?? 'Загрузка команды'}
+							{teamName ?? 'Загрузка команды'}
 						</p>
 					</div>
 
@@ -96,40 +73,79 @@ function ProjectsPageView() {
 					/>
 				</div>
 
-				{filteredProjects.length === 0 ? (
+				{isLoading ? (
+					<div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+						{Array.from({ length: SKELETON_COUNT }).map((_, index) => (
+							<CardSkeleton key={`project-skeleton-${index}`} />
+						))}
+					</div>
+				) : isError ? (
 					<div className='flex justify-center py-16'>
 						<EmptyState
 							icon={<FolderKanban className='size-7' />}
-							title='Проекты не найдены'
-							description='Измените запрос или создайте новый проект.'
+							title='Не удалось загрузить проекты'
+							description='Попробуйте повторить запрос ещё раз.'
 							action={
 								<Button
-									onClick={() => setIsCreateDialogOpen(true)}
+									onClick={() => void refetch()}
 									className={projectPagePrimaryButtonClassName}
 								>
-									<Plus className='size-4' />
-									Создать проект
+									Повторить
 								</Button>
 							}
 							className='max-w-[420px] border-border bg-card'
 						/>
 					</div>
+				) : filteredProjects.length === 0 ? (
+					<div className='flex justify-center py-16'>
+						<EmptyState
+							icon={<FolderKanban className='size-7' />}
+							title={
+								allProjects.length === 0
+									? 'У команды ещё нет проектов'
+									: 'Проекты не найдены'
+							}
+							description={
+								allProjects.length === 0
+									? 'Создайте первый проект, чтобы начать работу.'
+									: 'Измените запрос или создайте новый проект.'
+							}
+							action={
+								allProjects.length === 0 ? (
+									<Button
+										onClick={() => setIsCreateDialogOpen(true)}
+										className={projectPagePrimaryButtonClassName}
+									>
+										<Plus className='size-4' />
+										Создать
+									</Button>
+								) : undefined
+							}
+							className='max-w-[420px] border-border bg-card'
+						/>
+					</div>
 				) : (
-					<section className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-						{filteredProjects.map((project) => (
-							<ProjectCard
-								key={project.id}
-								project={project}
-								onOpen={handleOpenProject}
-							/>
-						))}
-					</section>
+					<>
+						<section className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+							{filteredProjects.map((project) => (
+								<ProjectCard
+									key={project.id}
+									project={project}
+									onOpen={handleOpenProject}
+								/>
+							))}
+						</section>
+
+						{meta && meta.totalPages > 1 && (
+							<Pagination meta={meta} onPageChange={setPage} className='mt-6' />
+						)}
+					</>
 				)}
 
 				<CreateProjectDialog
+					teamId={teamId}
 					open={isCreateDialogOpen}
 					onOpenChange={setIsCreateDialogOpen}
-					onCreate={handleCreateProject}
 				/>
 			</div>
 		</div>
