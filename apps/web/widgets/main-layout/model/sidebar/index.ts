@@ -1,10 +1,5 @@
 export { useSideBarStore } from './store'
-export {
-	sidebarCurrentUser,
-	getSidebarSections,
-	sidebarProjects,
-	sidebarWorkspace,
-} from './navigation'
+export { sidebarCurrentUser, getSidebarSections, sidebarWorkspace } from './navigation'
 export type {
 	SidebarNavItem,
 	SidebarNavSection,

@@ -10,14 +10,8 @@ import {
 } from '@repo/ui/icons'
 
 import { FEATURES, ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config'
-import { projectCatalog } from '@/shared/lib/projects'
 
-import type {
-	SidebarNavSection,
-	SidebarProjectItem,
-	SidebarUserCard,
-	SidebarWorkspace,
-} from './types'
+import type { SidebarNavSection, SidebarUserCard, SidebarWorkspace } from './types'
 
 function getTeamScopedHref(
 	teamId: string | null | undefined,
@@ -104,14 +98,6 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 		},
 	]
 }
-
-export const sidebarProjects: SidebarProjectItem[] = [
-	...projectCatalog.map((project) => ({
-		id: project.id,
-		shortName: project.code,
-		title: project.name,
-	})),
-]
 
 export const sidebarCurrentUser: SidebarUserCard = {
 	initials: 'AI',

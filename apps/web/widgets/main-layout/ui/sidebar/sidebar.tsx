@@ -10,15 +10,19 @@ import { KanbanSquare } from '@repo/ui/icons'
 
 import { ThemeToggle } from '@/features/theme'
 import { useMe } from '@/shared/api/use-auth'
+import { useProjectsList } from '@/shared/api/use-projects'
 import { useTeamsList } from '@/shared/api/use-teams'
-import { getSidebarRouteId, ROUTES, type SidebarRouteId } from '@/shared/config'
-import { buildTeamProjectHref } from '@/shared/lib/projects'
+import {
+	getSidebarRouteId,
+	ROUTES,
+	teamRoutes,
+	type SidebarRouteId,
+} from '@/shared/config'
 import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
 
 import {
 	getSidebarSections,
 	sidebarCurrentUser,
-	sidebarProjects,
 	sidebarWorkspace,
 	useSideBarStore,
 } from '../../model/sidebar'
@@ -45,6 +49,12 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const isOpen = forceOpen ?? isDesktopOpen
 	const selectedTeamId = typeof params.id === 'string' ? params.id : null
 	const teamId = selectedTeamId ?? teams?.[0]?.id ?? null
+	const { data: projectsData } = useProjectsList(teamId ?? '')
+	const sidebarProjects = (projectsData?.data ?? []).map((p) => ({
+		id: p.id,
+		shortName: p.name.slice(0, 2).toUpperCase(),
+		title: p.name,
+	}))
 	const projectId = typeof params.projectId === 'string' ? params.projectId : null
 	const currentTeam = selectedTeamId
 		? (teams?.find((team) => team.id === selectedTeamId) ?? null)
@@ -141,7 +151,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 										<SidebarProjectItem
 											key={project.id}
 											{...project}
-											href={buildTeamProjectHref(teamId, project.id)}
+											href={teamId ? teamRoutes.project(teamId, project.id) : '#'}
 											isActive={projectId === project.id}
 											isOpen={isOpen}
 											onNavigate={onNavigate}
