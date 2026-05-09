@@ -18,6 +18,7 @@ vi.mock('next/link', () => ({
 
 vi.mock('next/navigation', () => ({
 	useParams: () => ({ id: 'team-1', projectId: 'project-uuid-1' }),
+	useRouter: () => ({ push: vi.fn() }),
 }))
 
 vi.mock('@/shared/api/use-teams', () => ({
@@ -35,7 +36,11 @@ vi.mock('@/shared/api/use-projects', () => ({
 			createdAt: '2026-01-01T00:00:00.000Z',
 			updatedAt: '2026-01-01T00:00:00.000Z',
 		},
+		isLoading: false,
+		isError: false,
+		refetch: vi.fn(),
 	}),
+	useDeleteProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/shared/config', () => ({
@@ -47,16 +52,39 @@ vi.mock('@/shared/config', () => ({
 vi.mock('@repo/ui', () => ({
 	Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
+	Button: ({
+		children,
+		...props
+	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
+		<button {...props}>{children}</button>
+	),
+	ConfirmDialog: () => null,
+	EmptyState: ({ title }: { title: string }) => (
+		<div data-testid='empty-state'>{title}</div>
+	),
+	Skeleton: () => <div data-testid='skeleton' />,
 	cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+	toast: { error: vi.fn(), success: vi.fn() },
 }))
 
 vi.mock('@repo/ui/icons', () => ({
 	Activity: () => <span />,
 	ChevronRight: () => <span />,
+	FolderKanban: () => <span />,
 	KanbanSquare: () => <span />,
+	Pencil: () => <span />,
 	Plus: () => <span />,
 	Sparkles: () => <span />,
 	SquareKanban: () => <span />,
+	Trash2: () => <span />,
+}))
+
+vi.mock('@/views/projects/ui/edit-project-dialog', () => ({
+	EditProjectDialog: () => null,
+}))
+
+vi.mock('@/shared/lib/api/utils', () => ({
+	isApiError: () => false,
 }))
 
 function createWrapper() {

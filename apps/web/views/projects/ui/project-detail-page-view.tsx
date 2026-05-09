@@ -1,23 +1,38 @@
 'use client'
 
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { useState } from 'react'
 
-import { Avatar, AvatarFallback, cn } from '@repo/ui'
+import {
+	Avatar,
+	AvatarFallback,
+	Button,
+	cn,
+	ConfirmDialog,
+	EmptyState,
+	Skeleton,
+	toast,
+} from '@repo/ui'
 import {
 	Activity,
 	ChevronRight,
+	FolderKanban,
 	KanbanSquare,
+	Pencil,
 	Plus,
 	Sparkles,
 	SquareKanban,
+	Trash2,
 } from '@repo/ui/icons'
 
-import { useProjectDetail } from '@/shared/api/use-projects'
+import { useDeleteProject, useProjectDetail } from '@/shared/api/use-projects'
 import { useTeamName } from '@/shared/api/use-teams'
 import { teamRoutes } from '@/shared/config'
+import { isApiError } from '@/shared/lib/api/utils'
 
 import { projectPageSubtitleClassName, projectPageTitleClassName } from '../lib/styles'
+import { EditProjectDialog } from './edit-project-dialog'
 
 const actionCards = [
 	{
@@ -44,13 +59,22 @@ const actionCards = [
 ] as const
 
 function ProjectDetailPageView() {
+	const router = useRouter()
 	const params = useParams<{ id: string; projectId: string }>()
 	const teamId = decodeURIComponent(params.id)
 	const projectId = decodeURIComponent(params.projectId)
 	const teamName = useTeamName(teamId)
-	const { data: project } = useProjectDetail(teamId, projectId)
-	const projectName = project?.name ?? '...'
-	const projectDescription = project?.description ?? ''
+	const {
+		data: project,
+		isLoading,
+		isError,
+		refetch,
+	} = useProjectDetail(teamId, projectId)
+	const { mutateAsync: deleteProject, isPending: isDeleting } = useDeleteProject()
+
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
 	const boards: { id: string; name: string; columnCount: number }[] = []
 	const recentTasks: {
 		id: string
@@ -58,6 +82,61 @@ function ProjectDetailPageView() {
 		title: string
 		assigneeInitials: string
 	}[] = []
+
+	const handleDelete = async () => {
+		try {
+			await deleteProject({ teamId, projectId })
+			router.push(teamRoutes.projects(teamId))
+		} catch (error) {
+			if (isApiError(error)) {
+				toast.error(error.message)
+				return
+			}
+			throw error
+		}
+	}
+
+	if (isLoading) {
+		return (
+			<div className='min-h-full w-full bg-background text-foreground'>
+				<div className='mx-auto max-w-[960px] px-6 py-5'>
+					<Skeleton className='mb-3 h-4 w-48' />
+					<div className='mb-6'>
+						<Skeleton className='mb-2 h-9 w-64' />
+						<Skeleton className='h-4 w-96' />
+					</div>
+					<div className='mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+						{Array.from({ length: 3 }).map((_, i) => (
+							<Skeleton key={i} className='h-[112px] rounded-[var(--radius-surface)]' />
+						))}
+					</div>
+					<Skeleton className='mb-4 h-6 w-24' />
+					<Skeleton className='h-[88px] rounded-[var(--radius-surface)]' />
+				</div>
+			</div>
+		)
+	}
+
+	if (isError || !project) {
+		return (
+			<div className='flex min-h-full w-full items-center justify-center bg-background'>
+				<EmptyState
+					icon={<FolderKanban className='size-7' />}
+					title='Не удалось загрузить проект'
+					description='Попробуйте повторить запрос ещё раз.'
+					action={
+						<Button
+							onClick={() => void refetch()}
+							className='h-9 rounded-[var(--radius-control)] bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
+						>
+							Повторить
+						</Button>
+					}
+					className='max-w-[420px] border-border bg-card'
+				/>
+			</div>
+		)
+	}
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
@@ -70,12 +149,36 @@ function ProjectDetailPageView() {
 						{teamName ?? 'Команда'}
 					</Link>
 					<ChevronRight className='size-4 text-muted-foreground/70' />
-					<span className='text-foreground'>{projectName}</span>
+					<span className='text-foreground'>{project.name}</span>
 				</nav>
 
-				<header className='mb-6'>
-					<h1 className={projectPageTitleClassName}>{projectName}</h1>
-					<p className={projectPageSubtitleClassName}>{projectDescription}</p>
+				<header className='mb-6 flex items-start justify-between gap-4'>
+					<div>
+						<h1 className={projectPageTitleClassName}>{project.name}</h1>
+						<p className={projectPageSubtitleClassName}>{project.description ?? ''}</p>
+					</div>
+
+					<div className='flex shrink-0 items-center gap-2'>
+						<Button
+							type='button'
+							variant='outline'
+							size='icon-sm'
+							onClick={() => setIsEditDialogOpen(true)}
+							aria-label='Редактировать проект'
+						>
+							<Pencil className='size-4' />
+						</Button>
+						<Button
+							type='button'
+							variant='outline'
+							size='icon-sm'
+							onClick={() => setIsDeleteDialogOpen(true)}
+							aria-label='Удалить проект'
+							className='text-destructive hover:border-destructive/50 hover:text-destructive'
+						>
+							<Trash2 className='size-4' />
+						</Button>
+					</div>
 				</header>
 
 				<section className='mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
@@ -167,6 +270,26 @@ function ProjectDetailPageView() {
 					</div>
 				</section>
 			</div>
+
+			<EditProjectDialog
+				teamId={teamId}
+				projectId={projectId}
+				initialName={project.name}
+				initialDescription={project.description ?? ''}
+				open={isEditDialogOpen}
+				onOpenChange={setIsEditDialogOpen}
+			/>
+
+			<ConfirmDialog
+				open={isDeleteDialogOpen}
+				onOpenChange={setIsDeleteDialogOpen}
+				title='Удалить проект?'
+				description='Проект и все связанные данные будут удалены без возможности восстановления.'
+				confirmLabel='Удалить'
+				pendingLabel='Удаление...'
+				isPending={isDeleting}
+				onConfirm={() => void handleDelete()}
+			/>
 		</div>
 	)
 }
