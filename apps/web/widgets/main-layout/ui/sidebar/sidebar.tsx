@@ -1,14 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useParams, usePathname } from 'next/navigation'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import React from 'react'
 
 import type { TeamRole } from '@repo/types'
 import { Avatar, AvatarFallback, cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
-import { ThemeToggle } from '@/features/theme'
 import { useMe } from '@/shared/api/use-auth'
 import { useProjectsList } from '@/shared/api/use-projects'
 import { useTeamsList } from '@/shared/api/use-teams'
@@ -27,7 +26,7 @@ import {
 	useSideBarStore,
 } from '../../model/sidebar'
 import { SidebarMenuItem } from './sidebar-menu-item'
-import { SidebarProjectItem } from './sidebar-project-item'
+import { SidebarSelector } from './sidebar-selector'
 
 interface Props {
 	className?: string
@@ -35,42 +34,74 @@ interface Props {
 	onNavigate?: () => void
 }
 
-function formatSidebarUserRole(role: TeamRole) {
-	return role.slice(0, 1) + role.slice(1).toLowerCase()
+const ROLE_LABELS: Record<TeamRole, string> = {
+	OWNER: 'Владелец',
+	ADMIN: 'Администратор',
+	MEMBER: 'Участник',
+}
+
+const ROLE_BADGE_CLASS: Record<TeamRole, string> = {
+	OWNER: 'bg-amber-500/20 text-amber-400',
+	ADMIN: 'bg-blue-500/20 text-blue-400',
+	MEMBER: 'bg-sidebar-accent text-sidebar-foreground/60',
+}
+
+function getShortName(name: string) {
+	return name.slice(0, 2).toUpperCase()
 }
 
 const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
+	const router = useRouter()
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
 	const params = useParams<{ id?: string; projectId?: string }>()
 	const profileQuery = useMe()
-	const { data: teamsData } = useTeamsList({ page: 1, limit: 10 })
-	const teams = teamsData?.data
+	const { data: teamsData } = useTeamsList({ page: 1, limit: 50 })
+	const teams = teamsData?.data ?? []
 	const isOpen = forceOpen ?? isDesktopOpen
-	const selectedTeamId = typeof params.id === 'string' ? params.id : null
-	const teamId = selectedTeamId ?? teams?.[0]?.id ?? null
-	const { data: projectsData } = useProjectsList(selectedTeamId ?? '')
-	const sidebarProjects = (projectsData?.data ?? []).map((p) => ({
-		id: p.id,
-		shortName: p.name.slice(0, 2).toUpperCase(),
-		title: p.name,
-	}))
+
+	const teamId = typeof params.id === 'string' ? params.id : null
+	const currentTeam = teams.find((t) => t.id === teamId) ?? null
+
+	const { data: projectsData } = useProjectsList(teamId ?? '')
+	const projects = projectsData?.data ?? []
+
 	const projectId = typeof params.projectId === 'string' ? params.projectId : null
-	const currentTeam = selectedTeamId
-		? (teams?.find((team) => team.id === selectedTeamId) ?? null)
-		: null
-	const currentUserRole = currentTeam?.currentUserRole
-		? formatSidebarUserRole(currentTeam.currentUserRole)
-		: sidebarCurrentUser.role
+	const currentProject = projects.find((p) => p.id === projectId) ?? null
+
+	const currentUserRole = currentTeam?.currentUserRole ?? null
 	const currentUserName = profileQuery.data
 		? getUserDisplayName(profileQuery.data)
 		: sidebarCurrentUser.name
 	const currentUserInitials =
 		getNameInitials(currentUserName) || sidebarCurrentUser.initials
+
 	const activeRouteId = getSidebarRouteId(pathname)
-	const sections = getSidebarSections(teamId)
-	const [workSection, ...otherSections] = sections
+	const sections = getSidebarSections(teamId, projectId)
 	const collapsedItems = sections.flatMap((section) => section.items)
+
+	const teamOptions = teams.map((t) => ({
+		id: t.id,
+		name: t.name,
+		shortName: getShortName(t.name),
+	}))
+
+	const projectOptions = projects.map((p) => ({
+		id: p.id,
+		name: p.name,
+		shortName: getShortName(p.name),
+	}))
+
+	const handleSelectTeam = (id: string) => {
+		router.push(teamRoutes.projects(id))
+		onNavigate?.()
+	}
+
+	const handleSelectProject = (id: string) => {
+		if (!teamId) return
+		router.push(teamRoutes.project(teamId, id))
+		onNavigate?.()
+	}
 
 	const isItemActive = (href: string, routeId?: SidebarRouteId) => {
 		if (href === '#' || !routeId || !activeRouteId) {
@@ -79,6 +110,9 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 
 		return routeId === activeRouteId
 	}
+
+	const teamShortValue = currentTeam ? getShortName(currentTeam.name) : '?'
+	const projectShortValue = currentProject ? getShortName(currentProject.name) : '?'
 
 	return (
 		<div
@@ -91,7 +125,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 				className,
 			)}
 		>
-			<div className='h-14 border-b border-sidebar-border px-3'>
+			<div className='h-14 px-3'>
 				<Link
 					href={ROUTES.home}
 					onClick={onNavigate}
@@ -111,11 +145,6 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 							<div className='truncate text-sm font-semibold leading-5'>
 								{sidebarWorkspace.title}
 							</div>
-							{currentTeam?.name ? (
-								<div className='truncate text-xs text-muted-foreground'>
-									{currentTeam.name}
-								</div>
-							) : null}
 						</div>
 					)}
 				</Link>
@@ -123,44 +152,35 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 
 			<div className='flex flex-1 flex-col overflow-hidden'>
 				<div className='flex-1 overflow-y-auto px-3 py-4'>
-					{isOpen && workSection ? (
+					{isOpen ? (
 						<div className='space-y-5'>
-							<section>
-								<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
-									{workSection.title}
-								</div>
-								<nav className='space-y-1'>
-									{workSection.items.map((item) => (
-										<SidebarMenuItem
-											key={item.title}
-											{...item}
-											isOpen={isOpen}
-											isActive={isItemActive(item.href, item.routeId)}
-											onNavigate={onNavigate}
-										/>
-									))}
-								</nav>
-							</section>
+							<div className='space-y-2'>
+								<SidebarSelector
+									label='Команда'
+									value={currentTeam?.name ?? ''}
+									shortValue={teamShortValue}
+									options={teamOptions}
+									activeId={teamId}
+									isOpen={isOpen}
+									emptyLabel='Нет команд'
+									placeholder='Выберите команду'
+									onSelect={handleSelectTeam}
+								/>
+								<SidebarSelector
+									label='Проект'
+									value={currentProject?.name ?? ''}
+									shortValue={projectShortValue}
+									options={projectOptions}
+									activeId={projectId}
+									isOpen={isOpen}
+									emptyLabel='Нет проектов'
+									placeholder='Выберите проект'
+									disabled={!teamId}
+									onSelect={handleSelectProject}
+								/>
+							</div>
 
-							<section>
-								<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
-									Проекты
-								</div>
-								<div className='space-y-1'>
-									{sidebarProjects.map((project) => (
-										<SidebarProjectItem
-											key={project.id}
-											{...project}
-											href={teamId ? teamRoutes.project(teamId, project.id) : '#'}
-											isActive={projectId === project.id}
-											isOpen={isOpen}
-											onNavigate={onNavigate}
-										/>
-									))}
-								</div>
-							</section>
-
-							{otherSections.map((section) => (
+							{sections.map((section) => (
 								<section key={section.title}>
 									<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
 										{section.title}
@@ -180,17 +200,45 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 							))}
 						</div>
 					) : (
-						<nav className='space-y-1'>
-							{collapsedItems.map((item) => (
-								<SidebarMenuItem
-									key={item.title}
-									{...item}
+						<div className='space-y-4'>
+							<div className='flex flex-col items-center gap-2'>
+								<SidebarSelector
+									label='Команда'
+									value={currentTeam?.name ?? ''}
+									shortValue={teamShortValue}
+									options={teamOptions}
+									activeId={teamId}
 									isOpen={isOpen}
-									isActive={isItemActive(item.href, item.routeId)}
-									onNavigate={onNavigate}
+									emptyLabel='Нет команд'
+									placeholder='Выберите команду'
+									onSelect={handleSelectTeam}
 								/>
-							))}
-						</nav>
+								<SidebarSelector
+									label='Проект'
+									value={currentProject?.name ?? ''}
+									shortValue={projectShortValue}
+									options={projectOptions}
+									activeId={projectId}
+									isOpen={isOpen}
+									emptyLabel='Нет проектов'
+									placeholder='Выберите проект'
+									disabled={!teamId}
+									onSelect={handleSelectProject}
+								/>
+							</div>
+
+							<nav className='space-y-1'>
+								{collapsedItems.map((item) => (
+									<SidebarMenuItem
+										key={item.title}
+										{...item}
+										isOpen={isOpen}
+										isActive={isItemActive(item.href, item.routeId)}
+										onNavigate={onNavigate}
+									/>
+								))}
+							</nav>
+						</div>
 					)}
 				</div>
 
@@ -206,11 +254,11 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 								'flex rounded-[var(--radius-control)] text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/35',
 								{
 									'h-8 items-center justify-center': !isOpen,
-									'min-w-0 flex-1 items-center gap-2 px-1.5 py-1': isOpen,
+									'min-w-0 flex-1 items-start gap-2 px-1.5 py-1': isOpen,
 								},
 							)}
 						>
-							<Avatar className='size-6'>
+							<Avatar className='size-6 shrink-0'>
 								<AvatarFallback className='bg-sidebar-primary text-xs text-sidebar-primary-foreground'>
 									{currentUserInitials}
 								</AvatarFallback>
@@ -220,21 +268,23 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									<div className='truncate text-[12px] font-medium leading-tight'>
 										{currentUserName}
 									</div>
-									<div className='truncate text-[10px] text-muted-foreground'>
-										{currentUserRole}
-									</div>
+									{currentUserRole ? (
+										<span
+											className={cn(
+												'mt-0.5 inline-block rounded px-1.5 py-px text-[10px] font-medium',
+												ROLE_BADGE_CLASS[currentUserRole],
+											)}
+										>
+											{ROLE_LABELS[currentUserRole]}
+										</span>
+									) : (
+										<div className='truncate text-[10px] text-muted-foreground'>
+											{sidebarCurrentUser.role}
+										</div>
+									)}
 								</div>
 							)}
 						</div>
-
-						{isOpen && (
-							<ThemeToggle
-								size='icon-sm'
-								iconClassName='size-4'
-								className='shrink-0 border-sidebar-border bg-sidebar-accent/35 hover:bg-sidebar-accent/55'
-							/>
-						)}
-						{!isOpen && <ThemeToggle size='icon-sm' iconClassName='size-4' />}
 					</div>
 				</div>
 			</div>

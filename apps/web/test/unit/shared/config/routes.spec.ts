@@ -164,8 +164,8 @@ describe('getSidebarRouteId', () => {
 		expect(getSidebarRouteId('/teams/new')).toBe(SIDEBAR_ROUTE_IDS.teams)
 	})
 
-	it("getSidebarRouteId('/teams/1/projects/p') → 'team.projects'", () => {
-		expect(getSidebarRouteId('/teams/1/projects/p')).toBe(SIDEBAR_ROUTE_IDS.teamProjects)
+	it('/teams/:id/projects/:projectId → team.project', () => {
+		expect(getSidebarRouteId('/teams/1/projects/p')).toBe(SIDEBAR_ROUTE_IDS.teamProject)
 	})
 
 	it('/teams/:id/projects', () => {

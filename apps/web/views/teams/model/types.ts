@@ -1,3 +1,5 @@
+import type { TeamRole } from '@repo/types'
+
 export type TeamMember = {
 	id: string
 	name: string
@@ -10,4 +12,5 @@ export type TeamCardModel = {
 	name: string
 	projectCount: number
 	members: TeamMember[]
+	role?: TeamRole
 }

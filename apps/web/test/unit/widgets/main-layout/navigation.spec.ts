@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { getSidebarSections } from '@/widgets/main-layout/model/sidebar/navigation'
 
-// Мокаем конфиг — контролируем feature flags и роуты
 const { mockFeatures } = vi.hoisted(() => ({
 	mockFeatures: {
 		PROJECTS: true,
@@ -22,12 +21,15 @@ vi.mock('@/shared/config', () => ({
 	SIDEBAR_ROUTE_IDS: {
 		teams: 'teams',
 		teamProjects: 'team.projects',
+		teamProject: 'team.project',
 		teamSettings: 'team.settings',
 		tasks: 'tasks',
 		boards: 'boards',
 	},
 	teamRoutes: {
 		projects: (teamId: string) => `/teams/${teamId}/projects`,
+		project: (teamId: string, projectId: string) =>
+			`/teams/${teamId}/projects/${projectId}`,
 		settings: (teamId: string) => `/teams/${teamId}/settings`,
 	},
 }))
@@ -63,21 +65,37 @@ describe('getSidebarSections', () => {
 		expect(item?.routeId).toBe('boards')
 	})
 
-	it('Настройки: TEAM_SETTINGS включён', () => {
+	it('Настройки команды: TEAM_SETTINGS включён', () => {
 		mockFeatures.TEAM_SETTINGS = true
 
 		const sections = getSidebarSections('team-1')
-		const item = findItem(sections, 'Настройки')
+		const item = findItem(sections, 'Настройки команды')
 
 		expect(item).toBeDefined()
 		expect(item?.href).toBe('/teams/team-1/settings')
 	})
 
-	it('Настройки: TEAM_SETTINGS выключен', () => {
+	it('Настройки команды: TEAM_SETTINGS выключен', () => {
 		mockFeatures.TEAM_SETTINGS = false
 
 		const sections = getSidebarSections('team-1')
-		const item = findItem(sections, 'Настройки')
+		const item = findItem(sections, 'Настройки команды')
+
+		expect(item).toBeUndefined()
+	})
+
+	it('Обзор проекта появляется когда projectId задан', () => {
+		const sections = getSidebarSections('team-1', 'proj-1')
+		const item = findItem(sections, 'Обзор проекта')
+
+		expect(item).toBeDefined()
+		expect(item?.href).toBe('/teams/team-1/projects/proj-1')
+		expect(item?.routeId).toBe('team.project')
+	})
+
+	it('Обзор проекта отсутствует без projectId', () => {
+		const sections = getSidebarSections('team-1')
+		const item = findItem(sections, 'Обзор проекта')
 
 		expect(item).toBeUndefined()
 	})

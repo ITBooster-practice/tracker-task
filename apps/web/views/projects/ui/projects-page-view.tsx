@@ -8,6 +8,7 @@ import { Button, CardSkeleton, EmptyState, Input, Pagination } from '@repo/ui'
 import { FolderKanban, Plus, Search } from '@repo/ui/icons'
 
 import { teamRoutes } from '@/shared/config'
+import { ViewToggle, type ViewMode } from '@/shared/ui/view-toggle'
 
 import {
 	projectPageHeaderClassName,
@@ -18,6 +19,7 @@ import {
 import { useProjectsPage } from '../model/use-projects-page'
 import { CreateProjectDialog } from './create-project-dialog'
 import { ProjectCard } from './project-card'
+import { ProjectListItem } from './project-list-item'
 
 const SKELETON_COUNT = 6
 
@@ -38,6 +40,7 @@ function ProjectsPageView() {
 		setPage,
 	} = useProjectsPage(teamId)
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+	const [viewMode, setViewMode] = useState<ViewMode>('list')
 
 	const handleOpenProject = (project: Project) => {
 		router.push(teamRoutes.project(teamId, project.id))
@@ -54,23 +57,28 @@ function ProjectsPageView() {
 						</p>
 					</div>
 
-					<Button
-						onClick={() => setIsCreateDialogOpen(true)}
-						className={projectPagePrimaryButtonClassName}
-					>
-						<Plus className='size-4' />
-						Создать проект
-					</Button>
+					<div className='self-end'>
+						<Button
+							onClick={() => setIsCreateDialogOpen(true)}
+							className={projectPagePrimaryButtonClassName}
+						>
+							<Plus className='size-4' />
+							Создать проект
+						</Button>
+					</div>
 				</header>
 
-				<div className='relative mb-5 max-w-[420px]'>
-					<Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-					<Input
-						value={searchQuery}
-						onChange={(event) => setSearchQuery(event.target.value)}
-						placeholder='Поиск проектов...'
-						className='h-10 rounded-[var(--radius-control)] border-border bg-background pl-9 text-[14px] shadow-none focus-visible:ring-[3px]'
-					/>
+				<div className='mb-5 flex items-center gap-3'>
+					<div className='relative max-w-[360px] flex-1'>
+						<Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+						<Input
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
+							placeholder='Поиск проектов...'
+							className='h-10 rounded-[var(--radius-control)] border-border bg-background pl-9 text-[14px] shadow-none focus-visible:ring-[3px]'
+						/>
+					</div>
+					<ViewToggle view={viewMode} onChange={setViewMode} />
 				</div>
 
 				{isLoading ? (
@@ -124,6 +132,22 @@ function ProjectsPageView() {
 							className='max-w-[420px] border-border bg-card'
 						/>
 					</div>
+				) : viewMode === 'list' ? (
+					<>
+						<section className='space-y-3'>
+							{filteredProjects.map((project) => (
+								<ProjectListItem
+									key={project.id}
+									project={project}
+									onOpen={handleOpenProject}
+								/>
+							))}
+						</section>
+
+						{meta && meta.totalPages > 1 && (
+							<Pagination meta={meta} onPageChange={setPage} className='mt-6' />
+						)}
+					</>
 				) : (
 					<>
 						<section className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>

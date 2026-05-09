@@ -15,6 +15,7 @@ export function mapTeamListItemToTeamCardModel(team: TeamListItem): TeamCardMode
 		id: team.id,
 		name: team.name,
 		projectCount: 0,
+		role: team.currentUserRole,
 		members: Array.from({ length: team.membersCount }, (_, index) => ({
 			id: `${team.id}-member-${index + 1}`,
 			name: `Участник ${index + 1}`,

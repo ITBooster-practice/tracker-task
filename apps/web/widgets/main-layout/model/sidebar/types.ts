@@ -27,12 +27,6 @@ export type SidebarNavSection = {
 	items: SidebarNavItem[]
 }
 
-export type SidebarProjectItem = {
-	id: string
-	shortName: string
-	title: string
-}
-
 export type SidebarWorkspace = {
 	title: string
 	subtitle: string

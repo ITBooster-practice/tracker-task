@@ -67,6 +67,7 @@ export const invitationRoutes = {
 export const SIDEBAR_ROUTE_IDS = {
 	teams: 'teams',
 	teamProjects: 'team.projects',
+	teamProject: 'team.project',
 	teamSettings: 'team.settings',
 	tasks: 'tasks',
 	boards: 'boards',
@@ -151,6 +152,9 @@ export function getSidebarRouteId(
 	}
 
 	if (thirdSegment === ROUTE_SEGMENTS.projects) {
+		if (segments[3]) {
+			return SIDEBAR_ROUTE_IDS.teamProject
+		}
 		return SIDEBAR_ROUTE_IDS.teamProjects
 	}
 

@@ -26,7 +26,12 @@ vi.mock('@/shared/config', () => ({
 	},
 }))
 
+vi.mock('@/shared/ui/view-toggle', () => ({
+	ViewToggle: () => <div data-testid='view-toggle' />,
+}))
+
 vi.mock('@repo/ui', () => ({
+	cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 	Button: ({
 		children,
 		...props
@@ -50,16 +55,33 @@ vi.mock('@repo/ui', () => ({
 			{action}
 		</div>
 	),
+	Pagination: () => <nav data-testid='pagination' />,
 }))
 
 vi.mock('@repo/ui/icons', () => ({
 	Plus: () => <span />,
 	Search: () => <span />,
 	FolderKanban: () => <span />,
+	LayoutList: () => <span />,
+	LayoutGrid: () => <span />,
 }))
 
 vi.mock('@/views/projects/ui/project-card', () => ({
 	ProjectCard: ({
+		project,
+		onOpen,
+	}: {
+		project: Project
+		onOpen: (project: Project) => void
+	}) => (
+		<button data-testid={`project-card-${project.id}`} onClick={() => onOpen(project)}>
+			{project.name}
+		</button>
+	),
+}))
+
+vi.mock('@/views/projects/ui/project-list-item', () => ({
+	ProjectListItem: ({
 		project,
 		onOpen,
 	}: {
@@ -120,6 +142,8 @@ describe('ProjectsPageView', () => {
 			searchQuery: '',
 			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: undefined,
+			setPage: vi.fn(),
 		})
 	})
 
@@ -165,6 +189,8 @@ describe('ProjectsPageView', () => {
 			searchQuery: '',
 			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: undefined,
+			setPage: vi.fn(),
 		})
 
 		render(<ProjectsPageView />, { wrapper: createWrapper() })
@@ -182,6 +208,8 @@ describe('ProjectsPageView', () => {
 			searchQuery: '',
 			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: undefined,
+			setPage: vi.fn(),
 		})
 
 		render(<ProjectsPageView />, { wrapper: createWrapper() })
@@ -200,6 +228,8 @@ describe('ProjectsPageView', () => {
 			searchQuery: '',
 			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: undefined,
+			setPage: vi.fn(),
 		})
 
 		render(<ProjectsPageView />, { wrapper: createWrapper() })

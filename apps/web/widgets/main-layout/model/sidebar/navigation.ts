@@ -3,8 +3,10 @@ import {
 	FolderKanban,
 	KanbanSquare,
 	Layers3,
+	LayoutGrid,
 	ListTodo,
 	Settings,
+	Shield,
 	Sparkles,
 	Users,
 } from '@repo/ui/icons'
@@ -29,17 +31,27 @@ export const sidebarWorkspace: SidebarWorkspace = {
 	subtitle: 'Product Team',
 }
 
-export function getSidebarSections(activeTeamId?: string | null): SidebarNavSection[] {
+export function getSidebarSections(
+	activeTeamId?: string | null,
+	activeProjectId?: string | null,
+): SidebarNavSection[] {
+	const projectOverviewItem =
+		activeTeamId && activeProjectId
+			? [
+					{
+						title: 'Обзор проекта',
+						href: teamRoutes.project(activeTeamId, activeProjectId),
+						routeId: SIDEBAR_ROUTE_IDS.teamProject,
+						icon: LayoutGrid,
+					},
+				]
+			: []
+
 	return [
 		{
 			title: 'Работа',
 			items: [
-				{
-					title: 'Проекты',
-					href: getTeamScopedHref(activeTeamId, 'projects'),
-					routeId: SIDEBAR_ROUTE_IDS.teamProjects,
-					icon: FolderKanban,
-				},
+				...projectOverviewItem,
 				{
 					title: 'Доска',
 					href: ROUTES.boards,
@@ -63,15 +75,15 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 			title: 'Инструменты',
 			items: [
 				{
-					title: 'Уведомления',
-					href: '#',
-					icon: Bell,
-				},
-				{
 					title: 'AI Ассистент',
 					href: '#',
 					icon: Sparkles,
 					iconClassName: 'text-accent',
+				},
+				{
+					title: 'Уведомления',
+					href: '#',
+					icon: Bell,
 				},
 			],
 		},
@@ -84,16 +96,27 @@ export function getSidebarSections(activeTeamId?: string | null): SidebarNavSect
 					routeId: SIDEBAR_ROUTE_IDS.teams,
 					icon: Users,
 				},
+				{
+					title: 'Проекты',
+					href: getTeamScopedHref(activeTeamId, 'projects'),
+					routeId: SIDEBAR_ROUTE_IDS.teamProjects,
+					icon: FolderKanban,
+				},
 				...(FEATURES.TEAM_SETTINGS
 					? [
 							{
-								title: 'Настройки',
+								title: 'Настройки команды',
 								href: getTeamScopedHref(activeTeamId, 'settings'),
 								routeId: SIDEBAR_ROUTE_IDS.teamSettings,
 								icon: Settings,
 							},
 						]
 					: []),
+				{
+					title: 'Администрирование',
+					href: '#',
+					icon: Shield,
+				},
 			],
 		},
 	]
