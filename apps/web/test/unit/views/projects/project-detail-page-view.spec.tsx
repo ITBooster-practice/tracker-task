@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectDetailPageView } from '@/views/projects/ui/project-detail-page-view'
 
+const mockUseProjectDetail = vi.fn()
+
 vi.mock('next/link', () => ({
 	default: ({
 		href,
@@ -26,20 +28,7 @@ vi.mock('@/shared/api/use-teams', () => ({
 }))
 
 vi.mock('@/shared/api/use-projects', () => ({
-	useProjectDetail: () => ({
-		data: {
-			id: 'project-uuid-1',
-			name: 'My Project',
-			description: 'Описание',
-			teamId: 'team-1',
-			createdById: 'user-1',
-			createdAt: '2026-01-01T00:00:00.000Z',
-			updatedAt: '2026-01-01T00:00:00.000Z',
-		},
-		isLoading: false,
-		isError: false,
-		refetch: vi.fn(),
-	}),
+	useProjectDetail: (...args: unknown[]) => mockUseProjectDetail(...args),
 	useDeleteProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
@@ -87,6 +76,16 @@ vi.mock('@/shared/lib/api/utils', () => ({
 	isApiError: () => false,
 }))
 
+const defaultProject = {
+	id: 'project-uuid-1',
+	name: 'My Project',
+	description: 'Описание',
+	teamId: 'team-1',
+	createdById: 'user-1',
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-01T00:00:00.000Z',
+}
+
 function createWrapper() {
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
@@ -99,7 +98,16 @@ function createWrapper() {
 }
 
 describe('ProjectDetailPageView', () => {
-	beforeEach(() => vi.clearAllMocks())
+	beforeEach(() => {
+		vi.clearAllMocks()
+		mockUseProjectDetail.mockReturnValue({
+			data: defaultProject,
+			isLoading: false,
+			isError: false,
+			refetch: vi.fn(),
+		})
+	})
+
 	afterEach(cleanup)
 
 	it('breadcrumb — показывает имя команды как ссылку и название проекта', () => {
@@ -123,5 +131,32 @@ describe('ProjectDetailPageView', () => {
 		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 
 		expect(screen.getByText('В проекте пока нет задач.')).toBeDefined()
+	})
+
+	it('loading — показывает skeleton', () => {
+		mockUseProjectDetail.mockReturnValue({
+			data: undefined,
+			isLoading: true,
+			isError: false,
+			refetch: vi.fn(),
+		})
+
+		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
+
+		expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0)
+	})
+
+	it('error — показывает EmptyState с сообщением об ошибке', () => {
+		mockUseProjectDetail.mockReturnValue({
+			data: undefined,
+			isLoading: false,
+			isError: true,
+			refetch: vi.fn(),
+		})
+
+		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
+
+		expect(screen.getByTestId('empty-state')).toBeDefined()
+		expect(screen.getByText('Не удалось загрузить проект')).toBeDefined()
 	})
 })
