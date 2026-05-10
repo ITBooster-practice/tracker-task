@@ -60,8 +60,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const teams = teamsData?.data ?? []
 	const isOpen = forceOpen ?? isDesktopOpen
 
-	const selectedTeamId = typeof params.id === 'string' ? params.id : null
-	const teamId = selectedTeamId ?? teams[0]?.id ?? null
+	const teamId = typeof params.id === 'string' ? params.id : null
 	const currentTeam = teams.find((t) => t.id === teamId) ?? null
 
 	const { data: projectsData } = useProjectsList(teamId ?? '')
@@ -158,22 +157,25 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 							<div className='space-y-2'>
 								<SidebarSelector
 									label='Команда'
-									value={currentTeam?.name ?? '—'}
+									value={currentTeam?.name ?? ''}
 									shortValue={teamShortValue}
 									options={teamOptions}
 									activeId={teamId}
 									isOpen={isOpen}
 									emptyLabel='Нет команд'
+									placeholder='Выберите команду'
 									onSelect={handleSelectTeam}
 								/>
 								<SidebarSelector
 									label='Проект'
-									value={currentProject?.name ?? '—'}
+									value={currentProject?.name ?? ''}
 									shortValue={projectShortValue}
 									options={projectOptions}
 									activeId={projectId}
 									isOpen={isOpen}
 									emptyLabel='Нет проектов'
+									placeholder='Выберите проект'
+									disabled={!teamId}
 									onSelect={handleSelectProject}
 								/>
 							</div>
@@ -202,22 +204,25 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 							<div className='flex flex-col items-center gap-2'>
 								<SidebarSelector
 									label='Команда'
-									value={currentTeam?.name ?? '—'}
+									value={currentTeam?.name ?? ''}
 									shortValue={teamShortValue}
 									options={teamOptions}
 									activeId={teamId}
 									isOpen={isOpen}
 									emptyLabel='Нет команд'
+									placeholder='Выберите команду'
 									onSelect={handleSelectTeam}
 								/>
 								<SidebarSelector
 									label='Проект'
-									value={currentProject?.name ?? '—'}
+									value={currentProject?.name ?? ''}
 									shortValue={projectShortValue}
 									options={projectOptions}
 									activeId={projectId}
 									isOpen={isOpen}
 									emptyLabel='Нет проектов'
+									placeholder='Выберите проект'
+									disabled={!teamId}
 									onSelect={handleSelectProject}
 								/>
 							</div>

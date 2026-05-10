@@ -24,6 +24,8 @@ interface Props {
 	activeId: string | null
 	isOpen: boolean
 	emptyLabel?: string
+	placeholder?: string
+	disabled?: boolean
 	onSelect: (id: string) => void
 }
 
@@ -35,17 +37,26 @@ function SidebarSelector({
 	activeId,
 	isOpen,
 	emptyLabel = 'Нет элементов',
+	placeholder,
+	disabled = false,
 	onSelect,
 }: Props) {
 	const isEmpty = options.length === 0
 
 	if (!isOpen) {
+		const collapsedDisabled = isEmpty || disabled
 		return (
 			<DropdownMenu>
-				<DropdownMenuTrigger asChild disabled={isEmpty}>
+				<DropdownMenuTrigger asChild disabled={collapsedDisabled}>
 					<button
-						title={isEmpty ? emptyLabel : `${label}: ${value}`}
-						disabled={isEmpty}
+						title={
+							collapsedDisabled
+								? disabled
+									? placeholder
+									: emptyLabel
+								: `${label}: ${value}`
+						}
+						disabled={collapsedDisabled}
 						className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-[var(--radius-control)] bg-sidebar-accent text-[11px] font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40'
 					>
 						{shortValue}
@@ -72,13 +83,15 @@ function SidebarSelector({
 		)
 	}
 
-	if (isEmpty) {
+	if (isEmpty || disabled) {
 		return (
 			<div className='w-full rounded-[var(--radius-control)] border border-sidebar-border/50 px-3 py-2 opacity-50'>
 				<div className='text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/50'>
 					{label}
 				</div>
-				<div className='pt-0.5 text-sm text-sidebar-foreground/40'>{emptyLabel}</div>
+				<div className='pt-0.5 text-sm text-sidebar-foreground/40'>
+					{disabled ? (placeholder ?? '—') : emptyLabel}
+				</div>
 			</div>
 		)
 	}
@@ -91,7 +104,13 @@ function SidebarSelector({
 						{label}
 					</div>
 					<div className='flex items-center justify-between gap-2 pt-0.5'>
-						<span className='truncate text-sm font-medium'>{value || '—'}</span>
+						{value ? (
+							<span className='truncate text-sm font-medium'>{value}</span>
+						) : (
+							<span className='truncate text-sm text-sidebar-foreground/40'>
+								{placeholder ?? '—'}
+							</span>
+						)}
 						<ChevronDown className='size-3.5 shrink-0 text-sidebar-foreground/50' />
 					</div>
 				</button>
