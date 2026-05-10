@@ -3,25 +3,25 @@ import { vi } from 'vitest'
 
 type TeamsPageViewUnitMockState = {
 	mockTeamsPagePush: TestMock
-	mockUseTeamsList: TestMock
+	mockUseTeamsPage: TestMock
 }
 
 const teamsPageViewUnitMockState = vi.hoisted(
 	(): TeamsPageViewUnitMockState => ({
 		mockTeamsPagePush: vi.fn(),
-		mockUseTeamsList: vi.fn(),
+		mockUseTeamsPage: vi.fn(),
 	}),
 )
 
 export const mockTeamsPagePush: TestMock = teamsPageViewUnitMockState.mockTeamsPagePush
-export const mockUseTeamsList: TestMock = teamsPageViewUnitMockState.mockUseTeamsList
+export const mockUseTeamsPage: TestMock = teamsPageViewUnitMockState.mockUseTeamsPage
 
 export function resetTeamsPageViewUnitMocks() {
 	vi.clearAllMocks()
 }
 
-vi.mock('@/shared/api/use-teams', () => ({
-	useTeamsList: () => mockUseTeamsList(),
+vi.mock('@/views/teams/model/use-teams-page', () => ({
+	useTeamsPage: () => mockUseTeamsPage(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -35,6 +35,7 @@ vi.mock('@repo/ui', () => ({
 	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
 		<button {...props}>{children}</button>
 	),
+	Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 	CardSkeleton: (props: React.HTMLAttributes<HTMLDivElement>) => (
 		<div data-testid='card-skeleton' {...props} />
 	),
@@ -68,10 +69,31 @@ vi.mock('@repo/ui', () => ({
 vi.mock('@repo/ui/icons', () => ({
 	Plus: () => <span data-testid='plus-icon' />,
 	Users: () => <span data-testid='users-icon' />,
+	Search: () => <span data-testid='search-icon' />,
+	LayoutList: () => <span data-testid='layout-list-icon' />,
+	LayoutGrid: () => <span data-testid='layout-grid-icon' />,
+}))
+
+vi.mock('@/shared/ui/view-toggle', () => ({
+	ViewToggle: () => <div data-testid='view-toggle' />,
 }))
 
 vi.mock('@/views/teams/ui/team-card', () => ({
 	TeamCard: ({
+		onOpen,
+		team,
+	}: {
+		onOpen: (team: { id: string; name: string }) => void
+		team: { id: string; name: string }
+	}) => (
+		<button data-testid={`team-card-${team.id}`} onClick={() => onOpen(team)}>
+			{team.name}
+		</button>
+	),
+}))
+
+vi.mock('@/views/teams/ui/team-list-item', () => ({
+	TeamListItem: ({
 		onOpen,
 		team,
 	}: {

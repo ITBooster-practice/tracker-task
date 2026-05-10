@@ -1,12 +1,13 @@
 import { createTeamListItemFixture } from '@/test/mocks/teams.fixtures'
 import {
 	mockTeamsPagePush,
-	mockUseTeamsList,
+	mockUseTeamsPage,
 	resetTeamsPageViewUnitMocks,
 } from '@/test/mocks/views/teams/teams-page-view.unit.mock'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { mapTeamListItemToTeamCardModel } from '@/views/teams/lib/mappers'
 import { TeamsPageView } from '@/views/teams/ui/teams-page-view'
 
 describe('TeamsPageView', () => {
@@ -17,11 +18,16 @@ describe('TeamsPageView', () => {
 	afterEach(cleanup)
 
 	it('loading — показывает сообщение о загрузке', () => {
-		mockUseTeamsList.mockReturnValue({
-			data: undefined,
+		mockUseTeamsPage.mockReturnValue({
+			allTeams: [],
+			filteredTeams: [],
 			isLoading: true,
 			isError: false,
+			searchQuery: '',
+			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: undefined,
+			setPage: vi.fn(),
 		})
 		render(<TeamsPageView />)
 
@@ -30,11 +36,16 @@ describe('TeamsPageView', () => {
 	})
 
 	it('error — показывает сообщение об ошибке', () => {
-		mockUseTeamsList.mockReturnValue({
-			data: undefined,
+		mockUseTeamsPage.mockReturnValue({
+			allTeams: [],
+			filteredTeams: [],
 			isLoading: false,
 			isError: true,
+			searchQuery: '',
+			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: undefined,
+			setPage: vi.fn(),
 		})
 		render(<TeamsPageView />)
 
@@ -42,11 +53,16 @@ describe('TeamsPageView', () => {
 	})
 
 	it('пустой список — показывает empty state', () => {
-		mockUseTeamsList.mockReturnValue({
-			data: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } },
+		mockUseTeamsPage.mockReturnValue({
+			allTeams: [],
+			filteredTeams: [],
 			isLoading: false,
 			isError: false,
+			searchQuery: '',
+			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: { page: 1, limit: 10, total: 0, totalPages: 0 },
+			setPage: vi.fn(),
 		})
 		render(<TeamsPageView />)
 
@@ -55,17 +71,24 @@ describe('TeamsPageView', () => {
 	})
 
 	it('список команд — рендерит TeamCard для каждой', () => {
-		mockUseTeamsList.mockReturnValue({
-			data: {
-				data: [
-					createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
-					createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
-				],
-				meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
-			},
+		const teams = [
+			mapTeamListItemToTeamCardModel(
+				createTeamListItemFixture({ id: 'team-1', name: 'Alpha Team' }),
+			),
+			mapTeamListItemToTeamCardModel(
+				createTeamListItemFixture({ id: 'team-2', name: 'Beta Team' }),
+			),
+		]
+		mockUseTeamsPage.mockReturnValue({
+			allTeams: teams,
+			filteredTeams: teams,
 			isLoading: false,
 			isError: false,
+			searchQuery: '',
+			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
+			setPage: vi.fn(),
 		})
 		render(<TeamsPageView />)
 
@@ -74,11 +97,16 @@ describe('TeamsPageView', () => {
 	})
 
 	it('кнопка "Создать команду" → редирект на /teams/new', () => {
-		mockUseTeamsList.mockReturnValue({
-			data: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } },
+		mockUseTeamsPage.mockReturnValue({
+			allTeams: [],
+			filteredTeams: [],
 			isLoading: false,
 			isError: false,
+			searchQuery: '',
+			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: { page: 1, limit: 10, total: 0, totalPages: 0 },
+			setPage: vi.fn(),
 		})
 		render(<TeamsPageView />)
 
@@ -94,14 +122,21 @@ describe('TeamsPageView', () => {
 	})
 
 	it('клик по TeamCard → router.push на страницу проектов команды', () => {
-		mockUseTeamsList.mockReturnValue({
-			data: {
-				data: [createTeamListItemFixture({ id: 'team-42', name: 'Design Team' })],
-				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
-			},
+		const teams = [
+			mapTeamListItemToTeamCardModel(
+				createTeamListItemFixture({ id: 'team-42', name: 'Design Team' }),
+			),
+		]
+		mockUseTeamsPage.mockReturnValue({
+			allTeams: teams,
+			filteredTeams: teams,
 			isLoading: false,
 			isError: false,
+			searchQuery: '',
+			setSearchQuery: vi.fn(),
 			refetch: vi.fn(),
+			meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			setPage: vi.fn(),
 		})
 		render(<TeamsPageView />)
 
@@ -112,11 +147,16 @@ describe('TeamsPageView', () => {
 
 	it('error — кнопка "Повторить" вызывает refetch', () => {
 		const mockRefetch = vi.fn()
-		mockUseTeamsList.mockReturnValue({
-			data: undefined,
+		mockUseTeamsPage.mockReturnValue({
+			allTeams: [],
+			filteredTeams: [],
 			isLoading: false,
 			isError: true,
+			searchQuery: '',
+			setSearchQuery: vi.fn(),
 			refetch: mockRefetch,
+			meta: undefined,
+			setPage: vi.fn(),
 		})
 		render(<TeamsPageView />)
 
