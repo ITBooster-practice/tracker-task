@@ -6,6 +6,7 @@ import { useState } from 'react'
 
 import { Button, cn, ConfirmDialog, EmptyState, Skeleton, toast } from '@repo/ui'
 import {
+	Activity,
 	Bot,
 	ChevronRight,
 	FolderKanban,
@@ -69,6 +70,22 @@ function ProjectDetailPageView() {
 
 	const boards: { id: string; name: string; columnCount: number }[] = []
 
+	type RecentActivity = {
+		id: string
+		type: 'BUG' | 'TASK' | 'EPIC'
+		key: string
+		title: string
+		board: string
+		status: string
+	}
+	const recentActivities: RecentActivity[] = []
+
+	const typeBadgeClassName: Record<RecentActivity['type'], string> = {
+		BUG: 'bg-red-500/20 text-red-400',
+		TASK: 'bg-blue-500/20 text-blue-400',
+		EPIC: 'bg-purple-500/20 text-purple-400',
+	}
+
 	const handleDelete = async () => {
 		try {
 			await deleteProject({ teamId, projectId })
@@ -93,7 +110,7 @@ function ProjectDetailPageView() {
 					</div>
 					<div className='mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
 						{Array.from({ length: 3 }).map((_, i) => (
-							<Skeleton key={i} className='h-[80px] rounded-[var(--radius-surface)]' />
+							<Skeleton key={i} className='h-[82px] rounded-lg' />
 						))}
 					</div>
 					<Skeleton className='mb-4 h-6 w-24' />
@@ -179,11 +196,11 @@ function ProjectDetailPageView() {
 							<button
 								key={card.id}
 								type='button'
-								className='flex h-[80px] w-full items-center gap-4 rounded-[var(--radius-surface)] border border-border bg-card px-5 text-left transition-colors hover:border-primary/30'
+								className='flex w-full items-center gap-4 rounded-lg border border-border bg-card p-5 text-left transition-all hover:border-primary/40'
 							>
 								<div
 									className={cn(
-										'flex size-11 shrink-0 items-center justify-center rounded-xl',
+										'flex size-10 shrink-0 items-center justify-center rounded-md',
 										card.iconBgClassName,
 									)}
 								>
@@ -202,7 +219,7 @@ function ProjectDetailPageView() {
 					})}
 				</section>
 
-				<section>
+				<section className='mb-7'>
 					<div className='mb-4 flex items-center justify-between'>
 						<h2 className='text-[20px] font-semibold tracking-tight'>Доски</h2>
 						<button
@@ -240,6 +257,52 @@ function ProjectDetailPageView() {
 							</div>
 						)}
 					</div>
+				</section>
+
+				<section>
+					<div className='mb-4 flex items-center gap-2'>
+						<Activity className='size-5 text-muted-foreground' />
+						<h2 className='text-[20px] font-semibold tracking-tight'>
+							Последняя активность
+						</h2>
+					</div>
+					{recentActivities.length > 0 ? (
+						<div className='flex flex-col gap-3'>
+							{recentActivities.map((item) => (
+								<div
+									key={item.id}
+									className='flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3'
+								>
+									<span
+										className={cn(
+											'shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold',
+											typeBadgeClassName[item.type],
+										)}
+									>
+										{item.type}
+									</span>
+									<span className='shrink-0 text-[13px] text-muted-foreground'>
+										{item.key}
+									</span>
+									<span className='min-w-0 flex-1 truncate text-[14px]'>
+										{item.title}
+									</span>
+									<div className='flex shrink-0 items-center gap-2'>
+										<span className='rounded border border-border px-2 py-0.5 text-[12px] text-muted-foreground'>
+											{item.board}
+										</span>
+										<span className='text-[12px] font-medium text-blue-400'>
+											{item.status}
+										</span>
+									</div>
+								</div>
+							))}
+						</div>
+					) : (
+						<div className='rounded-lg border border-dashed border-border bg-card px-5 py-8 text-[14px] text-muted-foreground'>
+							Нет активностей
+						</div>
+					)}
 				</section>
 			</div>
 

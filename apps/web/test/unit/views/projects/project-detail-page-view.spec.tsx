@@ -54,6 +54,7 @@ vi.mock('@repo/ui', () => ({
 }))
 
 vi.mock('@repo/ui/icons', () => ({
+	Activity: () => <span />,
 	Bot: () => <span />,
 	ChevronRight: () => <span />,
 	FolderKanban: () => <span />,
