@@ -111,9 +111,6 @@ function SidebarSelector({
 						onSelect={() => onSelect(option.id)}
 					>
 						<span className='truncate'>{option.name}</span>
-						<span className='shrink-0 text-xs text-muted-foreground'>
-							{option.shortName}
-						</span>
 					</DropdownMenuItem>
 				))}
 			</DropdownMenuContent>

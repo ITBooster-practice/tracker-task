@@ -126,7 +126,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 				className,
 			)}
 		>
-			<div className='h-14 border-b border-sidebar-border px-3'>
+			<div className='h-14 px-3'>
 				<Link
 					href={ROUTES.home}
 					onClick={onNavigate}
