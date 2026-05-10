@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSideBarStore } from '@/widgets/main-layout/model/sidebar'
 import { Sidebar } from '@/widgets/main-layout/ui/sidebar'
 
-// ─── Мок: next/link ──────────────────────────────────────────────
 vi.mock('next/link', () => ({
 	default: ({
 		href,
@@ -22,21 +21,20 @@ vi.mock('next/link', () => ({
 	),
 }))
 
-// ─── Мок: usePathname, useParams ─────────────────────────────────
 const mockUsePathname = vi.fn()
 const mockUseParams = vi.fn()
+const mockRouterPush = vi.fn()
 
 vi.mock('next/navigation', () => ({
 	usePathname: () => mockUsePathname(),
 	useParams: () => mockUseParams(),
+	useRouter: () => ({ push: mockRouterPush }),
 }))
 
-// ─── Мок: ThemeToggle ────────────────────────────────────────────
 vi.mock('@/features/theme', () => ({
 	ThemeToggle: () => <button data-testid='theme-toggle' />,
 }))
 
-// ─── Мок: useTeamsList ───────────────────────────────────────────
 const mockUseTeamsList = vi.fn()
 const mockUseMe = vi.fn()
 
@@ -48,19 +46,20 @@ vi.mock('@/shared/api/use-auth', () => ({
 	useMe: () => mockUseMe(),
 }))
 
-// ─── Мок: shared/config ──────────────────────────────────────────
 vi.mock('@/shared/config', () => ({
 	getSidebarRouteId: () => null,
 	ROUTES: { home: '/' },
+	teamRoutes: {
+		projects: (id: string) => `/teams/${id}/projects`,
+		project: (teamId: string, projectId: string) =>
+			`/teams/${teamId}/projects/${projectId}`,
+	},
 }))
 
-// ─── Мок: useProjectsList ────────────────────────────────────────
 vi.mock('@/shared/api/use-projects', () => ({
 	useProjectsList: () => ({ data: { data: [], meta: {} } }),
 }))
 
-// ─── Мок: shared/config ──────────────────────────────────────────
-// ─── Мок: model/sidebar ──────────────────────────────────────────
 vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
 	const original =
 		await importOriginal<typeof import('@/widgets/main-layout/model/sidebar')>()
@@ -72,9 +71,9 @@ vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
 				title: 'Работа',
 				items: [
 					{
-						title: 'Проекты',
-						href: '/teams/team-1/projects',
-						routeId: 'team.projects',
+						title: 'Доска',
+						href: '/boards',
+						routeId: 'boards',
 						icon: () => <span />,
 					},
 				],
@@ -85,7 +84,6 @@ vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
 	}
 })
 
-// ─── Мок: SidebarMenuItem / SidebarProjectItem ───────────────────
 vi.mock('@/widgets/main-layout/ui/sidebar/sidebar-menu-item', () => ({
 	SidebarMenuItem: ({
 		title,
@@ -103,18 +101,26 @@ vi.mock('@/widgets/main-layout/ui/sidebar/sidebar-menu-item', () => ({
 	),
 }))
 
-vi.mock('@/widgets/main-layout/ui/sidebar/sidebar-project-item', () => ({
-	SidebarProjectItem: ({
-		title,
+vi.mock('@/widgets/main-layout/ui/sidebar/sidebar-selector', () => ({
+	SidebarSelector: ({
+		label,
+		value,
 	}: {
-		title: string
-		href: string
-		isActive: boolean
+		label: string
+		value: string
+		shortValue: string
+		options: unknown[]
+		activeId: string | null
 		isOpen: boolean
-	}) => <div data-testid='project-item'>{title}</div>,
+		onSelect: (id: string) => void
+	}) => (
+		<div data-testid='sidebar-selector'>
+			<span>{label}</span>
+			<span>{value}</span>
+		</div>
+	),
 }))
 
-// ─── Мок: UI-компоненты ──────────────────────────────────────────
 vi.mock('@repo/ui', () => ({
 	Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
@@ -157,7 +163,7 @@ describe('Sidebar', () => {
 		expect(screen.queryByText('Tracker Task')).toBeNull()
 	})
 
-	it('показывает имя текущей команды под заголовком когда sidebar открыт', () => {
+	it('показывает имя текущей команды в селекторе команды', () => {
 		mockUseParams.mockReturnValue({ id: 'team-1' })
 		mockUseTeamsList.mockReturnValue({
 			data: {

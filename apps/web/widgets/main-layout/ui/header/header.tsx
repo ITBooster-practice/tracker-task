@@ -3,6 +3,8 @@ import React from 'react'
 import { Button, Input } from '@repo/ui'
 import { Bell } from '@repo/ui/icons'
 
+import { ThemeToggle } from '@/features/theme'
+
 import { MobileSidebarTrigger } from './mobile-sidebar-trigger'
 import { ProfileMenu } from './profile-menu'
 import { SidebarToggle } from './sidebar-toggle'
@@ -30,6 +32,7 @@ const Header = () => (
 			>
 				<Bell className='size-4' />
 			</Button>
+			<ThemeToggle size='icon-sm' iconClassName='size-4' />
 			<ProfileMenu />
 		</div>
 	</div>

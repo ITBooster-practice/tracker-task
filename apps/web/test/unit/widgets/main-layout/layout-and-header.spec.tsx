@@ -5,6 +5,11 @@ import { Header } from '@/widgets/main-layout/ui/header/header'
 import { Layout } from '@/widgets/main-layout/ui/layout'
 import { MainLayout } from '@/widgets/main-layout/ui/main-layout'
 
+// ─── Мок: ThemeToggle ────────────────────────────────────────────
+vi.mock('@/features/theme', () => ({
+	ThemeToggle: () => <button data-testid='theme-toggle' />,
+}))
+
 // ─── Мок: sub-компоненты Header ──────────────────────────────────
 vi.mock('@/widgets/main-layout/ui/header/mobile-sidebar-trigger', () => ({
 	MobileSidebarTrigger: () => <div data-testid='mobile-trigger' />,

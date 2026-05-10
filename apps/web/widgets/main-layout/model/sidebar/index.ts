@@ -3,7 +3,6 @@ export { sidebarCurrentUser, getSidebarSections, sidebarWorkspace } from './navi
 export type {
 	SidebarNavItem,
 	SidebarNavSection,
-	SidebarProjectItem,
 	SidebarUserCard,
 	SidebarWorkspace,
 } from './types'
