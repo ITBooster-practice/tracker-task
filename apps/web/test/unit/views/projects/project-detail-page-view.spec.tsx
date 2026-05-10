@@ -23,16 +23,13 @@ vi.mock('next/navigation', () => ({
 	useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/shared/api/use-teams', () => ({
-	useTeamName: () => 'Alpha Team',
-}))
-
 vi.mock('@/shared/api/use-projects', () => ({
 	useProjectDetail: (...args: unknown[]) => mockUseProjectDetail(...args),
 	useDeleteProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/shared/config', () => ({
+	ROUTES: { teams: '/teams' },
 	teamRoutes: {
 		projects: (teamId: string) => `/teams/${teamId}/projects`,
 	},
@@ -57,13 +54,13 @@ vi.mock('@repo/ui', () => ({
 }))
 
 vi.mock('@repo/ui/icons', () => ({
-	Activity: () => <span />,
+	Bot: () => <span />,
 	ChevronRight: () => <span />,
 	FolderKanban: () => <span />,
 	KanbanSquare: () => <span />,
+	ListFilter: () => <span />,
 	Pencil: () => <span />,
 	Plus: () => <span />,
-	Sparkles: () => <span />,
 	SquareKanban: () => <span />,
 	Trash2: () => <span />,
 }))
@@ -110,12 +107,15 @@ describe('ProjectDetailPageView', () => {
 
 	afterEach(cleanup)
 
-	it('breadcrumb — показывает имя команды как ссылку и название проекта', () => {
+	it('breadcrumb — показывает Команды, Проекты и название проекта', () => {
 		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 
-		const teamLink = screen.getByRole('link', { name: 'Alpha Team' })
-		expect(teamLink).toBeDefined()
-		expect(teamLink.getAttribute('href')).toBe('/teams/team-1/projects')
+		const teamsLink = screen.getByRole('link', { name: 'Команды' })
+		expect(teamsLink.getAttribute('href')).toBe('/teams')
+
+		const projectsLink = screen.getByRole('link', { name: 'Проекты' })
+		expect(projectsLink.getAttribute('href')).toBe('/teams/team-1/projects')
+
 		expect(screen.getByRole('heading', { name: 'My Project' })).toBeDefined()
 	})
 
@@ -125,12 +125,6 @@ describe('ProjectDetailPageView', () => {
 		expect(
 			screen.getByText('Пока нет досок. Создайте первую доску для проекта.'),
 		).toBeDefined()
-	})
-
-	it('задачи — пустое состояние', () => {
-		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
-
-		expect(screen.getByText('В проекте пока нет задач.')).toBeDefined()
 	})
 
 	it('loading — показывает skeleton', () => {
