@@ -15,6 +15,7 @@ import {
 	ApiCreatedResponse,
 	ApiForbiddenResponse,
 	ApiNotFoundResponse,
+	ApiNoContentResponse,
 	ApiOkResponse,
 	ApiOperation,
 	ApiTags,
@@ -89,13 +90,11 @@ export class ProjectsController {
 	}
 
 	@ApiOperation({ summary: 'Удалить проект (OWNER / ADMIN)' })
-	@ApiOkResponse({
-		description: 'Проект удалён',
-		schema: { example: { message: 'Проект успешно удалён', success: true } },
-	})
+	@ApiNoContentResponse({ description: 'Проект удалён' })
 	@ApiNotFoundResponse({ description: 'Проект не найден' })
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для удаления проекта' })
 	@Delete(':projectId')
+	@HttpCode(HttpStatus.NO_CONTENT)
 	remove(
 		@Param('teamId') teamId: string,
 		@Param('projectId') projectId: string,
