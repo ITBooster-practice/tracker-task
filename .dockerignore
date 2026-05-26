@@ -1,0 +1,39 @@
+# Система контроля версий
+.git
+.github
+
+# Зависимости — устанавливаются внутри контейнера
+node_modules
+**/node_modules
+
+# Артефакты сборки — генерируются внутри контейнера
+apps/api/dist
+apps/api/generated
+apps/web/.next
+packages/*/dist
+
+# Кэши Turbo и сборщиков
+.turbo
+**/.turbo
+
+# Тесты и покрытие
+**/coverage
+**/*.spec.ts
+**/*.test.ts
+**/vitest.config.*
+**/vitest.setup.*
+
+# Документация
+docs
+
+# Локальные .env-файлы — секреты никогда не должны попадать в образ
+.env
+.env.*
+!**/.env.example
+
+# Файлы редактора и ОС
+.vscode
+.idea
+*.log
+.DS_Store
+Thumbs.db
