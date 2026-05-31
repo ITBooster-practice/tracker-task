@@ -2,11 +2,11 @@
 
 Это **второе из трёх окружений** проекта:
 
-| #   | Окружение        | Где живёт    | Как запускается                               |
-| --- | ---------------- | ------------ | --------------------------------------------- |
-| 1   | **dev**          | Твой ноутбук | `pnpm dev` — горячая перезагрузка, без Docker |
-| 2   | **local-stage**  | Твой ноутбук | Docker Compose — production-образы локально   |
-| 3   | **stage / prod** | VPS          | CI/CD или ручной деплой на сервер             |
+| #   | Окружение        | Где живёт    | Как запускается                                          |
+| --- | ---------------- | ------------ | -------------------------------------------------------- |
+| 1   | **dev**          | Твой ноутбук | `pnpm dev` — горячая перезагрузка, без Docker            |
+| 2   | **local-stage**  | Твой ноутбук | `pnpm stage` — production-образы в Docker одной командой |
+| 3   | **stage / prod** | VPS          | CI/CD или ручной деплой на сервер                        |
 
 Цель local-stage — **убедиться, что Docker-образы собираются и работают правильно** прежде чем отправлять их на VPS.
 
@@ -20,8 +20,13 @@
         ├── /api/*  →  api:3000   (NestJS)
         └── /*      →  web:3000   (Next.js standalone)
 
-http://localhost:8025           ← Mailpit (перехватчик писем)
+http://localhost:8026           ← Mailpit (перехватчик писем, UI)
 ```
+
+> Mailpit-UI вынесен на **8026**, чтобы не конфликтовать с dev-стеком,
+> в котором тот же Mailpit поднят на `:8025` через `pnpm dev`.
+> Внутри local-stage SMTP-порт `1025` наружу не прокинут — он доступен
+> только api-контейнеру через внутреннюю docker-сеть.
 
 **Сервисы:**
 
@@ -34,52 +39,42 @@ http://localhost:8025           ← Mailpit (перехватчик писем)
 
 ---
 
-## Первый запуск — пошагово
+## Первый запуск — одной командой
 
-### Шаг 1. Собери Docker-образы
-
-Из **корня монорепо** (не из `apps/api` или `apps/web`):
+Из **корня монорепо**:
 
 ```bash
-# Собрать API
-docker build -f apps/api/Dockerfile -t tracker-api:local .
-
-# Собрать Web
-docker build -f apps/web/Dockerfile -t tracker-web:local .
+pnpm stage
 ```
 
-> **Почему контекст — корень?**
-> Оба Dockerfile копируют файлы из корня монорепо: `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `packages/`, и т.д. Если запустить `docker build` из `apps/api/`, Docker не увидит эти файлы.
+Под капотом это `docker compose -f docker-compose.local.yml up -d --build`:
+собирает образы api и web из их Dockerfile и поднимает весь стек
+(Caddy + Postgres + Redis + Mailpit + api + web).
 
-Первая сборка занимает 5–10 минут (скачиваются зависимости). Повторные — быстрее благодаря кэшу слоёв.
+Первая сборка занимает 5–10 минут (скачиваются зависимости).
+Повторные запуски используют кэш слоёв и проходят за секунды,
+если код не менялся.
 
-### Шаг 2. Запусти стек
+> **Почему контекст сборки — корень монорепо?**
+> Оба Dockerfile копируют файлы из корня: `pnpm-workspace.yaml`,
+> `pnpm-lock.yaml`, `packages/`, и т.д. Compose-файл это уже знает
+> и проставляет `context: .` автоматически.
 
-```bash
-docker compose -f docker-compose.local.yml up -d
-```
-
-Флаг `-d` — запуск в фоне (detached). Compose поднимет все 6 сервисов.
-
-### Шаг 3. Применить миграции БД
+### Применить миграции БД
 
 Нужно **только при первом запуске** или после изменения схемы Prisma:
 
 ```bash
-docker compose -f docker-compose.local.yml exec api sh -c \
-  "node_modules/.bin/prisma migrate deploy --config prisma.config.mjs"
+pnpm stage:migrate
 ```
 
-Что происходит:
-
-- `exec api` — запустить команду внутри контейнера `api`
-- `prisma migrate deploy` — применить все SQL-миграции из `prisma/migrations/` к БД
+Под капотом: `docker compose -f docker-compose.local.yml exec api node node_modules/.bin/prisma migrate deploy`.
 
 ### Шаг 4. Открой в браузере
 
 - **Приложение**: http://localhost
 - **API** (например, health-check): http://localhost/api/health
-- **Входящие письма** (подтверждение email, сброс пароля): http://localhost:8025
+- **Входящие письма** (подтверждение email, сброс пароля): http://localhost:8026
 
 ### Шаг 5. Smoke-проверка
 
@@ -90,7 +85,7 @@ docker compose -f docker-compose.local.yml exec api sh -c \
    - email: `admin@example.com`
    - пароль: `password123`
      (Учётка создаётся seed-ом — см. `apps/api/prisma/seed.ts`. Все три тестовых пользователя — `admin@`, `developer@`, `manager@` — имеют один пароль `password123`.)
-3. Зарегистрировать нового пользователя — после регистрации в http://localhost:8025 должно появиться приветственное письмо.
+3. Зарегистрировать нового пользователя — после регистрации в http://localhost:8026 должно появиться приветственное письмо.
 
 Если письмо не появилось — значит API ушёл слать через Resend вместо Mailpit. Проверь переменную `MAIL_TRANSPORT` в `docker-compose.local.yml` (должна быть `smtp`).
 
@@ -98,19 +93,16 @@ docker compose -f docker-compose.local.yml exec api sh -c \
 
 ## Пересборка после изменений
 
-Если изменил код в `apps/api/src/` или `apps/web/` — нужно пересобрать образ:
+Если изменил код в `apps/api/src/` или `apps/web/` — повторно запусти `pnpm stage`,
+флаг `--build` внутри пересоберёт только изменившиеся слои образов и перезапустит
+соответствующие контейнеры.
+
+Если нужно пересобрать вручную и поднять только один сервис:
 
 ```bash
-# Пересобрать только API
-docker build -f apps/api/Dockerfile -t tracker-api:local .
-
-# Пересобрать только Web
-docker build -f apps/web/Dockerfile -t tracker-web:local .
-
-# Перезапустить изменившийся сервис
-docker compose -f docker-compose.local.yml up -d api
+docker compose -f docker-compose.local.yml up -d --build api
 # или
-docker compose -f docker-compose.local.yml up -d web
+docker compose -f docker-compose.local.yml up -d --build web
 ```
 
 ---
@@ -118,20 +110,20 @@ docker compose -f docker-compose.local.yml up -d web
 ## Полезные команды
 
 ```bash
-# Посмотреть логи API в реальном времени
+# Логи API в реальном времени
 docker compose -f docker-compose.local.yml logs -f api
 
-# Посмотреть логи всех сервисов
-docker compose -f docker-compose.local.yml logs -f
+# Логи всех сервисов сразу
+pnpm stage:logs
 
 # Зайти в контейнер API (как SSH на сервер)
 docker compose -f docker-compose.local.yml exec api sh
 
 # Остановить стек (данные БД сохранятся)
-docker compose -f docker-compose.local.yml down
+pnpm stage:down
 
 # Остановить стек И удалить данные БД (полный сброс)
-docker compose -f docker-compose.local.yml down -v
+pnpm stage:reset
 ```
 
 ---
@@ -183,7 +175,7 @@ MAIL_PORT: 1025
 
 1. NestJS через Nodemailer подключается к `mailpit:1025`
 2. Mailpit принимает письмо, **не отправляет** его реальному получателю
-3. Письмо появляется в веб-интерфейсе: http://localhost:8025
+3. Письмо появляется в веб-интерфейсе: http://localhost:8026
 
 Это позволяет тестировать письма без реального SMTP-сервера и без риска случайно отправить что-то пользователям.
 
@@ -327,13 +319,13 @@ if (transport === 'smtp') {
 
 ## Три окружения — сводная таблица
 
-|               | dev                 | local-stage                                     | stage/prod (VPS)           |
-| ------------- | ------------------- | ----------------------------------------------- | -------------------------- |
-| Запуск        | `pnpm dev`          | `docker compose -f docker-compose.local.yml up` | CI/CD или вручную          |
-| API           | ts-node, hot reload | production-сборка в Docker                      | production-сборка в Docker |
-| Web           | Next.js dev server  | Next.js standalone                              | Next.js standalone         |
-| БД            | локальная / Docker  | Docker (postgres:16)                            | Managed DB или Docker      |
-| Почта         | нет / заглушка      | Mailpit (перехватчик)                           | Resend / настоящий SMTP    |
-| Reverse proxy | нет                 | Caddy (HTTP)                                    | Caddy (HTTPS + домен)      |
-| HTTPS         | нет                 | нет                                             | да, Let's Encrypt          |
-| Домен         | localhost           | localhost                                       | реальный домен             |
+|               | dev                 | local-stage                | stage/prod (VPS)           |
+| ------------- | ------------------- | -------------------------- | -------------------------- |
+| Запуск        | `pnpm dev`          | `pnpm stage`               | CI/CD или вручную          |
+| API           | ts-node, hot reload | production-сборка в Docker | production-сборка в Docker |
+| Web           | Next.js dev server  | Next.js standalone         | Next.js standalone         |
+| БД            | локальная / Docker  | Docker (postgres:16)       | Managed DB или Docker      |
+| Почта         | нет / заглушка      | Mailpit (перехватчик)      | Resend / настоящий SMTP    |
+| Reverse proxy | нет                 | Caddy (HTTP)               | Caddy (HTTPS + домен)      |
+| HTTPS         | нет                 | нет                        | да, Let's Encrypt          |
+| Домен         | localhost           | localhost                  | реальный домен             |

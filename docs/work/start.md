@@ -4,7 +4,7 @@
 
 - Node.js >= 22
 - pnpm >= 10.29.3
-- Docker и Docker Compose (для Redis)
+- Docker и Docker Compose (для Redis и Mailpit)
 - PostgreSQL >= 17+
 - pgAdmin (для управления PostgreSQL)
 
@@ -56,7 +56,17 @@ cp apps/web/.env.example apps/web/.env
 
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/mydb?schema=public"
+
+# Mail (dev → Mailpit, поднимается через pnpm dev)
+MAIL_TRANSPORT=smtp
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_FROM=noreply@tracker-task.local
+MAIL_FROM_NAME=Tracker Task
 ```
+
+> На Windows используй `MAIL_HOST=127.0.0.1` вместо `localhost` — это
+> обходит проблему IPv6-резолва, из-за которой nodemailer может зависать.
 
 ### 4. Настроить базу данных
 
@@ -87,17 +97,22 @@ DATABASE_URL="postgresql://user:password@localhost:5432/mydb?schema=public"
    - Выполнить: `SELECT 1;` (F5)
    - Если вернулось `1` - всё работает ✅
 
-### 5. Запустить Redis через Docker
+### 5. Запуск Redis и Mailpit через Docker
 
 ```bash
 pnpm docker:redis-up
 ```
+
+Или просто запусти `pnpm dev` — он сам поднимет оба контейнера
+(redis + mailpit) перед стартом API/web.
 
 Проверить статус:
 
 ```bash
 pnpm docker:redis-status
 ```
+
+Mailpit-UI (входящие письма в dev): http://localhost:8025
 
 ### 6. Настройка Prisma
 

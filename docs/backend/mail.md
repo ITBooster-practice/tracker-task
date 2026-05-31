@@ -38,7 +38,7 @@ src/mail/
 | Переменная       | Когда нужно                 | Описание                                       | Пример                  |
 | ---------------- | --------------------------- | ---------------------------------------------- | ----------------------- |
 | `MAIL_TRANSPORT` | всегда                      | `smtp` или `resend` (по умолчанию `resend`)    | `smtp`                  |
-| `MAIL_HOST`      | при `MAIL_TRANSPORT=smtp`   | Хост SMTP-сервера                              | `localhost`, `mailpit`  |
+| `MAIL_HOST`      | при `MAIL_TRANSPORT=smtp`   | Хост SMTP-сервера                              | `127.0.0.1`, `mailpit`  |
 | `MAIL_PORT`      | при `MAIL_TRANSPORT=smtp`   | Порт SMTP-сервера                              | `1025`                  |
 | `RESEND_API_KEY` | при `MAIL_TRANSPORT=resend` | API-ключ сервиса Resend                        | `re_xxxxxxxxxxxxxxxx`   |
 | `MAIL_FROM`      | всегда                      | Email адрес отправителя                        | `noreply@example.com`   |
@@ -66,7 +66,7 @@ src/mail/
 
 | Окружение        | `MAIL_TRANSPORT`              | Куда уходят письма                                        |
 | ---------------- | ----------------------------- | --------------------------------------------------------- |
-| dev (`pnpm dev`) | `smtp`                        | Mailpit на `localhost:1025`, просмотр на `localhost:8025` |
+| dev (`pnpm dev`) | `smtp`                        | Mailpit на `127.0.0.1:1025`, просмотр на `localhost:8025` |
 | local-stage      | `smtp`                        | Mailpit-контейнер из `docker-compose.local.yml`           |
 | stage (VPS)      | `smtp` или `resend` (sandbox) | Mailtrap / Mailpit на VPS / Resend sandbox                |
 | prod             | `resend`                      | Реальные адреса через Resend                              |
