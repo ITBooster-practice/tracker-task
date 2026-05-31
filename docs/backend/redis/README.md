@@ -13,7 +13,7 @@ pnpm docker:redis-down    # остановить
 ### Интерактивный режим (redis-cli)
 
 ```bash
-docker exec -it tracker_redis redis-cli
+docker exec -it dev-tracker-task-redis redis-cli
 ```
 
 Команды внутри:
@@ -29,21 +29,21 @@ EXIT                    # выйти
 ### Одна команда без входа в контейнер
 
 ```bash
-docker exec tracker_redis redis-cli KEYS "*"
-docker exec tracker_redis redis-cli GET refresh:<userId>
+docker exec dev-tracker-task-redis redis-cli KEYS "*"
+docker exec dev-tracker-task-redis redis-cli GET refresh:<userId>
 ```
 
 ### Проверить что Redis живой
 
 ```bash
-docker exec tracker_redis redis-cli PING
+docker exec dev-tracker-task-redis redis-cli PING
 # ответ: PONG
 ```
 
 ## Очистить все данные
 
 ```bash
-docker exec tracker_redis redis-cli FLUSHALL
+docker exec dev-tracker-task-redis redis-cli FLUSHALL
 ```
 
 ## Структура ключей
