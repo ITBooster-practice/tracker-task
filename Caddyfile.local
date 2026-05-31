@@ -1,0 +1,19 @@
+# Локальный Caddyfile — HTTP-only (без TLS, без Let's Encrypt).
+# Маршрутизация повторяет логику prod-Caddyfile на VPS:
+#   /api/* → api-контейнер
+#   /*     → web-контейнер
+
+:80 {
+    encode zstd gzip
+
+    # Запросы к API — обрезаем префикс /api и проксируем в api-контейнер
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy api:3000
+    }
+
+    # Всё остальное — в Next.js
+    handle {
+        reverse_proxy web:3000
+    }
+}
