@@ -1,10 +1,12 @@
-# 🚀 Tracker Task — Дорожная карта разработки
+# Tracker Task
 
-**Open-source система управления IT-проектами**
+Open-source система управления IT-проектами. Лёгкая, современная альтернатива
+Jira и Яндекс.Трекеру для разработчиков и небольших команд.
 
-> Лёгкая, современная альтернатива Jira и Яндекс.Трекер для разработчиков и небольших команд
+> Документ описывает **текущее состояние** проекта и **что осталось до MVP**.
+> Подробные гайды по темам — в разделе [Документация](#-документация-проекта) ниже.
 
-## 👥 Команда
+## Команда
 
 - **Дмитрий** — Fullstack (преимущественно Backend), Middle, Тимлид
 - **Сальман** — Frontend, Middle+
@@ -13,341 +15,200 @@
 - **Александр** — Frontend, Junior+
 - **Роман** — Frontend, Junior
 
----
+## Цель
 
-## 🎯 Основная цель проекта
+Self-hosted трекер, который можно развернуть на своём сервере одной командой:
 
-Создать self-hosted трекер задач, который можно легко развернуть на своем сервере:
-
-- 📊 Проекты, доски, задачи (Epic, Story, Bug, Task, Tech Debt)
-- 👥 Команды с ролями и правами доступа
-- 🤖 AI ассистент для генерации задач и консультации
-- ⚡ Realtime уведомления через WebSockets
-- 🐳 Простое развертывание через Docker
+- Проекты, доски, задачи (Epic, Story, Bug, Task, Tech Debt)
+- Команды с ролями и правами доступа
+- AI-ассистент для генерации задач и консультаций
+- Realtime-уведомления через WebSockets
+- Простое развертывание через Docker
 
 ---
 
-## 📋 Первоочередные задачи для старта
+## Стек
 
-### 🎨 1. Frontend — UI Kit и базовая инфраструктура
-
-#### 1.1 Настройка UI Kit
-
-- [ ] **Установить и настроить ShadCN UI + Tailwind CSS**
-  - Настроить темы (светлая/темная)
-  - Создать базовые компоненты (Button, Input, Card, Modal и т.д.)
-  - Настроить переменные для цветов и отступов
-- [ ] **Настроить Storybook**
-  - Интеграция с проектом
-  - Создать stories для базовых компонентов
-  - Документация компонентов
-- [ ] **Создать UI Kit в `packages/ui`**
-  - Button, Input, Select, Checkbox, Radio
-  - Modal, Dialog, Drawer
-  - Card, Badge, Avatar
-  - Table, Pagination
-  - Toast, Alert
-  - Form components (FormField, FormLabel, FormError)
-
-#### 1.2 Архитектура и структура
-
-- [ ] **Настроить Feature-Sliced Design (FSD)**
-  - Создать структуру папок (app, pages, widgets, features, entities, shared)
-  - Настроить ESLint плагин для FSD
-  - Документация по структуре
-- [x] **Настроить State Management**
-  - Zustand для локального состояния
-  - TanStack Query для серверного состояния
-  - [x] Созданы базовые Zustand stores (`entities/user`, `features/theme`, `widgets/sidebar`)
-- [ ] **Настроить Forms**
-  - React Hook Form + Zod
-  - Создать базовые схемы валидации
-  - Примеры переиспользуемых форм
-
-#### 1.3 Авторизация (Frontend)
-
-- [ ] **Создать страницы Auth**
-  - `/login` — страница входа
-  - `/register` — страница регистрации
-  - `/forgot-password` — восстановление пароля
-- [ ] **Реализовать Auth Flow**
-  - Хранение JWT токена
-  - Автоматическое обновление токена (refresh)
-  - Защищенные роуты (PrivateRoute)
-  - Редирект после авторизации
-- [ ] **Создать Auth UI компоненты**
-  - LoginForm
-  - RegisterForm
-  - ForgotPasswordForm
+| Слой        | Технологии                                                                 |
+| ----------- | -------------------------------------------------------------------------- |
+| Frontend    | Next.js 16 (App Router), TypeScript, Tailwind, ShadCN UI                   |
+| State       | Zustand + TanStack Query                                                   |
+| Forms       | React Hook Form + Zod                                                      |
+| Backend     | NestJS, Prisma 7, PostgreSQL 16, Redis 7, argon2                           |
+| Mail        | Nodemailer (Mailpit dev) / Resend (prod) через `MAIL_TRANSPORT`            |
+| API docs    | Swagger                                                                    |
+| Архитектура | Монорепо: pnpm workspaces + Turborepo, Frontend по Feature-Sliced Design   |
+| Infra       | Docker Compose (dev / local-stage), Caddy на VPS, GitHub Actions           |
+| Quality     | ESLint + Prettier, Husky, commitlint (conventional commits), lint-staged   |
+| Tests       | Vitest + Testing Library (web), Vitest + supertest (api), e2e c Playwright |
 
 ---
 
-### 🔧 2. Backend — База данных и авторизация
-
-#### 2.1 Настройка базы данных
-
-- [ ] **Docker Compose для локальной разработки**
-  - PostgreSQL
-  - Redis
-  - Adminer/pgAdmin (опционально)
-  - Docker файлы для всех сервисов
-- [ ] **Выбрать и настроить ORM**
-  - Prisma ИЛИ TypeORM (принять решение)
-  - Создать базовую схему БД
-  - Настроить миграции
-- [ ] **Создать базовые модели**
-  - User (id, email, password, name, role, avatar, createdAt, updatedAt)
-  - Team (id, name, ownerId, createdAt, updatedAt)
-  - TeamMember (id, teamId, userId, role, createdAt)
-  - Project (id, teamId, name, description, createdAt, updatedAt)
-
-#### 2.2 Авторизация и аутентификация (Backend)
-
-- [ ] **Реализовать Auth модуль в NestJS**
-  - `POST /auth/register` — регистрация
-  - `POST /auth/login` — вход
-  - `POST /auth/refresh` — обновление токена
-  - `POST /auth/logout` — выход
-  - `POST /auth/forgot-password` — восстановление пароля
-  - `POST /auth/reset-password` — сброс пароля
-- [ ] **Настроить JWT**
-  - Access token (15 минут)
-  - Refresh token (7 дней)
-  - Хранение refresh token в БД или Redis
-- [ ] **Настроить Guards и Decorators**
-  - `@Auth()` — защита роутов
-  - `@CurrentUser()` — получение текущего пользователя
-  - `@Roles()` — проверка ролей
-- [ ] **Хэширование паролей**
-  - bcrypt для хэширования
-  - Валидация пароля при входе
-
-#### 2.3 Swagger документация
-
-- [ ] **Настроить Swagger**
-  - Автодокументация всех endpoints
-  - Описание моделей и DTO
-  - Примеры запросов/ответов
-
----
-
-### 🛠️ 3. Общая инфраструктура
-
-#### 3.1 CI/CD Pipeline
-
-- [ ] **Настроить GitHub Actions**
-  - Lint (ESLint, Prettier)
-  - Type check (TypeScript)
-  - Tests (Vitest)
-  - Build
-  - Прогон на каждый Pull Request
-- [ ] **Branch Protection Rules**
-  - Запрет прямого пуша в `main`/`dev`
-  - Обязательное code review
-  - Требование прохождения CI
-
-#### 3.2 Docker и запуск проекта
-
-- [ ] **Docker Compose для разработки**
-  - API (NestJS)
-  - Web (Next.js)
-  - PostgreSQL
-  - Redis
-  - One-command запуск всего проекта
-- [ ] **Документация по запуску**
-  - README с инструкциями
-  - Список переменных окружения
-  - Troubleshooting частых проблем
-
-#### 3.3 Качество кода
-
-- [ ] **Настроить Husky**
-  - Pre-commit хуки (lint, format, type-check)
-  - Commit message validation (conventional commits)
-- [ ] **Настроить ESLint правила**
-  - Общие правила для монорепозитория
-  - Специфичные для Frontend/Backend
-  - FSD линтер для фронтенда
-
----
-
-### 🎯 4. Базовые модули приложения
-
-#### 4.1 User Management
-
-- [ ] **Users Module (Backend)**
-  - `GET /users/me` — получить текущего пользователя
-  - `PATCH /users/me` — обновить профиль
-  - `GET /users/:id` — получить пользователя по ID
-  - `PATCH /users/:id/avatar` — загрузить аватар
-- [ ] **Profile Page (Frontend)**
-  - Просмотр профиля
-  - Редактирование профиля
-  - Загрузка аватара
-
-#### 4.2 Teams Module
-
-- [ ] **Teams Module (Backend)**
-  - `POST /teams` — создать команду
-  - `GET /teams` — список команд пользователя
-  - `GET /teams/:id` — информация о команде
-  - `PATCH /teams/:id` — обновить команду
-  - `DELETE /teams/:id` — удалить команду
-  - `POST /teams/:id/members` — добавить участника
-  - `DELETE /teams/:id/members/:userId` — удалить участника
-  - `PATCH /teams/:id/members/:userId/role` — изменить роль
-- [ ] **Teams UI (Frontend)**
-  - Список команд
-  - Создание команды
-  - Управление участниками
-  - Настройки команды
-
----
-
-### 📦 5. Интеграции и сервисы
-
-#### 5.1 File Storage (S3)
-
-- [ ] **Выбрать S3 провайдера**
-  - AWS S3, MinIO, Cloudflare R2 (принять решение)
-  - Настроить локальное хранилище для разработки
-- [ ] **Upload Service**
-  - Загрузка аватаров
-  - Загрузка файлов к задачам
-  - Генерация presigned URLs
-
-#### 5.2 WebSockets (Socket.io)
-
-- [ ] **Настроить Socket.io (Backend)**
-  - WebSocket Gateway в NestJS
-  - Аутентификация через JWT
-  - Rooms для команд/проектов
-- [ ] **Настроить Socket.io (Frontend)**
-  - Подключение к WebSocket
-  - Обработка событий уведомлений
-  - Reconnection логика
-
-#### 5.3 Queue System (BullMQ)
-
-- [ ] **Настроить BullMQ**
-  - Redis для очередей
-  - Базовые очереди (email, ai-generation)
-  - Worker процессы
-  - Dashboard для мониторинга (Bull Board)
-
----
-
-## 🗂️ Структура задач по приоритетам
-
-### 🔴 Критический приоритет (Неделя 1-2)
-
-1. Docker Compose для локальной разработки
-2. База данных + миграции (базовые модели)
-3. Авторизация Backend (register/login/refresh)
-4. UI Kit + ShadCN настройка
-5. Авторизация Frontend (страницы + формы)
-6. CI/CD Pipeline (lint, test, build)
-
-### 🟠 Высокий приоритет (Неделя 3-4)
-
-1. FSD структура Frontend
-2. Users Module (Backend + Frontend)
-3. Teams Module (Backend + Frontend)
-4. Storybook настройка
-5. Swagger документация
-6. File Storage (S3)
-
-### 🟡 Средний приоритет (Неделя 5-6)
-
-1. WebSockets настройка
-2. BullMQ очереди
-3. Projects Module (Backend + Frontend)
-4. Husky + Git hooks
-5. Документация по запуску
-
----
-
-## 📚 Технологии и инструменты
+## Что готово ✅
 
 ### Frontend
 
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript
-- **State**: Zustand + TanStack Query
-- **UI**: ShadCN UI + Tailwind CSS
-- **Forms**: React Hook Form + Zod
-- **WebSocket**: Socket.io Client
-- **Tests**: Vitest + React Testing Library
-- **Docs**: Storybook
+- ShadCN UI + Tailwind, 25+ компонентов в `packages/ui`
+- Storybook для UI-кита (9 stories: Button, Input, Card, Badge, Skeleton и др.)
+- FSD-структура: `app / entities / features / widgets / views / shared`
+- Zustand-сторы (`entities/user`, `features/theme`, `widgets/sidebar`) + TanStack Query
+- React Hook Form + Zod (`@hookform/resolvers`)
+- Auth-страницы: `/login`, `/register`, восстановление пароля **отсутствует**
+- Auth-flow: cookies-based JWT + автоматический refresh (`shared/lib/api`)
+- Profile-страница (`views/profile`): карточка, команды, приглашения
+- Teams UI: список, создание, настройки команды, инвайты участников
+- Feature flags на `NEXT_PUBLIC_*` (см. [work/feature-flags.md](./work/feature-flags.md))
 
 ### Backend
 
-- **Framework**: NestJS
-- **Language**: TypeScript
-- **Database**: PostgreSQL + Prisma/TypeORM
-- **Cache**: Redis
-- **Queue**: BullMQ
-- **WebSocket**: Socket.io
-- **API Docs**: Swagger
-- **Storage**: S3 (Supabase)
+- Prisma 7 + миграции, модели: `User`, `Team`, `TeamMember`, `TeamInvitation`,
+  `Project`, `Task`
+- **Auth-модуль** (argon2 + JWT 15m/7d, refresh-токены в Redis):
+  - `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`
+  - `GET /auth/me`
+  - Декораторы: `@Authorization`, `@Authorized`, `@Roles`
+- **Teams-модуль** (полный CRUD): команды, участники, приглашения по токену
+- **Projects-модуль** (CRUD проектов внутри команды)
+- **Mail-модуль** с двумя провайдерами (см. [backend/mail.md](./backend/mail.md)):
+  - `MAIL_TRANSPORT=smtp` → Nodemailer → Mailpit (dev/local-stage)
+  - `MAIL_TRANSPORT=resend` → Resend HTTP API (prod)
+  - Отправка fire-and-forget — не блокирует ответ API
+- Swagger-документация всех endpoints
+- Логирование ошибок отправки писем
 
-### DevOps
+### Инфраструктура
 
-- **Containerization**: Docker + Docker Compose
-- **CI/CD**: GitHub Actions
-- **Git**: Trunk-based development
-- **Package Manager**: pnpm
-- **Monorepo**: Turborepo
+- **`pnpm dev`** одной командой: автоматически поднимает `redis` и `mailpit`
+  в Docker, запускает api+web с hot-reload
+- **`pnpm stage`** — локальный production-стек (Caddy + Postgres + Redis +
+  Mailpit + api + web), полностью имитирует VPS-развёртывание.
+  Подробно — [work/local-stage.md](./work/local-stage.md)
+- Dev и stage стеки полностью изолированы (разные имена проектов, разные
+  порты Mailpit-UI), можно держать оба запущенными
+- Husky + commitlint + lint-staged
+- ESLint-конфиги: base, next, nest, react-internal (`packages/eslint-config`)
+- GitHub Actions: lint, type-check, tests, build
+
+### Документация
+
+- [`docs/work/`](./work/) — гайды разработчика (start, git, hooks, local-stage)
+- [`docs/backend/`](./backend/) — Prisma, Redis, Swagger, Mail, Teams, валидация
+- [`docs/frontend/`](./frontend/) — ShadCN, layout, API-интеграция
+- [`docs/infra/`](./infra/) — CI/CD, deployment, release-process
+- [`docs/plans/`](./plans/) — черновики будущих фич (magic-link, MVP, epics)
+- [`docs/releases/`](./releases/) — release notes
 
 ---
 
-## 📝 Соглашения
+## Что осталось до MVP ❌
 
-### Git Workflow
+### Backend
 
-- **Trunk-based development**
-- Короткоживущие feature ветки
-- Обязательный Pull Request с code review
-- Conventional Commits (feat, fix, docs, style, refactor, test, chore)
+- [ ] **Users-модуль**: `GET /users/:id`, `PATCH /users/me`, загрузка аватара
+- [ ] **Восстановление пароля**: `POST /auth/forgot-password`, `/reset-password`
+- [ ] **Magic-link авторизация** — спека готова: [plans/magic-link.md](./plans/magic-link.md)
+- [ ] **Tasks-модуль** (модель в Prisma есть, нужны API + бизнес-логика)
+- [ ] **Boards** (модель и API)
+- [ ] **Подтверждение email** при регистрации
 
-### Code Review
+### Frontend
 
-- Обязательно для каждой задачи
-- Минимум 1 аппрув от другого разработчика
-- CI должен быть зеленым
+- [ ] Страница `/forgot-password`
+- [ ] `middleware.ts` для защиты роутов
+- [ ] Тёмная тема (структура есть, реализация неполная)
+- [ ] FSD-линтер для контроля архитектурных границ
+- [ ] UI задач и досок
 
-### Code Quality
+### Интеграции
 
-- ESLint + Prettier обязательны
-- Type-safety (строгий TypeScript)
-- Unit тесты для критичной логики
-- FSD линтер для Frontend
+- [ ] **File Storage (S3)** — аватары, вложения к задачам
+      (выбрать: AWS S3 / Cloudflare R2 / Supabase / MinIO)
+- [ ] **WebSockets (Socket.io)** — realtime-уведомления, обновления задач
+- [ ] **BullMQ** — фоновые задачи (отправка писем, AI-генерация)
+- [ ] **AI-ассистент** — генерация задач, консультации
+
+### Инфраструктура
+
+- [ ] Branch protection rules в GitHub-репо (запрет прямого push в `main`,
+      обязательное ревью, требование зелёного CI)
+- [ ] Деплой на VPS по `docs/infra/deployment.md`
+
+---
+
+## Приоритеты
+
+### 🔴 Сейчас
+
+1. Восстановление пароля + magic-link
+2. Users-модуль (профиль + avatar upload)
+3. File Storage (S3) для аватаров
+4. Tasks-модуль (бэк + UI)
+
+### 🟠 Следующее
+
+1. Boards
+2. WebSockets для realtime
+3. BullMQ для фоновых задач
+4. Деплой stage на VPS
+
+### 🟡 Потом
+
+1. AI-ассистент
+2. Тёмная тема, FSD-линтер
+3. Подтверждение email при регистрации
+
+---
+
+## Соглашения
+
+- **Git flow**: trunk-based, короткоживущие feature-ветки, обязательный PR
+  с code review, conventional commits.
+  Подробно — [work/git.md](./work/git.md).
+- **Code review**: минимум 1 апрув, зелёный CI обязателен.
+- **Code quality**: ESLint + Prettier + строгий TS, unit-тесты для критичной
+  логики.
 
 ---
 
 ## 📖 Документация проекта
 
-### Валидация данных
+### Быстрый старт
 
-- [Общая валидация (Zod)](./validation/README.md) - Концепция и архитектура
-- [Настройка валидации](./validation/setup.md) - Пошаговая инструкция
-- [Backend валидация](./backend/validation/README.md) - NestJS + Zod
-- [Кастомные ошибки](./backend/validation/custom-errors.md) - Формат ошибок
+- [Начало работы](./work/start.md) — установка, .env, первый запуск
+- [Локальный stage-стек](./work/local-stage.md) — `pnpm stage` и production-like локально
+- [Общие практики](./work/common.md), [Git](./work/git.md), [Git Hooks](./work/git-hooks.md)
+- [Feature Flags](./work/feature-flags.md)
+- [Vitest coverage](./work/vitest-coverage.md)
 
 ### Backend
 
-- [Prisma](./backend/prisma/README.md) - База данных
-- [Swagger API](./backend/swagger/README.md) - Документация API
-- [E2E тесты](./backend/test/e2e-connection-test.md) - Тестирование
+- [Prisma](./backend/prisma/README.md) — БД и миграции
+- [Redis](./backend/redis/README.md) — кэш и refresh-токены
+- [Swagger API](./backend/swagger/README.md)
+- [Mail](./backend/mail.md) — SMTP/Resend, переключение dev↔prod
+- [Teams](./backend/teams/) — модуль команд и приглашений
+- [Schedule](./backend/schedule.md)
+- [E2E тесты](./backend/test/)
 
 ### Frontend
 
-- [ShadCN UI](./frontend/shadcn.md) - Компоненты UI
+- [ShadCN UI](./frontend/shadcn.md)
+- [Layout / навигация](./frontend/layout-navigation.md)
+- [API-интеграция](./frontend/api-integration-pattern.md)
 
-### Рабочие процессы
+### Валидация
 
-- [Начало работы](./work/start.md) - С чего начать
-- [Git](./work/git.md) - Работа с Git
-- [Git Hooks](./work/git-hooks.md) - Автоматизация проверок
-- [Feature Flags](./work/feature-flags.md) - Управление фичами
-- [Общие практики](./work/common.md) - Best practices
+- [Общая валидация (Zod)](./validation/README.md)
+- [Backend валидация](./backend/validation/README.md)
+- [Кастомные ошибки](./backend/validation/custom-errors.md)
+
+### Инфра / релизы
+
+- [CI/CD](./infra/ci-cd-overview.md)
+- [Deployment](./infra/deployment.md)
+- [Release process](./infra/release-process.md)
+- [Releases](./releases/)
+
+### Планы
+
+- [docs/plans/](./plans/) — черновики (не закоммичены, личное пространство для drafts)
