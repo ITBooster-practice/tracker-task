@@ -1,7 +1,12 @@
+# Dev-зависимости (поднимаются через `pnpm dev`).
+# Проект назван явно, чтобы контейнеры не путались с stage-local-tracker-task
+# и можно было держать оба стека запущенными параллельно.
+name: dev-tracker-task
+
 services:
   redis:
     image: redis:7
-    container_name: tracker_redis
+    container_name: dev-tracker-task-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -14,7 +19,7 @@ services:
   # Письма не уходят наружу — складываются в Mailpit.
   mailpit:
     image: axllent/mailpit:latest
-    container_name: tracker_mailpit
+    container_name: dev-tracker-task-mailpit
     restart: unless-stopped
     ports:
       - '1025:1025'
