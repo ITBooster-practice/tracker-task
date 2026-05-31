@@ -1,20 +1,29 @@
 # Локальный стек для проверки production-образов.
 #
-# Запуск:
-#   docker compose -f docker-compose.local.yml up -d
+# Запуск (одной командой — сборка образов + поднятие):
+#   pnpm stage
+# либо вручную:
+#   docker compose -f docker-compose.local.yml up -d --build
 #
 # После первого запуска применить миграции:
+#   pnpm stage:migrate
+# либо вручную:
 #   docker compose -f docker-compose.local.yml exec api node node_modules/.bin/prisma migrate deploy
 #
 # Адреса после запуска:
 #   http://localhost       -- веб-приложение (через Caddy)
 #   http://localhost/api   -- API             (через Caddy)
-#   http://localhost:8025  -- Mailpit UI (просмотр писем)
+#   http://localhost:8026  -- Mailpit UI (просмотр писем; :8025 занят dev-стеком)
+
+# Имя проекта изолирует стек от dev-tracker-task и убирает суффикс -1
+# из имён контейнеров.
+name: stage-local-tracker-task
 
 services:
   # Reverse proxy -- имитирует Caddy на VPS
   caddy:
     image: caddy:2
+    container_name: stage-local-tracker-task-caddy
     restart: unless-stopped
     ports:
       - '80:80'
@@ -29,6 +38,7 @@ services:
   # База данных
   postgres:
     image: postgres:16
+    container_name: stage-local-tracker-task-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: tracker
@@ -42,23 +52,30 @@ services:
   # Кэш / очереди
   redis:
     image: redis:7
+    container_name: stage-local-tracker-task-redis
     restart: unless-stopped
     networks:
       - local
 
-  # Перехватчик писем (все письма оседают здесь, наружу не уходят)
+  # Перехватчик писем (все письма оседают здесь, наружу не уходят).
+  # UI вынесен на 8026, чтобы не конфликтовать с dev-стеком (там 8025).
   mailpit:
     image: axllent/mailpit:latest
+    container_name: stage-local-tracker-task-mailpit
     restart: unless-stopped
     ports:
-      - '8025:8025'
+      - '8026:8025'
     networks:
       - local
 
   # API
   api:
     image: tracker-api:local
+    container_name: stage-local-tracker-task-api
     pull_policy: never # образ только локальный, не тянуть из Docker Hub
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     depends_on:
       - postgres
@@ -92,6 +109,7 @@ services:
   # Web
   web:
     image: tracker-web:local
+    container_name: stage-local-tracker-task-web
     pull_policy: never # образ только локальный, не тянуть из Docker Hub
     restart: unless-stopped
     build:
