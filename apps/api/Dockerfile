@@ -40,16 +40,11 @@ RUN pnpm --filter=api prisma:generate
 RUN pnpm --filter=api build
 
 # ── Создаём минимальный production-bundle ────────────────────────────────────
-# pnpm deploy копирует только production-зависимости (без devDeps) и корректно
-# включает workspace-пакеты вроде @repo/types (через поле files → dist/).
+# pnpm deploy копирует production-зависимости + файлы из поля "files" package.json:
+# dist/ (скомпилированный NestJS), generated/ (Prisma-клиент), prisma/ (схема+миграции).
 # inject-workspace-packages=true в .npmrc включает новый режим pnpm v10:
 # пакеты физически копируются в node_modules вместо симлинков на исходники.
 RUN pnpm --filter=api deploy --prod /app/deploy
-
-# Добавляем скомпилированный код и артефакты Prisma поверх deploy-bundle
-RUN cp -r apps/api/dist         /app/deploy/dist      \
- && cp -r apps/api/generated    /app/deploy/generated \
- && cp -r apps/api/prisma       /app/deploy/prisma
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Этап 2: Запуск
@@ -66,4 +61,5 @@ ENV NODE_ENV=production \
 COPY --from=builder /app/deploy ./
 
 EXPOSE 3000
-CMD ["node", "dist/main"]
+# NestJS с sourceRoot=src компилирует src/main.ts → dist/src/main.js
+CMD ["node", "dist/src/main"]
