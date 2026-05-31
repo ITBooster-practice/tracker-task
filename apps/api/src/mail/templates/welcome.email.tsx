@@ -13,11 +13,12 @@ import {
 
 interface Props {
 	name: string
+	dashboardUrl: string
 }
 
 export const WELCOME_EMAIL_SUBJECT = 'Добро пожаловать в Tracker Task'
 
-export const WelcomeEmail = ({ name }: Props) => (
+export const WelcomeEmail = ({ name, dashboardUrl }: Props) => (
 	<Html lang='ru'>
 		<Head />
 		<Preview>Рады видеть тебя в Tracker Task, {name}!</Preview>
@@ -38,8 +39,7 @@ export const WelcomeEmail = ({ name }: Props) => (
 					<Text style={paragraph}>Начни прямо сейчас:</Text>
 
 					<Section style={buttonSection}>
-						{/* Заменить href позже на реальный url */}
-						<Button style={button} href='http://localhost:3000'>
+						<Button style={button} href={dashboardUrl}>
 							Открыть Tracker Task
 						</Button>
 					</Section>
