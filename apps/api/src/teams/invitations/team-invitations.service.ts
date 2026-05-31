@@ -192,16 +192,14 @@ export class TeamInvitationsService {
 			},
 		})
 
-		try {
-			await this.mailService.sendTeamInvitationEmail(
-				dto.email,
-				team.name,
-				inviter.user.name,
-				invitation.token,
-			)
-		} catch (error) {
-			this.logger.error(INVITATION_LOG_MESSAGES.SEND_EMAIL_FAILED, error)
-		}
+		// Отправка письма не должна блокировать ответ: SMTP может зависнуть
+		// или быть недоступен, что приведёт к ERR_CONNECTION_RESET на клиенте.
+		// Приглашение уже создано в БД — пользователю отдаём успех сразу.
+		void this.mailService
+			.sendTeamInvitationEmail(dto.email, team.name, inviter.user.name, invitation.token)
+			.catch((error) => {
+				this.logger.error(INVITATION_LOG_MESSAGES.SEND_EMAIL_FAILED, error)
+			})
 
 		return invitation
 	}

@@ -23,6 +23,9 @@ import * as nodemailer from 'nodemailer'
 								host: configService.getOrThrow('MAIL_HOST'),
 								port: configService.get<number>('MAIL_PORT', 1025),
 								secure: false,
+								connectionTimeout: 5000,
+								greetingTimeout: 5000,
+								socketTimeout: 5000,
 							}),
 						)
 					: new ResendMailProvider(new Resend(configService.getOrThrow('RESEND_API_KEY')))
@@ -47,6 +50,9 @@ import * as nodemailer from 'nodemailer'
 					host: configService.get<string>('MAIL_HOST', 'localhost'),
 					port: configService.get<number>('MAIL_PORT', 1025),
 					secure: false,
+					connectionTimeout: 5000,
+					greetingTimeout: 5000,
+					socketTimeout: 5000,
 				}),
 			inject: [ConfigService],
 		},
