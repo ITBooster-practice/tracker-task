@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   redis:
     image: redis:7
@@ -10,6 +8,17 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server
+
+  # Перехватчик исходящих писем для dev-режима.
+  # SMTP на :1025, веб-интерфейс на http://localhost:8025.
+  # Письма не уходят наружу — складываются в Mailpit.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: tracker_mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
 
 # Заменить для включения режима сохранения данных на диск
 # command: redis-server --appendonly yes
