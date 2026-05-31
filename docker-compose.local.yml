@@ -1,0 +1,119 @@
+# Локальный стек для проверки production-образов.
+#
+# Запуск:
+#   docker compose -f docker-compose.local.yml up -d
+#
+# После первого запуска применить миграции:
+#   docker compose -f docker-compose.local.yml exec api node node_modules/.bin/prisma migrate deploy
+#
+# Адреса после запуска:
+#   http://localhost       -- веб-приложение (через Caddy)
+#   http://localhost/api   -- API             (через Caddy)
+#   http://localhost:8025  -- Mailpit UI (просмотр писем)
+
+services:
+  # Reverse proxy -- имитирует Caddy на VPS
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - api
+      - web
+    networks:
+      - local
+
+  # База данных
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tracker
+      POSTGRES_PASSWORD: tracker
+      POSTGRES_DB: tracker
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    networks:
+      - local
+
+  # Кэш / очереди
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    networks:
+      - local
+
+  # Перехватчик писем (все письма оседают здесь, наружу не уходят)
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '8025:8025'
+    networks:
+      - local
+
+  # API
+  api:
+    image: tracker-api:local
+    pull_policy: never # образ только локальный, не тянуть из Docker Hub
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - mailpit
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      DATABASE_URL: postgresql://tracker:tracker@postgres:5432/tracker
+      DIRECT_URL: postgresql://tracker:tracker@postgres:5432/tracker
+      REDIS_URL: redis://redis:6379
+
+      JWT_SECRET: local-dev-secret-change-me
+      JWT_ACCESS_TOKEN_TTL: 15m
+      JWT_REFRESH_TOKEN_TTL: 7d
+
+      COOKIE_DOMAIN: localhost
+      COOKIES_TTL: 604800000
+
+      WEB_APP_URL: http://localhost
+
+      MAIL_TRANSPORT: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM: noreply@localhost
+      MAIL_FROM_NAME: Tracker Local
+    networks:
+      - local
+
+  # Web
+  web:
+    image: tracker-web:local
+    pull_policy: never # образ только локальный, не тянуть из Docker Hub
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost/api
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      NEXT_PUBLIC_FEATURE_PROJECTS: 'true'
+      NEXT_PUBLIC_FEATURE_TASKS: 'true'
+      NEXT_PUBLIC_FEATURE_TEAM_SETTINGS: 'true'
+      NEXT_PUBLIC_FEATURE_BOARDS: 'false'
+    networks:
+      - local
+
+networks:
+  local:
+
+volumes:
+  postgres_local_data:
