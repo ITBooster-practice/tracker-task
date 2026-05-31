@@ -51,7 +51,10 @@ describe('MailService', () => {
 	it('sendWelcomeEmail отправляет welcome-письмо', async () => {
 		await service.sendWelcomeEmail('user@test.dev', 'Alice')
 
-		expect(WelcomeEmail).toHaveBeenCalledWith({ name: 'Alice' })
+		expect(WelcomeEmail).toHaveBeenCalledWith({
+			name: 'Alice',
+			dashboardUrl: 'https://tracker.test/teams',
+		})
 		expect(mailProvider.send).toHaveBeenCalledOnce()
 		expect(mailProvider.send).toHaveBeenCalledWith(
 			expect.objectContaining({
