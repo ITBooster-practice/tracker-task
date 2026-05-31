@@ -1,2 +1,3 @@
 export const MAIL_PROVIDER = 'MAIL_PROVIDER'
 export const RESEND_CLIENT = 'RESEND_CLIENT'
+export const SMTP_TRANSPORT = 'SMTP_TRANSPORT'
