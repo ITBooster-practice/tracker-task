@@ -11,6 +11,7 @@
  */
 
 import 'dotenv/config'
+import { hash } from 'argon2'
 import { PrismaClient } from '../generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
@@ -37,7 +38,7 @@ async function main() {
 		data: {
 			email: 'admin@example.com',
 			name: 'Администратор',
-			password: 'hashed_password_123', // В реальном приложении используйте bcrypt
+			password: await hash('password123'),
 		},
 	})
 
@@ -45,7 +46,7 @@ async function main() {
 		data: {
 			email: 'developer@example.com',
 			name: 'Разработчик',
-			password: 'hashed_password_456',
+			password: await hash('password123'),
 		},
 	})
 
@@ -53,7 +54,7 @@ async function main() {
 		data: {
 			email: 'manager@example.com',
 			name: 'Менеджер проектов',
-			password: 'hashed_password_789',
+			password: await hash('password123'),
 		},
 	})
 
