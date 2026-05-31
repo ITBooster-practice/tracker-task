@@ -8,6 +8,9 @@ const __dirname = path.dirname(__filename)
 const nextConfig = {
 	allowedDevOrigins: ['http://localhost:3000'],
 
+	// Транспилируем workspace-пакеты с TypeScript-исходниками.
+	transpilePackages: ['@repo/ui', '@repo/types'],
+
 	// Формирует самодостаточный серверный bundle в .next/standalone/.
 	// Как он используется — смотри apps/web/Dockerfile.
 	output: 'standalone',
