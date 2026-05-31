@@ -31,6 +31,11 @@ RUN pnpm --filter=@repo/types build
 # Отключаем телеметрию Next.js во время сборки
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# NEXT_PUBLIC_* переменные вшиваются в JS-бандл во время сборки.
+# Передаём через ARG → ENV, чтобы docker-compose мог переопределить через args:.
+ARG NEXT_PUBLIC_API_URL=http://localhost
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Собираем Next.js.
 # Так как в next.config.js задан output: 'standalone' и outputFileTracingRoot
 # указывает на корень монорепо, результат окажется в apps/web/.next/standalone/
