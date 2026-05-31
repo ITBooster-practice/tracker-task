@@ -26,7 +26,10 @@ export class MailService {
 	}
 
 	async sendWelcomeEmail(email: string, name: string) {
-		const html = await render(WelcomeEmail({ name }))
+		const webAppUrl = this.configService.getOrThrow<string>('WEB_APP_URL')
+		const dashboardUrl = new URL('/teams', webAppUrl).toString()
+
+		const html = await render(WelcomeEmail({ name, dashboardUrl }))
 
 		await this.mailProvider.send({
 			from: this.getMailFrom(),
