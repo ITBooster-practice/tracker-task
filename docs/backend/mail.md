@@ -8,24 +8,26 @@
 AuthService
     └── MailService          # бизнес-методы отправки (sendWelcomeEmail и т.п.)
             └── MailProvider # абстракция провайдера (интерфейс)
-                    └── ResendMailProvider  # конкретная реализация через Resend API
+                    ├── ResendMailProvider  # реализация через Resend HTTP API
+                    └── SmtpMailProvider    # реализация через Nodemailer/SMTP
 ```
 
-Такая структура позволяет заменить провайдера отправки (например, с Resend на SendGrid) без изменений в `MailService` и бизнес-модулях.
+Такая структура позволяет заменить провайдера отправки (например, с Resend на SendGrid) без изменений в `MailService` и бизнес-модулях. Конкретная реализация выбирается фабрикой в `mail.module.ts` по переменной `MAIL_TRANSPORT`.
 
 ### Файлы модуля
 
 ```
 src/mail/
-  mail.module.ts                   # сборка DI: регистрация провайдеров и Resend-клиента
+  mail.module.ts                   # сборка DI: фабрика провайдера по MAIL_TRANSPORT
   mail.service.ts                  # бизнес-методы отправки писем
   mail.provider.ts                 # интерфейс MailProvider
   mail.types.ts                    # тип MailPayload
-  mail.constants.ts                # DI-токены: MAIL_PROVIDER, RESEND_CLIENT
+  mail.constants.ts                # DI-токены: MAIL_PROVIDER, RESEND_CLIENT, SMTP_TRANSPORT
   config/
     mail.config.ts                 # чтение переменных окружения
   providers/
     resend-mail.provider.ts        # реализация через Resend HTTP API
+    smtp-mail.provider.ts          # реализация через Nodemailer (SMTP)
   templates/
     welcome.email.tsx              # React Email шаблон приветственного письма
     team-invitation.email.tsx      # Письмо-приглашение в команду
@@ -33,12 +35,45 @@ src/mail/
 
 ## Переменные окружения
 
-| Переменная       | Описание                | Пример                  |
-| ---------------- | ----------------------- | ----------------------- |
-| `RESEND_API_KEY` | API-ключ сервиса Resend | `re_xxxxxxxxxxxxxxxx`   |
-| `MAIL_FROM`      | Email адрес отправителя | `noreply@example.com`   |
-| `MAIL_FROM_NAME` | Имя отправителя         | `Tracker Task`          |
-| `WEB_APP_URL`    | Базовый URL web-клиента | `http://localhost:3001` |
+| Переменная       | Когда нужно                 | Описание                                       | Пример                  |
+| ---------------- | --------------------------- | ---------------------------------------------- | ----------------------- |
+| `MAIL_TRANSPORT` | всегда                      | `smtp` или `resend` (по умолчанию `resend`)    | `smtp`                  |
+| `MAIL_HOST`      | при `MAIL_TRANSPORT=smtp`   | Хост SMTP-сервера                              | `localhost`, `mailpit`  |
+| `MAIL_PORT`      | при `MAIL_TRANSPORT=smtp`   | Порт SMTP-сервера                              | `1025`                  |
+| `RESEND_API_KEY` | при `MAIL_TRANSPORT=resend` | API-ключ сервиса Resend                        | `re_xxxxxxxxxxxxxxxx`   |
+| `MAIL_FROM`      | всегда                      | Email адрес отправителя                        | `noreply@example.com`   |
+| `MAIL_FROM_NAME` | всегда                      | Имя отправителя                                | `Tracker Task`          |
+| `WEB_APP_URL`    | всегда                      | Базовый URL web-клиента (для ссылок в письмах) | `http://localhost:3001` |
+
+## Выбор провайдера: MAIL_TRANSPORT
+
+В `mail.module.ts` сборка провайдера сделана через фабрику:
+
+```ts
+{
+    provide: MAIL_PROVIDER,
+    useFactory: (configService: ConfigService) => {
+        const transport = configService.get<string>('MAIL_TRANSPORT', 'resend')
+        return transport === 'smtp'
+            ? new SmtpMailProvider(nodemailer.createTransport({ ... }))
+            : new ResendMailProvider(new Resend(configService.getOrThrow('RESEND_API_KEY')))
+    },
+    inject: [ConfigService],
+}
+```
+
+Поведение по окружениям:
+
+| Окружение        | `MAIL_TRANSPORT`              | Куда уходят письма                                        |
+| ---------------- | ----------------------------- | --------------------------------------------------------- |
+| dev (`pnpm dev`) | `smtp`                        | Mailpit на `localhost:1025`, просмотр на `localhost:8025` |
+| local-stage      | `smtp`                        | Mailpit-контейнер из `docker-compose.local.yml`           |
+| stage (VPS)      | `smtp` или `resend` (sandbox) | Mailtrap / Mailpit на VPS / Resend sandbox                |
+| prod             | `resend`                      | Реальные адреса через Resend                              |
+
+**Безопасность:** в dev и local-stage всегда выставляйте `MAIL_TRANSPORT=smtp`. Если оставить значение по умолчанию (`resend`) с боевым `RESEND_API_KEY`, тестовые письма уйдут реальным пользователям.
+
+Переключение между окружениями делается **одной переменной** — пересборка кода не требуется, потому что выбор происходит при старте процесса в DI-контейнере NestJS.
 
 ## Как добавить новое письмо
 
@@ -105,24 +140,15 @@ await this.mailService.sendTeamInvitationEmail(
 - превью письма в браузере через `react-email` dev-сервер
 - email-совместимый HTML из коробки
 
-## Почему Resend API, а не SMTP
+## Почему два провайдера: SMTP и HTTP API
 
 Есть два способа отправки email:
 
-**SMTP** — прямое TCP-соединение с почтовым сервером на портах 465/587. Исторический стандарт. Проблемы:
+**SMTP** — прямое TCP-соединение с почтовым сервером (классические порты 25/465/587, локальные ловушки вроде Mailpit — 1025). Исторический стандарт. Плюсы: работает с чем угодно, что говорит на SMTP — Mailpit/MailHog для отладки, Mailtrap для stage, любой self-hosted сервер. Минусы для prod: соединение могут блокировать ISP/файрволы, нет встроенной аналитики, нужен правильно настроенный MX-домен.
 
-- соединение может блокироваться файрволами или ISP
-- сложнее отлаживать
-- нет встроенной аналитики
+**HTTP API (Resend)** — обычный HTTPS-запрос на порт 443. Resend принимает письмо и доставляет его через свою SMTP-инфраструктуру. Плюсы: порт 443 открыт везде, явный `{ data, error }` в ответе, дашборд с историей. Минусы: vendor lock-in, нет «бесплатного» способа отладки локально без интернета.
 
-**HTTP API (Resend)** — обычный HTTPS-запрос на порт 443. Resend принимает письмо и доставляет его через свою SMTP-инфраструктуру.
-
-Почему выбрали API:
-
-- порт 443 открыт везде, проблем с сетью нет
-- Resend возвращает явный `{ data, error }` — легче обрабатывать ошибки
-- есть дашборд с историей отправок
-- официальный Node.js SDK
+**Наш выбор:** оба, разные окружения — разные провайдеры (см. таблицу выше). SMTP — для всего, что не prod (Mailpit ничего не отправляет наружу — это безопасно). Resend — для prod, где важна доставляемость и аналитика.
 
 ## Обработка ошибок
 
