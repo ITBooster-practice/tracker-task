@@ -62,11 +62,12 @@ export class AuthService {
 			},
 		})
 
-		try {
-			await this.mailService.sendWelcomeEmail(user.email, user.name)
-		} catch (error) {
+		// Отправка письма не должна блокировать ответ регистрации:
+		// SMTP может быть недоступен, медленно отвечать или зависнуть.
+		// Логируем ошибку, но пользователю отдаём успех сразу.
+		void this.mailService.sendWelcomeEmail(user.email, user.name).catch((error) => {
 			this.logger.error('Не удалось отправить письмо приветствия', error)
-		}
+		})
 
 		return await this.auth(res, user.id)
 	}
