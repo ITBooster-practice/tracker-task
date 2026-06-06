@@ -10,6 +10,9 @@ export const metadata: Metadata = {
 	title: 'Tracker Task - Открытая система управления IT-проектами',
 	description:
 		'Лёгкая, современная альтернатива Jira и Яндекс.Трекер для разработчиков и небольших команд. Open-source решение для управления проектами, спринтами и задачами.',
+	icons: {
+		icon: '/favicon.svg',
+	},
 }
 
 export default function RootLayout({
