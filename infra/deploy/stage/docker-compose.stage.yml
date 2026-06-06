@@ -1,0 +1,84 @@
+name: tracker-stage
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_stage_data:/var/lib/postgresql/data
+    networks:
+      - stage
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    networks:
+      - stage
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    # UI доступен только локально на VPS, чтобы не открывать его в интернет.
+    ports:
+      - '127.0.0.1:8025:8025'
+    networks:
+      - stage
+
+  api:
+    image: ${API_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - mailpit
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
+      REDIS_URL: ${REDIS_URL}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL}
+
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      COOKIES_TTL: ${COOKIES_TTL}
+
+      WEB_APP_URL: ${WEB_APP_URL}
+
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME}
+    networks:
+      - stage
+
+  web:
+    image: ${WEB_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+
+      NEXT_PUBLIC_FEATURE_PROJECTS: ${NEXT_PUBLIC_FEATURE_PROJECTS}
+      NEXT_PUBLIC_FEATURE_TASKS: ${NEXT_PUBLIC_FEATURE_TASKS}
+      NEXT_PUBLIC_FEATURE_TEAM_SETTINGS: ${NEXT_PUBLIC_FEATURE_TEAM_SETTINGS}
+      NEXT_PUBLIC_FEATURE_BOARDS: ${NEXT_PUBLIC_FEATURE_BOARDS}
+    networks:
+      - stage
+
+networks:
+  stage:
+
+volumes:
+  postgres_stage_data:
