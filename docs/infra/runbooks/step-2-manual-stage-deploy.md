@@ -12,6 +12,10 @@
 
 Важно: шаблоны файлов хранятся в `infra/deploy/stage` и остаются там.
 
+После Шага 2 переходите к Шагу 3 — сборка образов и публикация в GHCR:
+
+- [step-3-build-and-push-images.md](./step-3-build-and-push-images.md)
+
 ## 0. Какие файлы используются
 
 - [infra/deploy/stage/docker-compose.stage.yml](../../../infra/deploy/stage/docker-compose.stage.yml)
@@ -57,8 +61,11 @@ cp .env.stage.example .env.stage
 
 - корректные `API_IMAGE` и `WEB_IMAGE` (репозитории образов)
 - согласованные `POSTGRES_*`, `DATABASE_URL`, `DIRECT_URL`
-- `JWT_SECRET`
-- `COOKIE_DOMAIN`, `WEB_APP_URL`, `NEXT_PUBLIC_API_URL`
+- `REDIS_URL` (по умолчанию: `redis://redis:6379`)
+- `JWT_SECRET`, `JWT_ACCESS_TOKEN_TTL`, `JWT_REFRESH_TOKEN_TTL`
+- `COOKIE_DOMAIN`, `COOKIES_TTL`, `WEB_APP_URL`, `NEXT_PUBLIC_API_URL`
+- почтовые переменные: `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`, `MAIL_FROM_NAME`
+- feature flags: `NEXT_PUBLIC_FEATURE_PROJECTS`, `NEXT_PUBLIC_FEATURE_TASKS`, `NEXT_PUBLIC_FEATURE_TEAM_SETTINGS`, `NEXT_PUBLIC_FEATURE_BOARDS`
 
 ## 3. Подготовить доступ к GHCR
 
@@ -94,9 +101,9 @@ chmod +x deploy-stage.sh
 1. Логин в GHCR.
 2. Подстановка тега в `api`/`web`.
 3. Pull образов.
-4. Поднятие контейнеров.
-5. Prisma migrate deploy.
-6. Health-check API.
+4. Поднятие полного стека (`postgres`, `redis`, `mailpit`, `api`, `web`).
+5. Health-check API (`/health`, до 30 попыток с интервалом 2 с).
+6. `prisma migrate deploy --config prisma.config.mjs`.
 
 ## 5. Проверить Mailpit на stage
 
@@ -106,23 +113,25 @@ docker compose --env-file .env.stage -f docker-compose.stage.yml ps
 docker compose --env-file .env.stage -f docker-compose.stage.yml logs --tail=80 mailpit
 ```
 
-Если `mailpit` еще не был поднят:
+Проверить наличие volume:
 
 ```bash
-docker compose --env-file .env.stage -f docker-compose.stage.yml up -d mailpit api
+docker volume ls | grep mailpit
 ```
 
-Открыть UI Mailpit с ПК (через SSH-туннель):
-
-```bash
-ssh -N -L 8026:127.0.0.1:8025 -i ~/.ssh/<ИМЯ_SSH_КЛЮЧА> deploy@<IP_СЕРВЕРА>
-```
-
-После этого откройте в браузере на ПК:
+Mailpit доступен через отдельный поддомен (после того как Caddy настроен на шаге 6):
 
 ```text
-http://localhost:8026
+https://mail.stage.<ВАШ_ДОМЕН>
 ```
+
+Если используется временный домен:
+
+```text
+https://mail.stage.<IP_СЕРВЕРА>.sslip.io
+```
+
+Доступ защищён той же Basic Auth, что и stage-приложение.
 
 ## 6. Переключить Caddy с заглушки на приложение
 
@@ -160,6 +169,16 @@ stage.<ВАШ_ДОМЕН> {
 		reverse_proxy tracker-stage-web-1:3000
 	}
 }
+
+mail.stage.<ВАШ_ДОМЕН> {
+	encode zstd gzip
+
+	basic_auth {
+		stage ${STAGE_BCRYPT_HASH}
+	}
+
+	reverse_proxy tracker-stage-mailpit-1:8025
+}
 CADDY
 ```
 
@@ -182,6 +201,16 @@ stage.<IP_СЕРВЕРА>.sslip.io {
 		reverse_proxy tracker-stage-web-1:3000
 	}
 }
+
+mail.stage.<IP_СЕРВЕРА>.sslip.io {
+	encode zstd gzip
+
+	basic_auth {
+		stage ${STAGE_BCRYPT_HASH}
+	}
+
+	reverse_proxy tracker-stage-mailpit-1:8025
+}
 CADDY
 ```
 
@@ -199,14 +228,17 @@ docker compose logs --tail=80 caddy
 ```bash
 # Если есть домен:
 STAGE_HOST=stage.<ВАШ_ДОМЕН>
+MAIL_HOST=mail.stage.<ВАШ_ДОМЕН>
 
 # Если домена пока нет:
 # STAGE_HOST=stage.<IP_СЕРВЕРА>.sslip.io
+# MAIL_HOST=mail.stage.<IP_СЕРВЕРА>.sslip.io
 
 curl -I https://$STAGE_HOST
 curl -I https://$STAGE_HOST/api
 curl -u 'stage:<ВАШ_СЛОЖНЫЙ_ПАРОЛЬ>' -I https://$STAGE_HOST
 curl -u 'stage:<ВАШ_СЛОЖНЫЙ_ПАРОЛЬ>' -I https://$STAGE_HOST/api
+curl -u 'stage:<ВАШ_СЛОЖНЫЙ_ПАРОЛЬ>' -I https://$MAIL_HOST
 ```
 
 Ожидаемо:
@@ -214,3 +246,4 @@ curl -u 'stage:<ВАШ_СЛОЖНЫЙ_ПАРОЛЬ>' -I https://$STAGE_HOST/api
 - без логина: `401 Unauthorized`
 - с логином: web открывается
 - с логином: `/api` отвечает от API
+- с логином: `mail.stage.*` открывает веб-интерфейс Mailpit

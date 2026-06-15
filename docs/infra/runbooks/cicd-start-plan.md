@@ -50,6 +50,8 @@
   - `sha-<short_sha>` (неизменяемый, для отката)
   - `main-latest` (удобный алиас)
 
+Ручная сборка до подключения GitHub Actions: [step-3-build-and-push-images.md](./step-3-build-and-push-images.md).
+
 Результат: после merge образы автоматически появляются в реестре.
 
 ### Этап 4. Автодеплой stage после успешного CI
