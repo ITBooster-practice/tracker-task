@@ -1,12 +1,12 @@
 # Локальный стек для проверки production-образов.
 #
 # Запуск (одной командой — сборка образов + поднятие):
-#   pnpm stage
+#   pnpm local
 # либо вручную:
 #   docker compose -f docker-compose.local.yml up -d --build
 #
 # После первого запуска применить миграции:
-#   pnpm stage:migrate
+#   pnpm local:migrate
 # либо вручную:
 #   docker compose -f docker-compose.local.yml exec api node node_modules/.bin/prisma migrate deploy
 #
@@ -15,15 +15,15 @@
 #   http://localhost/api   -- API             (через Caddy)
 #   http://localhost:8026  -- Mailpit UI (просмотр писем; :8025 занят dev-стеком)
 
-# Имя проекта изолирует стек от dev-tracker-task и убирает суффикс -1
+# Имя проекта изолирует стек от dev-tracker-task
 # из имён контейнеров.
-name: stage-local-tracker-task
+name: local-tracker-task
 
 services:
   # Reverse proxy -- имитирует Caddy на VPS
   caddy:
     image: caddy:2
-    container_name: stage-local-tracker-task-caddy
+    container_name: local-tracker-task-caddy
     restart: unless-stopped
     ports:
       - '80:80'
@@ -38,12 +38,10 @@ services:
   # База данных
   postgres:
     image: postgres:16
-    container_name: stage-local-tracker-task-postgres
+    container_name: local-tracker-task-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: tracker
-      POSTGRES_PASSWORD: tracker
-      POSTGRES_DB: tracker
+    env_file:
+      - .env.local
     volumes:
       - postgres_local_data:/var/lib/postgresql/data
     networks:
@@ -52,7 +50,7 @@ services:
   # Кэш / очереди
   redis:
     image: redis:7
-    container_name: stage-local-tracker-task-redis
+    container_name: local-tracker-task-redis
     restart: unless-stopped
     networks:
       - local
@@ -61,17 +59,21 @@ services:
   # UI вынесен на 8026, чтобы не конфликтовать с dev-стеком (там 8025).
   mailpit:
     image: axllent/mailpit:latest
-    container_name: stage-local-tracker-task-mailpit
+    container_name: local-tracker-task-mailpit
     restart: unless-stopped
     ports:
       - '8026:8025'
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpit_data:/data
     networks:
       - local
 
   # API
   api:
     image: tracker-api:local
-    container_name: stage-local-tracker-task-api
+    container_name: local-tracker-task-api
     pull_policy: never # образ только локальный, не тянуть из Docker Hub
     build:
       context: .
@@ -81,52 +83,30 @@ services:
       - postgres
       - redis
       - mailpit
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-
-      DATABASE_URL: postgresql://tracker:tracker@postgres:5432/tracker
-      DIRECT_URL: postgresql://tracker:tracker@postgres:5432/tracker
-      REDIS_URL: redis://redis:6379
-
-      JWT_SECRET: local-dev-secret-change-me
-      JWT_ACCESS_TOKEN_TTL: 15m
-      JWT_REFRESH_TOKEN_TTL: 7d
-
-      COOKIE_DOMAIN: localhost
-      COOKIES_TTL: 604800000
-
-      WEB_APP_URL: http://localhost
-
-      MAIL_TRANSPORT: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: 1025
-      MAIL_FROM: noreply@localhost
-      MAIL_FROM_NAME: Tracker Local
+    env_file:
+      - apps/api/.env.local
     networks:
       - local
 
   # Web
   web:
     image: tracker-web:local
-    container_name: stage-local-tracker-task-web
+    container_name: local-tracker-task-web
     pull_policy: never # образ только локальный, не тянуть из Docker Hub
     restart: unless-stopped
     build:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
+        # URL для браузера (клиентские компоненты) — через Caddy снаружи
         NEXT_PUBLIC_API_URL: http://localhost/api
+        # Включаем все фичи, чтобы проверить их в production-образе.
+        NEXT_PUBLIC_FEATURE_PROJECTS: true
+        NEXT_PUBLIC_FEATURE_TASKS: true
+        NEXT_PUBLIC_FEATURE_TEAM_SETTINGS: true
+        NEXT_PUBLIC_FEATURE_BOARDS: true
     depends_on:
       - api
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-
-      NEXT_PUBLIC_FEATURE_PROJECTS: 'true'
-      NEXT_PUBLIC_FEATURE_TASKS: 'true'
-      NEXT_PUBLIC_FEATURE_TEAM_SETTINGS: 'true'
-      NEXT_PUBLIC_FEATURE_BOARDS: 'false'
     networks:
       - local
 
@@ -135,3 +115,4 @@ networks:
 
 volumes:
   postgres_local_data:
+  mailpit_data:
