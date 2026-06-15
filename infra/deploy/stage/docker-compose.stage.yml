@@ -22,9 +22,10 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
-    # UI доступен только локально на VPS, чтобы не открывать его в интернет.
-    ports:
-      - '127.0.0.1:8025:8025'
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpit_data:/data
     networks:
       - stage
 
@@ -48,7 +49,6 @@ services:
       JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL}
 
       COOKIE_DOMAIN: ${COOKIE_DOMAIN}
-      COOKIES_TTL: ${COOKIES_TTL}
 
       WEB_APP_URL: ${WEB_APP_URL}
 
@@ -82,3 +82,4 @@ networks:
 
 volumes:
   postgres_stage_data:
+  mailpit_data:
