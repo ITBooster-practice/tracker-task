@@ -10,6 +10,8 @@ node_modules
 .env.local
 .env.development.local
 .env.development
+.env.stage.local
+.env.stage
 .env.test.local
 .env.production.local
 
