@@ -24,9 +24,14 @@ services:
     ports:
       - '1025:1025'
       - '8025:8025'
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpit_data:/data
 
 # Заменить для включения режима сохранения данных на диск
 # command: redis-server --appendonly yes
 
 volumes:
   redis_data:
+  mailpit_data:
