@@ -13,6 +13,7 @@ import { TeamsModule } from './teams/teams.module'
 import { CustomZodValidationPipe } from './common/providers/zod-validation.provider'
 import { RedisModule } from './common/redis/redis.module'
 import { ProjectsModule } from './projects/projects.module'
+import { TasksModule } from './tasks/tasks.module'
 
 @Module({
 	imports: [
@@ -23,6 +24,7 @@ import { ProjectsModule } from './projects/projects.module'
 		AuthModule,
 		TeamsModule,
 		ProjectsModule,
+		TasksModule,
 	],
 	controllers: [AppController],
 	providers: [
