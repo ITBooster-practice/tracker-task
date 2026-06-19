@@ -15,6 +15,8 @@ export function createPrismaMock() {
 		task: {
 			aggregate: vi.fn(),
 			create: vi.fn(),
+			findMany: vi.fn(),
+			count: vi.fn(),
 		},
 	} as unknown as PrismaService & {
 		teamMember: {
@@ -26,6 +28,8 @@ export function createPrismaMock() {
 		task: {
 			aggregate: ReturnType<typeof vi.fn>
 			create: ReturnType<typeof vi.fn>
+			findMany: ReturnType<typeof vi.fn>
+			count: ReturnType<typeof vi.fn>
 		}
 	}
 }

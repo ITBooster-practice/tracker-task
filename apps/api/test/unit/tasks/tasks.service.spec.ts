@@ -118,4 +118,119 @@ describe('TasksService', () => {
 			expect(prisma.task.create).not.toHaveBeenCalled()
 		})
 	})
+
+	// ── findAll ───────────────────────────────────────────────────────────────
+	describe('findAll', () => {
+		const PAGINATION = { page: 1, limit: 10 }
+
+		it('должен вернуть пагинированный список задач без фильтров с дефолтной сортировкой', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
+			prisma.task.findMany.mockResolvedValue([MOCK_TASK])
+			prisma.task.count.mockResolvedValue(1)
+
+			const result = await service.findAll(TEAM_ID, PROJECT_ID, USER_ID, {}, PAGINATION)
+
+			expect(prisma.task.findMany).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { projectId: PROJECT_ID },
+					orderBy: [{ status: 'asc' }, { position: 'asc' }],
+					skip: 0,
+					take: 10,
+				}),
+			)
+			expect(prisma.task.count).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { projectId: PROJECT_ID } }),
+			)
+			expect(result).toEqual({
+				data: [MOCK_TASK],
+				meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+			})
+		})
+
+		it('должен фильтровать задачи по status', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
+			prisma.task.findMany.mockResolvedValue([MOCK_TASK])
+			prisma.task.count.mockResolvedValue(1)
+
+			await service.findAll(
+				TEAM_ID,
+				PROJECT_ID,
+				USER_ID,
+				{ status: 'TODO' as never },
+				PAGINATION,
+			)
+
+			expect(prisma.task.findMany).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { projectId: PROJECT_ID, status: 'TODO' },
+				}),
+			)
+		})
+
+		it('должен фильтровать задачи по priority', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
+			prisma.task.findMany.mockResolvedValue([MOCK_TASK])
+			prisma.task.count.mockResolvedValue(1)
+
+			await service.findAll(
+				TEAM_ID,
+				PROJECT_ID,
+				USER_ID,
+				{ priority: 'HIGH' as never },
+				PAGINATION,
+			)
+
+			expect(prisma.task.findMany).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { projectId: PROJECT_ID, priority: 'HIGH' },
+				}),
+			)
+		})
+
+		it('должен фильтровать задачи по assigneeId', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
+			prisma.task.findMany.mockResolvedValue([MOCK_TASK])
+			prisma.task.count.mockResolvedValue(1)
+
+			const ASSIGNEE_ID = 'assignee-uuid'
+			await service.findAll(
+				TEAM_ID,
+				PROJECT_ID,
+				USER_ID,
+				{ assigneeId: ASSIGNEE_ID },
+				PAGINATION,
+			)
+
+			expect(prisma.task.findMany).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { projectId: PROJECT_ID, assigneeId: ASSIGNEE_ID },
+				}),
+			)
+		})
+
+		it('должен выбросить ForbiddenException если пользователь не является членом команды', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(null)
+
+			await expect(
+				service.findAll(TEAM_ID, PROJECT_ID, USER_ID, {}, PAGINATION),
+			).rejects.toThrow(ForbiddenException)
+
+			expect(prisma.task.findMany).not.toHaveBeenCalled()
+		})
+
+		it('должен выбросить NotFoundException если проект не найден', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.project.findUnique.mockResolvedValue(null)
+
+			await expect(
+				service.findAll(TEAM_ID, PROJECT_ID, USER_ID, {}, PAGINATION),
+			).rejects.toThrow(NotFoundException)
+
+			expect(prisma.task.findMany).not.toHaveBeenCalled()
+		})
+	})
 })
