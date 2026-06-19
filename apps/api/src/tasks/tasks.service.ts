@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { TaskStatus, type TeamMember } from 'generated/prisma/client'
+import { TaskStatus, TeamRole, type TeamMember } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import {
 	buildPaginatedResponse,
@@ -7,6 +7,7 @@ import {
 	type PaginationOptions,
 } from '../utils/pagination.util'
 import { CreateTaskDto } from './dto/create-task.dto'
+import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 
 @Injectable()
@@ -63,6 +64,7 @@ export class TasksService {
 				dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
 				projectId,
 				position,
+				createdById: userId,
 			},
 		})
 	}
@@ -101,7 +103,10 @@ export class TasksService {
 
 	async findOne(teamId: string, projectId: string, taskId: string, userId: string) {
 		await this.assertTeamMember(teamId, userId)
+		return this.findTaskOrThrow(projectId, taskId)
+	}
 
+	private async findTaskOrThrow(projectId: string, taskId: string) {
 		const task = await this.prisma.task.findUnique({ where: { id: taskId } })
 
 		if (!task || task.projectId !== projectId) {
@@ -109,5 +114,36 @@ export class TasksService {
 		}
 
 		return task
+	}
+
+	async update(
+		teamId: string,
+		projectId: string,
+		taskId: string,
+		userId: string,
+		dto: UpdateTaskDto,
+	) {
+		const member = await this.assertTeamMember(teamId, userId)
+		const task = await this.findTaskOrThrow(projectId, taskId)
+
+		const isAdminOrOwner =
+			member.role === TeamRole.ADMIN || member.role === TeamRole.OWNER
+		const isCreator = task.createdById === userId
+
+		if (!isCreator && !isAdminOrOwner) {
+			throw new ForbiddenException('Недостаточно прав для выполнения этого действия')
+		}
+
+		return this.prisma.task.update({
+			where: { id: taskId },
+			data: {
+				...(dto.title !== undefined && { title: dto.title }),
+				...(dto.description !== undefined && { description: dto.description }),
+				...(dto.status !== undefined && { status: dto.status as never }),
+				...(dto.priority !== undefined && { priority: dto.priority as never }),
+				...(dto.assigneeId !== undefined && { assigneeId: dto.assigneeId }),
+				...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
+			},
+		})
 	}
 }

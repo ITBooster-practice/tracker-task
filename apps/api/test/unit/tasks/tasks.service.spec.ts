@@ -5,11 +5,15 @@ import { TasksService } from '../../../src/tasks/tasks.service'
 import {
 	createPrismaMock,
 	CREATE_TASK_DTO,
+	MEMBER_ADMIN,
 	MEMBER_OWNER,
+	MEMBER_PLAIN,
 	MOCK_PROJECT,
 	MOCK_TASK,
+	OTHER_USER_ID,
 	PROJECT_ID,
 	TEAM_ID,
+	UPDATE_TASK_DTO,
 	USER_ID,
 } from '../../helpers/tasks.helpers'
 
@@ -277,6 +281,130 @@ describe('TasksService', () => {
 			).rejects.toThrow(ForbiddenException)
 
 			expect(prisma.task.findUnique).not.toHaveBeenCalled()
+		})
+	})
+
+	// ── update ──────────────────────────────────────────────────────────────────
+	describe('update', () => {
+		const UPDATED_TASK = { ...MOCK_TASK, title: UPDATE_TASK_DTO.title }
+
+		it('должен обновить задачу если пользователь является её создателем (даже с ролью MEMBER)', async () => {
+			// MEMBER_PLAIN is the creator of the task (createdById === OTHER_USER_ID)
+			const taskCreatedByPlain = { ...MOCK_TASK, createdById: OTHER_USER_ID }
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_PLAIN)
+			prisma.task.findUnique.mockResolvedValue(taskCreatedByPlain)
+			prisma.task.update.mockResolvedValue({
+				...taskCreatedByPlain,
+				title: UPDATE_TASK_DTO.title,
+			})
+
+			const result = await service.update(
+				TEAM_ID,
+				PROJECT_ID,
+				MOCK_TASK.id,
+				OTHER_USER_ID,
+				UPDATE_TASK_DTO as never,
+			)
+
+			expect(prisma.task.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { id: MOCK_TASK.id },
+					data: expect.objectContaining({ title: UPDATE_TASK_DTO.title }),
+				}),
+			)
+			expect(result.title).toBe(UPDATE_TASK_DTO.title)
+		})
+
+		it('должен обновить задачу если пользователь является OWNER (даже если он не создавал задачу)', async () => {
+			// MEMBER_OWNER.userId === USER_ID, but MOCK_TASK.createdById === USER_ID too — use a task created by someone else
+			const taskByOther = { ...MOCK_TASK, createdById: OTHER_USER_ID }
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue(taskByOther)
+			prisma.task.update.mockResolvedValue(UPDATED_TASK)
+
+			const result = await service.update(
+				TEAM_ID,
+				PROJECT_ID,
+				MOCK_TASK.id,
+				USER_ID,
+				UPDATE_TASK_DTO as never,
+			)
+
+			expect(prisma.task.update).toHaveBeenCalled()
+			expect(result.title).toBe(UPDATE_TASK_DTO.title)
+		})
+
+		it('должен обновить задачу если пользователь является ADMIN (даже если он не создавал задачу)', async () => {
+			const taskByOther = { ...MOCK_TASK, createdById: OTHER_USER_ID }
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_ADMIN)
+			prisma.task.findUnique.mockResolvedValue(taskByOther)
+			prisma.task.update.mockResolvedValue(UPDATED_TASK)
+
+			const result = await service.update(
+				TEAM_ID,
+				PROJECT_ID,
+				MOCK_TASK.id,
+				MEMBER_ADMIN.userId,
+				UPDATE_TASK_DTO as never,
+			)
+
+			expect(prisma.task.update).toHaveBeenCalled()
+			expect(result.title).toBe(UPDATE_TASK_DTO.title)
+		})
+
+		it('должен выбросить ForbiddenException если MEMBER пытается обновить чужую задачу', async () => {
+			// MEMBER_PLAIN is not the creator (task.createdById === USER_ID, not OTHER_USER_ID)
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_PLAIN)
+			prisma.task.findUnique.mockResolvedValue(MOCK_TASK) // createdById === USER_ID
+
+			await expect(
+				service.update(
+					TEAM_ID,
+					PROJECT_ID,
+					MOCK_TASK.id,
+					OTHER_USER_ID,
+					UPDATE_TASK_DTO as never,
+				),
+			).rejects.toThrow(ForbiddenException)
+
+			expect(prisma.task.update).not.toHaveBeenCalled()
+		})
+
+		it('должен выбросить NotFoundException если задача не найдена или не принадлежит проекту', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue(null)
+
+			await expect(
+				service.update(
+					TEAM_ID,
+					PROJECT_ID,
+					MOCK_TASK.id,
+					USER_ID,
+					UPDATE_TASK_DTO as never,
+				),
+			).rejects.toThrow(NotFoundException)
+
+			expect(prisma.task.update).not.toHaveBeenCalled()
+		})
+
+		it('должен выбросить NotFoundException если задача принадлежит другому проекту (IDOR)', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue({
+				...MOCK_TASK,
+				projectId: 'other-project-id',
+			})
+
+			await expect(
+				service.update(
+					TEAM_ID,
+					PROJECT_ID,
+					MOCK_TASK.id,
+					USER_ID,
+					UPDATE_TASK_DTO as never,
+				),
+			).rejects.toThrow(NotFoundException)
+
+			expect(prisma.task.update).not.toHaveBeenCalled()
 		})
 	})
 })
