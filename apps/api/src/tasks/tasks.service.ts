@@ -98,4 +98,16 @@ export class TasksService {
 
 		return buildPaginatedResponse(tasks, pagination, total)
 	}
+
+	async findOne(teamId: string, projectId: string, taskId: string, userId: string) {
+		await this.assertTeamMember(teamId, userId)
+
+		const task = await this.prisma.task.findUnique({ where: { id: taskId } })
+
+		if (!task || task.projectId !== projectId) {
+			throw new NotFoundException('Задача не найдена в этом проекте')
+		}
+
+		return task
+	}
 }
