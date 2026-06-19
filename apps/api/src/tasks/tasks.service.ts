@@ -146,4 +146,21 @@ export class TasksService {
 			},
 		})
 	}
+
+	async remove(teamId: string, projectId: string, taskId: string, userId: string) {
+		const member = await this.assertTeamMember(teamId, userId)
+
+		const isAdminOrOwner =
+			member.role === TeamRole.ADMIN || member.role === TeamRole.OWNER
+
+		if (!isAdminOrOwner) {
+			throw new ForbiddenException('Недостаточно прав для выполнения этого действия')
+		}
+
+		await this.findTaskOrThrow(projectId, taskId)
+
+		await this.prisma.task.delete({ where: { id: taskId } })
+
+		return { message: 'Задача успешно удалена', success: true }
+	}
 }

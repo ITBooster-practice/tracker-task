@@ -19,6 +19,7 @@ export function createPrismaMock() {
 			findUnique: vi.fn(),
 			count: vi.fn(),
 			update: vi.fn(),
+			delete: vi.fn(),
 		},
 	} as unknown as PrismaService & {
 		teamMember: {
@@ -34,6 +35,7 @@ export function createPrismaMock() {
 			findUnique: ReturnType<typeof vi.fn>
 			count: ReturnType<typeof vi.fn>
 			update: ReturnType<typeof vi.fn>
+			delete: ReturnType<typeof vi.fn>
 		}
 	}
 }
