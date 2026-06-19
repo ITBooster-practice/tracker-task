@@ -18,6 +18,7 @@ export function createPrismaMock() {
 			findMany: vi.fn(),
 			findUnique: vi.fn(),
 			count: vi.fn(),
+			update: vi.fn(),
 		},
 	} as unknown as PrismaService & {
 		teamMember: {
@@ -32,6 +33,7 @@ export function createPrismaMock() {
 			findMany: ReturnType<typeof vi.fn>
 			findUnique: ReturnType<typeof vi.fn>
 			count: ReturnType<typeof vi.fn>
+			update: ReturnType<typeof vi.fn>
 		}
 	}
 }
@@ -40,12 +42,29 @@ export function createPrismaMock() {
 
 export const PROJECT_ID = 'project-id-1'
 export const TASK_ID = 'task-id-1'
+export const OTHER_USER_ID = 'other-user-id'
 
 export const MEMBER_OWNER = {
 	id: 'member-id-1',
 	teamId: TEAM_ID,
 	userId: USER_ID,
 	role: 'OWNER' as const,
+	joinedAt: new Date(),
+}
+
+export const MEMBER_ADMIN = {
+	id: 'member-id-2',
+	teamId: TEAM_ID,
+	userId: 'admin-user-id',
+	role: 'ADMIN' as const,
+	joinedAt: new Date(),
+}
+
+export const MEMBER_PLAIN = {
+	id: 'member-id-3',
+	teamId: TEAM_ID,
+	userId: OTHER_USER_ID,
+	role: 'MEMBER' as const,
 	joinedAt: new Date(),
 }
 
@@ -69,10 +88,15 @@ export const MOCK_TASK = {
 	dueDate: null,
 	projectId: PROJECT_ID,
 	assigneeId: null,
+	createdById: USER_ID,
 	createdAt: new Date(),
 	updatedAt: new Date(),
 }
 
 export const CREATE_TASK_DTO = {
 	title: 'Fix login bug',
+}
+
+export const UPDATE_TASK_DTO = {
+	title: 'Updated title',
 }
