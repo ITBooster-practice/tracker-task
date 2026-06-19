@@ -233,4 +233,50 @@ describe('TasksService', () => {
 			expect(prisma.task.findMany).not.toHaveBeenCalled()
 		})
 	})
+
+	// ── findOne ───────────────────────────────────────────────────────────────
+	describe('findOne', () => {
+		it('должен вернуть задачу если она существует и принадлежит указанному проекту', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue(MOCK_TASK)
+
+			const result = await service.findOne(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID)
+
+			expect(prisma.task.findUnique).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: MOCK_TASK.id } }),
+			)
+			expect(result).toEqual(MOCK_TASK)
+		})
+
+		it('должен выбросить NotFoundException если задача не найдена', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue(null)
+
+			await expect(
+				service.findOne(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID),
+			).rejects.toThrow(NotFoundException)
+		})
+
+		it('должен выбросить NotFoundException если задача принадлежит другому проекту (IDOR)', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue({
+				...MOCK_TASK,
+				projectId: 'other-project-id',
+			})
+
+			await expect(
+				service.findOne(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID),
+			).rejects.toThrow(NotFoundException)
+		})
+
+		it('должен выбросить ForbiddenException если пользователь не является членом команды', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(null)
+
+			await expect(
+				service.findOne(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID),
+			).rejects.toThrow(ForbiddenException)
+
+			expect(prisma.task.findUnique).not.toHaveBeenCalled()
+		})
+	})
 })
