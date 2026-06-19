@@ -125,6 +125,7 @@ async function main() {
 				status: 'DONE',
 				priority: 'HIGH',
 				projectId: project1.id,
+				createdById: user1.id,
 				assigneeId: user2.id,
 			},
 			{
@@ -133,6 +134,7 @@ async function main() {
 				status: 'IN_PROGRESS',
 				priority: 'HIGH',
 				projectId: project1.id,
+				createdById: user1.id,
 				assigneeId: user2.id,
 			},
 			{
@@ -141,6 +143,7 @@ async function main() {
 				status: 'IN_PROGRESS',
 				priority: 'MEDIUM',
 				projectId: project1.id,
+				createdById: user1.id,
 				assigneeId: user2.id,
 			},
 			{
@@ -149,6 +152,7 @@ async function main() {
 				status: 'TODO',
 				priority: 'MEDIUM',
 				projectId: project1.id,
+				createdById: user1.id,
 				assigneeId: user2.id,
 			},
 			{
@@ -157,6 +161,7 @@ async function main() {
 				status: 'TODO',
 				priority: 'LOW',
 				projectId: project1.id,
+				createdById: user1.id,
 				assigneeId: null, // Задача пока не назначена
 			},
 		],
@@ -171,6 +176,7 @@ async function main() {
 				status: 'IN_REVIEW',
 				priority: 'CRITICAL',
 				projectId: project2.id,
+				createdById: user3.id,
 				assigneeId: user3.id,
 			},
 			{
@@ -179,6 +185,7 @@ async function main() {
 				status: 'TODO',
 				priority: 'HIGH',
 				projectId: project2.id,
+				createdById: user3.id,
 				assigneeId: null,
 			},
 			{
@@ -187,6 +194,7 @@ async function main() {
 				status: 'TODO',
 				priority: 'MEDIUM',
 				projectId: project2.id,
+				createdById: user3.id,
 				assigneeId: null,
 			},
 		],
