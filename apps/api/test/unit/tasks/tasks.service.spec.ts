@@ -407,4 +407,79 @@ describe('TasksService', () => {
 			expect(prisma.task.update).not.toHaveBeenCalled()
 		})
 	})
+
+	// ── remove ──────────────────────────────────────────────────────────────────
+	describe('remove', () => {
+		it('должен удалить задачу если пользователь является OWNER', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue(MOCK_TASK)
+			prisma.task.delete.mockResolvedValue(MOCK_TASK)
+
+			await service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID)
+
+			expect(prisma.task.delete).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: MOCK_TASK.id } }),
+			)
+		})
+
+		it('должен удалить задачу если пользователь является ADMIN', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_ADMIN)
+			prisma.task.findUnique.mockResolvedValue(MOCK_TASK)
+			prisma.task.delete.mockResolvedValue(MOCK_TASK)
+
+			await service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, MEMBER_ADMIN.userId)
+
+			expect(prisma.task.delete).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: MOCK_TASK.id } }),
+			)
+		})
+
+		it('должен выбросить ForbiddenException если пользователь является MEMBER (не создатель)', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_PLAIN)
+
+			await expect(
+				service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, OTHER_USER_ID),
+			).rejects.toThrow(ForbiddenException)
+
+			expect(prisma.task.delete).not.toHaveBeenCalled()
+		})
+
+		it('должен выбросить ForbiddenException даже если MEMBER является создателем задачи', async () => {
+			// Задача создана тем же пользователем, но его роль — MEMBER
+			const taskCreatedByPlain = { ...MOCK_TASK, createdById: OTHER_USER_ID }
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_PLAIN)
+			prisma.task.findUnique.mockResolvedValue(taskCreatedByPlain)
+
+			await expect(
+				service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, OTHER_USER_ID),
+			).rejects.toThrow(ForbiddenException)
+
+			expect(prisma.task.delete).not.toHaveBeenCalled()
+		})
+
+		it('должен выбросить NotFoundException если задача не найдена или не принадлежит проекту', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue(null)
+
+			await expect(
+				service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID),
+			).rejects.toThrow(NotFoundException)
+
+			expect(prisma.task.delete).not.toHaveBeenCalled()
+		})
+
+		it('должен выбросить NotFoundException если задача принадлежит другому проекту (IDOR)', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findUnique.mockResolvedValue({
+				...MOCK_TASK,
+				projectId: 'other-project-id',
+			})
+
+			await expect(
+				service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID),
+			).rejects.toThrow(NotFoundException)
+
+			expect(prisma.task.delete).not.toHaveBeenCalled()
+		})
+	})
 })
