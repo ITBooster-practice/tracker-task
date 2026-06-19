@@ -116,10 +116,14 @@ model Task {
   description String?
   status      TaskStatus @default(TODO)
   priority    Priority   @default(MEDIUM)
+  position    Int        @default(0)
+  dueDate     DateTime?
   projectId   String
   project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assigneeId  String?
   assignee    User?      @relation(fields: [assigneeId], references: [id])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  @@index([projectId, status, position])
 }
