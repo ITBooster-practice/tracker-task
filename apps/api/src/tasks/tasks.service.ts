@@ -1,7 +1,13 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { TaskStatus, type TeamMember } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
+import {
+	buildPaginatedResponse,
+	getPaginationPrismaParams,
+	type PaginationOptions,
+} from '../utils/pagination.util'
 import { CreateTaskDto } from './dto/create-task.dto'
+import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 
 @Injectable()
 export class TasksService {
@@ -59,5 +65,37 @@ export class TasksService {
 				position,
 			},
 		})
+	}
+
+	async findAll(
+		teamId: string,
+		projectId: string,
+		userId: string,
+		filters: Pick<TaskFilterQueryDto, 'status' | 'priority' | 'assigneeId'>,
+		pagination: PaginationOptions,
+	) {
+		await this.assertTeamMember(teamId, userId)
+		await this.findProjectOrThrow(teamId, projectId)
+
+		const where = {
+			projectId,
+			...(filters.status && { status: filters.status as never }),
+			...(filters.priority && { priority: filters.priority as never }),
+			...(filters.assigneeId && { assigneeId: filters.assigneeId }),
+		}
+
+		const { skip, take } = getPaginationPrismaParams(pagination)
+
+		const [tasks, total] = await Promise.all([
+			this.prisma.task.findMany({
+				where,
+				orderBy: [{ status: 'asc' }, { position: 'asc' }],
+				skip,
+				take,
+			}),
+			this.prisma.task.count({ where }),
+		])
+
+		return buildPaginatedResponse(tasks, pagination, total)
 	}
 }
