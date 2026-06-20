@@ -39,6 +39,7 @@ afterEach(cleanup)
 // ─── TaskStatusBadge ─────────────────────────────────────────────
 describe('TaskStatusBadge', () => {
 	it.each([
+		['BACKLOG', 'Бэклог'],
 		['TODO', 'К выполнению'],
 		['IN_PROGRESS', 'В работе'],
 		['IN_REVIEW', 'Ревью'],
