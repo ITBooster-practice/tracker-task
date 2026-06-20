@@ -30,3 +30,8 @@ export interface TaskFilterParams extends PaginationParams {
 	priority?: Priority
 	assigneeId?: string
 }
+
+export interface BoardColumn {
+	status: TaskStatus
+	tasks: Task[]
+}

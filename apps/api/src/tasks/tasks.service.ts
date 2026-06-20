@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { TaskStatus, TeamRole, type TeamMember } from 'generated/prisma/client'
+import { type Task, TaskStatus, TeamRole, type TeamMember } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import {
 	buildPaginatedResponse,
@@ -145,6 +145,30 @@ export class TasksService {
 				...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
 			},
 		})
+	}
+
+	async getBoard(
+		teamId: string,
+		projectId: string,
+		userId: string,
+	): Promise<Array<{ status: TaskStatus; tasks: Task[] }>> {
+		await this.assertTeamMember(teamId, userId)
+		await this.findProjectOrThrow(teamId, projectId)
+
+		const tasks = await this.prisma.task.findMany({
+			where: { projectId },
+			orderBy: { position: 'asc' },
+		})
+
+		const grouped = new Map<TaskStatus, Task[]>(
+			Object.values(TaskStatus).map((s) => [s, []]),
+		)
+
+		for (const task of tasks) {
+			grouped.get(task.status as TaskStatus)!.push(task)
+		}
+
+		return Array.from(grouped, ([status, tasks]) => ({ status, tasks }))
 	}
 
 	async remove(teamId: string, projectId: string, taskId: string, userId: string) {
