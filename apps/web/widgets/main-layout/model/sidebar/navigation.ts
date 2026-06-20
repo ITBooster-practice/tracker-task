@@ -26,6 +26,14 @@ function getTeamScopedHref(
 	return teamRoutes[route](teamId)
 }
 
+function getProjectTasksHref(
+	teamId: string | null | undefined,
+	projectId: string | null | undefined,
+) {
+	if (!teamId || !projectId) return '#'
+	return teamRoutes.projectTasks(teamId, projectId)
+}
+
 export const sidebarWorkspace: SidebarWorkspace = {
 	title: 'Tracker Task',
 	subtitle: 'Product Team',
@@ -60,7 +68,7 @@ export function getSidebarSections(
 				},
 				{
 					title: 'Задачи',
-					href: ROUTES.tasks,
+					href: getProjectTasksHref(activeTeamId, activeProjectId),
 					routeId: SIDEBAR_ROUTE_IDS.tasks,
 					icon: ListTodo,
 				},

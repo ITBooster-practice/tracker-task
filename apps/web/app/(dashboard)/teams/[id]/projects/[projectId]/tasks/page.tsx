@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 
-import { ProjectTasksPageView } from '@/views/projects'
+import { ProjectTasksPageView } from '@/views/tasks'
 import { FEATURES } from '@/shared/config'
 
 export default function ProjectTasksPage() {
