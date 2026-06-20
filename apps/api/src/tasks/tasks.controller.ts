@@ -24,6 +24,7 @@ import {
 import { Authorization } from '../auth/decorators/authorization.decorator'
 import { Authorized } from '../auth/decorators/authorized.decorator'
 import { CreateTaskDto } from './dto/create-task.dto'
+import { TaskResponseDto } from './dto/task-response.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 import { TasksService } from './tasks.service'
@@ -36,7 +37,7 @@ export class TasksController {
 	constructor(private readonly tasksService: TasksService) {}
 
 	@ApiOperation({ summary: 'Создать задачу' })
-	@ApiCreatedResponse({ description: 'Задача успешно создана' })
+	@ApiCreatedResponse({ type: TaskResponseDto, description: 'Задача успешно создана' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Post()
 	@HttpCode(HttpStatus.CREATED)
@@ -50,7 +51,7 @@ export class TasksController {
 	}
 
 	@ApiOperation({ summary: 'Список задач проекта' })
-	@ApiOkResponse({ description: 'Пагинированный список задач' })
+	@ApiOkResponse({ type: [TaskResponseDto], description: 'Пагинированный список задач' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Get()
 	findAll(
@@ -70,7 +71,7 @@ export class TasksController {
 	}
 
 	@ApiOperation({ summary: 'Получить задачу по ID' })
-	@ApiOkResponse({ description: 'Данные задачи' })
+	@ApiOkResponse({ type: TaskResponseDto, description: 'Данные задачи' })
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Get(':taskId')
@@ -84,7 +85,7 @@ export class TasksController {
 	}
 
 	@ApiOperation({ summary: 'Обновить задачу (OWNER / ADMIN / создатель)' })
-	@ApiOkResponse({ description: 'Задача обновлена' })
+	@ApiOkResponse({ type: TaskResponseDto, description: 'Задача обновлена' })
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для обновления задачи' })
 	@Patch(':taskId')
@@ -103,7 +104,7 @@ export class TasksController {
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для удаления задачи' })
 	@Delete(':taskId')
-	@HttpCode(HttpStatus.OK)
+	@HttpCode(HttpStatus.NO_CONTENT)
 	remove(
 		@Param('teamId') teamId: string,
 		@Param('projectId') projectId: string,
