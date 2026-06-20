@@ -362,6 +362,92 @@ describe('Tasks (e2e)', () => {
 		})
 	})
 
+	// ── GET /teams/:teamId/projects/:projectId/tasks/board ───────────────────
+	// ── PATCH /teams/:teamId/projects/:projectId/tasks/:taskId/move ──────────
+
+	describe('Board', () => {
+		it('200 — участник получает доску: 5 колонок, задачи распределены по статусам', async () => {
+			await createTask(ownerCookies, { title: 'Todo task', status: 'TODO' })
+			await createTask(ownerCookies, { title: 'In-progress task', status: 'IN_PROGRESS' })
+
+			const res = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.set('Cookie', memberCookies)
+				.expect(200)
+
+			const columns = res.body as Array<{
+				status: string
+				tasks: Record<string, unknown>[]
+			}>
+
+			expect(Array.isArray(columns)).toBe(true)
+			expect(columns).toHaveLength(5)
+
+			const statuses = columns.map((c) => c.status)
+			expect(statuses).toEqual(
+				expect.arrayContaining(['TODO', 'BACKLOG', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']),
+			)
+
+			const todoColumn = columns.find((c) => c.status === 'TODO')!
+			expect(todoColumn.tasks).toHaveLength(1)
+			expect(todoColumn.tasks[0]).toMatchObject({ title: 'Todo task' })
+
+			const inProgressColumn = columns.find((c) => c.status === 'IN_PROGRESS')!
+			expect(inProgressColumn.tasks).toHaveLength(1)
+
+			const emptyStatuses = columns.filter(
+				(c) => !['TODO', 'IN_PROGRESS'].includes(c.status),
+			)
+			emptyStatuses.forEach((col) => expect(col.tasks).toHaveLength(0))
+		})
+
+		it('403 — незнакомец не может получить доску', async () => {
+			await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.set('Cookie', strangerCookies)
+				.expect(403)
+		})
+
+		it('200 — PATCH /:taskId/move перемещает задачу в новый статус и позицию', async () => {
+			const task = await createTask(ownerCookies, {
+				title: 'Movable task',
+				status: 'TODO',
+			})
+
+			const res = await request(server)
+				.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}/move`)
+				.set('Cookie', memberCookies)
+				.send({ status: 'IN_PROGRESS', position: 1 })
+				.expect(200)
+
+			expect(res.body.status).toBe('IN_PROGRESS')
+			expect(res.body.position).toBe(1)
+
+			// Подтверждаем через доску
+			const boardRes = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.set('Cookie', memberCookies)
+				.expect(200)
+
+			const columns = boardRes.body as Array<{
+				status: string
+				tasks: Array<{ id: string }>
+			}>
+			const inProgressTasks = columns.find((c) => c.status === 'IN_PROGRESS')!.tasks
+			expect(inProgressTasks.some((t) => t.id === task.id)).toBe(true)
+		})
+
+		it('400 — PATCH /:taskId/move с невалидным статусом возвращает Bad Request', async () => {
+			const task = await createTask(ownerCookies, { title: 'Task for invalid move' })
+
+			await request(server)
+				.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}/move`)
+				.set('Cookie', ownerCookies)
+				.send({ status: 'INVALID_STATUS', position: 0 })
+				.expect(400)
+		})
+	})
+
 	// ── DELETE /teams/:teamId/projects/:projectId/tasks/:taskId ──────────────
 
 	describe('DELETE /teams/:teamId/projects/:projectId/tasks/:taskId', () => {
