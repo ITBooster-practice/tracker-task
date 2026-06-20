@@ -168,6 +168,46 @@ describe('Tasks (e2e)', () => {
 			expect(task1.position).toBe(1)
 			expect(task2.position).toBe(2)
 		})
+
+		it('400 — отсутствует обязательное поле title', async () => {
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({})
+				.expect(400)
+		})
+
+		it('400 — title пустая строка', async () => {
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: '' })
+				.expect(400)
+		})
+
+		it('400 — невалидный enum status', async () => {
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Valid title', status: 'INVALID_STATUS' })
+				.expect(400)
+		})
+
+		it('400 — невалидный enum priority', async () => {
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Valid title', priority: 'SUPER_HIGH' })
+				.expect(400)
+		})
+
+		it('400 — dueDate не в формате ISO 8601', async () => {
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Valid title', dueDate: 'not-a-date' })
+				.expect(400)
+		})
 	})
 
 	// ── GET /teams/:teamId/projects/:projectId/tasks ──────────────────────────
@@ -309,6 +349,16 @@ describe('Tasks (e2e)', () => {
 				.set('Cookie', ownerCookies)
 				.send({ title: 'Ghost update' })
 				.expect(404)
+		})
+
+		it('400 — невалидный enum status при обновлении', async () => {
+			const task = await createTask(ownerCookies, { title: 'Task to patch' })
+
+			await request(server)
+				.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
+				.set('Cookie', ownerCookies)
+				.send({ status: 'WRONG_STATUS' })
+				.expect(400)
 		})
 	})
 

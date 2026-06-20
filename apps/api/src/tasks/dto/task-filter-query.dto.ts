@@ -1,8 +1,20 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { type Priority, type TaskStatus } from '@repo/types'
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
+import { type Priority, type TaskStatus, taskFilterQuerySchema } from '@repo/types'
+import { createZodDto } from 'nestjs-zod'
 
-export class TaskFilterQueryDto extends PaginationQueryDto {
+export class TaskFilterQueryDto extends createZodDto(taskFilterQuerySchema) {
+	@ApiPropertyOptional({
+		example: 1,
+		description: 'Номер страницы',
+	})
+	page: number
+
+	@ApiPropertyOptional({
+		example: 10,
+		description: 'Количество элементов на странице',
+	})
+	limit: number
+
 	@ApiPropertyOptional({
 		example: 'TODO',
 		enum: ['TODO', 'BACKLOG', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'],
