@@ -31,7 +31,9 @@
 		"prisma:migrate": "pnpm --filter api prisma:migrate",
 		"prisma:studio": "pnpm --filter api prisma:studio",
 		"prisma:seed": "pnpm --filter api prisma:seed",
-		"prisma:reset": "pnpm --filter api prisma:migrate reset --force"
+		"prisma:reset": "pnpm --filter api prisma:migrate reset --force",
+		"storybook": "pnpm --filter @repo/ui storybook",
+		"storybook:build": "pnpm --filter @repo/ui build-storybook"
 	},
 	"devDependencies": {
 		"@commitlint/cli": "^20.4.1",
