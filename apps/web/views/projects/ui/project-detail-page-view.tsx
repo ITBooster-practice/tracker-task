@@ -191,12 +191,17 @@ function ProjectDetailPageView() {
 				<section className='mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
 					{actionCards.map((card) => {
 						const Icon = card.icon
+						const handleClick =
+							card.id === 'all-tasks'
+								? () => router.push(teamRoutes.projectTasks(teamId, projectId))
+								: undefined
 
 						return (
 							<button
 								key={card.id}
 								type='button'
-								className='flex w-full items-center gap-4 rounded-lg border border-border bg-card p-5 text-left transition-all hover:border-primary/40'
+								onClick={handleClick}
+								className='flex w-full cursor-pointer items-center gap-4 rounded-lg border border-border bg-card p-5 text-left transition-all hover:border-primary/40'
 							>
 								<div
 									className={cn(

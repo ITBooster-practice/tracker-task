@@ -30,6 +30,8 @@ vi.mock('@/shared/config', () => ({
 		projects: (teamId: string) => `/teams/${teamId}/projects`,
 		project: (teamId: string, projectId: string) =>
 			`/teams/${teamId}/projects/${projectId}`,
+		projectTasks: (teamId: string, projectId: string) =>
+			`/teams/${teamId}/projects/${projectId}/tasks`,
 		settings: (teamId: string) => `/teams/${teamId}/settings`,
 	},
 }))
@@ -98,6 +100,22 @@ describe('getSidebarSections', () => {
 		const item = findItem(sections, 'Обзор проекта')
 
 		expect(item).toBeUndefined()
+	})
+
+	it('Задачи: teamId и projectId есть → ведёт на страницу задач проекта', () => {
+		const sections = getSidebarSections('team-1', 'proj-1')
+		const item = findItem(sections, 'Задачи')
+
+		expect(item?.href).toBe('/teams/team-1/projects/proj-1/tasks')
+		expect(item?.routeId).toBe('tasks')
+	})
+
+	it('Задачи: нет teamId или projectId → href = "#"', () => {
+		const withoutProject = getSidebarSections('team-1')
+		expect(findItem(withoutProject, 'Задачи')?.href).toBe('#')
+
+		const withoutTeam = getSidebarSections(null, 'proj-1')
+		expect(findItem(withoutTeam, 'Задачи')?.href).toBe('#')
 	})
 
 	it('всегда содержит секции Работа, Инструменты, Управление', () => {

@@ -154,6 +154,9 @@ export function getSidebarRouteId(
 	}
 
 	if (thirdSegment === ROUTE_SEGMENTS.projects) {
+		if (segments[4] === ROUTE_SEGMENTS.tasks) {
+			return SIDEBAR_ROUTE_IDS.tasks
+		}
 		if (segments[3]) {
 			return SIDEBAR_ROUTE_IDS.teamProject
 		}
