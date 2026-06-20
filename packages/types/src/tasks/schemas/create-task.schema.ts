@@ -10,6 +10,8 @@ export const TaskStatusSchema = z.enum([
 
 export const PrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
 
+export const TaskTypeSchema = z.enum(['EPIC', 'STORY', 'BUG', 'TECH_DEBT', 'TASK'])
+
 export const createTaskSchema = z.object({
 	title: z
 		.string({ message: 'Название должно быть строкой' })
@@ -26,6 +28,7 @@ export const createTaskSchema = z.object({
 		.string({ message: 'Дата дедлайна должна быть строкой' })
 		.datetime({ message: 'Дата дедлайна должна быть в формате ISO 8601' })
 		.optional(),
+	type: TaskTypeSchema.optional(),
 })
 
 export type CreateTask = z.infer<typeof createTaskSchema>
