@@ -56,6 +56,8 @@ export const teamRoutes = {
 	projects: (teamId: string) => buildTeamProjectsRoute(teamId),
 	project: (teamId: string, projectId: string) =>
 		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}`,
+	projectTasks: (teamId: string, projectId: string) =>
+		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.tasks}`,
 	settings: (teamId: string) =>
 		`${ROUTES.teams}/${encodeRouteParam(teamId)}/${ROUTE_SEGMENTS.settings}`,
 } as const
