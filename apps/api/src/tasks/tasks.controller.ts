@@ -23,6 +23,7 @@ import {
 
 import { Authorization } from '../auth/decorators/authorization.decorator'
 import { Authorized } from '../auth/decorators/authorized.decorator'
+import { BoardResponseDto } from './dto/board-response.dto'
 import { CreateTaskDto } from './dto/create-task.dto'
 import { TaskResponseDto } from './dto/task-response.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
@@ -71,7 +72,7 @@ export class TasksController {
 	}
 
 	@ApiOperation({ summary: 'Получить доску (задачи, сгруппированные по статусам)' })
-	@ApiOkResponse({ description: 'Массив колонок доски' })
+	@ApiOkResponse({ type: BoardResponseDto, description: 'Структура канбан-доски' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Get('board')
 	getBoard(
