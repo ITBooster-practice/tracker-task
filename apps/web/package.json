@@ -13,7 +13,9 @@
 		"test": "vitest run --config ./vitest.config.ts",
 		"pretest:e2e": "pnpm --filter @repo/vitest-config build",
 		"test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"storybook": "pnpm --filter @repo/ui storybook",
+		"storybook:build": "pnpm --filter @repo/ui build-storybook"
 	},
 	"dependencies": {
 		"@dnd-kit/core": "^6.3.1",
