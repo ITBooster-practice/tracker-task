@@ -411,9 +411,9 @@ describe('TasksService', () => {
 
 	// ── getBoard ─────────────────────────────────────────────────────────────────
 	describe('getBoard', () => {
-		const ALL_STATUSES = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] as const
+		const ALL_STATUSES = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] as const
 
-		it('должен вернуть все 5 колонок даже если задач нет', async () => {
+		it('должен вернуть все 4 колонки даже если задач нет', async () => {
 			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
 			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
 			prisma.task.findMany.mockResolvedValue([])
@@ -432,11 +432,6 @@ describe('TasksService', () => {
 			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
 			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
 
-			const backlogTask = makeTask({
-				id: 'task-b',
-				status: 'BACKLOG' as never,
-				position: 1,
-			})
 			const todoTask1 = makeTask({ id: 'task-t1', status: 'TODO' as never, position: 1 })
 			const todoTask2 = makeTask({ id: 'task-t2', status: 'TODO' as never, position: 2 })
 			const inProgressTask = makeTask({
@@ -447,7 +442,6 @@ describe('TasksService', () => {
 			const doneTask = makeTask({ id: 'task-d', status: 'DONE' as never, position: 1 })
 
 			prisma.task.findMany.mockResolvedValue([
-				backlogTask,
 				todoTask1,
 				todoTask2,
 				inProgressTask,
@@ -458,7 +452,6 @@ describe('TasksService', () => {
 
 			const find = (s: string) => result.find((c) => c.status === s)!
 
-			expect(find('BACKLOG').tasks).toEqual([backlogTask])
 			expect(find('TODO').tasks).toEqual([todoTask1, todoTask2])
 			expect(find('IN_PROGRESS').tasks).toEqual([inProgressTask])
 			expect(find('IN_REVIEW').tasks).toEqual([])
