@@ -7,6 +7,7 @@ import {
 	type PaginationOptions,
 } from '../utils/pagination.util'
 import { CreateTaskDto } from './dto/create-task.dto'
+import { MoveTaskDto } from './dto/move-task.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 
@@ -169,6 +170,26 @@ export class TasksService {
 		}
 
 		return Array.from(grouped, ([status, tasks]) => ({ status, tasks }))
+	}
+
+	async moveTask(
+		teamId: string,
+		projectId: string,
+		taskId: string,
+		userId: string,
+		dto: MoveTaskDto,
+	) {
+		await this.assertTeamMember(teamId, userId)
+		await this.findProjectOrThrow(teamId, projectId)
+		await this.findTaskOrThrow(projectId, taskId)
+
+		return this.prisma.task.update({
+			where: { id: taskId },
+			data: {
+				status: dto.status as never,
+				position: dto.position,
+			},
+		})
 	}
 
 	async remove(teamId: string, projectId: string, taskId: string, userId: string) {

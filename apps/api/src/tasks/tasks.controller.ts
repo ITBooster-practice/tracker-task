@@ -25,6 +25,7 @@ import { Authorization } from '../auth/decorators/authorization.decorator'
 import { Authorized } from '../auth/decorators/authorized.decorator'
 import { BoardResponseDto } from './dto/board-response.dto'
 import { CreateTaskDto } from './dto/create-task.dto'
+import { MoveTaskDto } from './dto/move-task.dto'
 import { TaskResponseDto } from './dto/task-response.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
@@ -110,6 +111,21 @@ export class TasksController {
 		@Body() dto: UpdateTaskDto,
 	) {
 		return this.tasksService.update(teamId, projectId, taskId, userId, dto)
+	}
+
+	@ApiOperation({ summary: 'Переместить задачу (сменить статус / позицию)' })
+	@ApiOkResponse({ type: TaskResponseDto, description: 'Задача перемещена' })
+	@ApiNotFoundResponse({ description: 'Задача не найдена' })
+	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
+	@Patch(':taskId/move')
+	moveTask(
+		@Param('teamId') teamId: string,
+		@Param('projectId') projectId: string,
+		@Param('taskId') taskId: string,
+		@Authorized('id') userId: string,
+		@Body() dto: MoveTaskDto,
+	) {
+		return this.tasksService.moveTask(teamId, projectId, taskId, userId, dto)
 	}
 
 	@ApiOperation({ summary: 'Удалить задачу (OWNER / ADMIN)' })

@@ -11,6 +11,7 @@ import {
 	MEMBER_PLAIN,
 	MOCK_PROJECT,
 	MOCK_TASK,
+	MOVE_TASK_DTO,
 	OTHER_USER_ID,
 	PROJECT_ID,
 	TEAM_ID,
@@ -508,6 +509,66 @@ describe('TasksService', () => {
 			)
 
 			expect(prisma.task.findMany).not.toHaveBeenCalled()
+		})
+	})
+
+	// ── moveTask ─────────────────────────────────────────────────────────────────
+	describe('moveTask', () => {
+		it('должен сменить статус задачи', async () => {
+			const movedTask = { ...MOCK_TASK, status: 'IN_PROGRESS' as const, position: 1 }
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
+			prisma.task.findUnique.mockResolvedValue(MOCK_TASK)
+			prisma.task.update.mockResolvedValue(movedTask)
+
+			const result = await service.moveTask(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID, {
+				...MOVE_TASK_DTO,
+				status: 'IN_PROGRESS',
+			} as never)
+
+			expect(prisma.task.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { id: MOCK_TASK.id },
+					data: expect.objectContaining({ status: 'IN_PROGRESS' }),
+				}),
+			)
+			expect(result.status).toBe('IN_PROGRESS')
+		})
+
+		it('должен обновить позицию задачи внутри той же колонки', async () => {
+			const movedTask = { ...MOCK_TASK, position: 3 }
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.project.findUnique.mockResolvedValue(MOCK_PROJECT)
+			prisma.task.findUnique.mockResolvedValue(MOCK_TASK)
+			prisma.task.update.mockResolvedValue(movedTask)
+
+			const result = await service.moveTask(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID, {
+				status: 'TODO',
+				position: 3,
+			} as never)
+
+			expect(prisma.task.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({ position: 3 }),
+				}),
+			)
+			expect(result.position).toBe(3)
+		})
+
+		it('должен выбросить ForbiddenException если пользователь не является членом команды', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue(null)
+
+			await expect(
+				service.moveTask(
+					TEAM_ID,
+					PROJECT_ID,
+					MOCK_TASK.id,
+					USER_ID,
+					MOVE_TASK_DTO as never,
+				),
+			).rejects.toThrow(ForbiddenException)
+
+			expect(prisma.task.update).not.toHaveBeenCalled()
 		})
 	})
 
