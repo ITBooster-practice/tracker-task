@@ -70,6 +70,18 @@ export class TasksController {
 		)
 	}
 
+	@ApiOperation({ summary: 'Получить доску (задачи, сгруппированные по статусам)' })
+	@ApiOkResponse({ description: 'Массив колонок доски' })
+	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
+	@Get('board')
+	getBoard(
+		@Param('teamId') teamId: string,
+		@Param('projectId') projectId: string,
+		@Authorized('id') userId: string,
+	) {
+		return this.tasksService.getBoard(teamId, projectId, userId)
+	}
+
 	@ApiOperation({ summary: 'Получить задачу по ID' })
 	@ApiOkResponse({ type: TaskResponseDto, description: 'Данные задачи' })
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
