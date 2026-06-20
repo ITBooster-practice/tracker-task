@@ -107,8 +107,8 @@ Self-hosted трекер, который можно развернуть на с
 - [ ] **Users-модуль**: `GET /users/:id`, `PATCH /users/me`, загрузка аватара
 - [ ] **Восстановление пароля**: `POST /auth/forgot-password`, `/reset-password`
 - [ ] **Magic-link авторизация** — спека готова: [plans/magic-link.md](./plans/magic-link.md)
-- [ ] **Tasks-модуль** (модель в Prisma есть, нужны API + бизнес-логика)
-- [ ] **Boards** (модель и API)
+- [x] **Tasks-модуль** (CRUD + канбан-доска + moveTask — Done)
+- [x] **Boards** (GET /board — Done, см. [docs/backend/tasks.md](./backend/tasks.md))
 - [ ] **Подтверждение email** при регистрации
 
 ### Frontend

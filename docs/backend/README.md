@@ -11,6 +11,7 @@
 
 - [Swagger](./swagger/README.md) — API документация
 - [Teams](./teams/README.md) — Команды, участники, приглашения, роли
+- [Tasks](./tasks.md) — Задачи, канбан-доска, логика position
 
 ### База данных
 
