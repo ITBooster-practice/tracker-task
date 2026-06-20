@@ -17,6 +17,8 @@ const buildTaskEndpoint = (teamId: string, projectId: string, taskId: string) =>
 // Mock data — remove together with USE_MOCK when backend controller exposes routes
 const USE_MOCK = true
 
+let mockTaskIdCounter = 5
+
 const MOCK_TASKS: Task[] = [
 	{
 		id: 'mock-task-1',
@@ -132,7 +134,7 @@ export const tasksService = {
 	create: async (teamId: string, projectId: string, data: CreateTask): Promise<Task> => {
 		if (USE_MOCK) {
 			const newTask: Task = {
-				id: `mock-task-${Date.now()}`,
+				id: `mock-task-${++mockTaskIdCounter}`,
 				title: data.title,
 				description: data.description ?? null,
 				type: data.type,
