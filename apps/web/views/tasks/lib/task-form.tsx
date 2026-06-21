@@ -40,7 +40,6 @@ export const TASK_PRIORITY_BUTTONS: {
 ]
 
 export const TASK_STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
-	{ value: 'BACKLOG', label: 'Backlog' },
 	{ value: 'TODO', label: 'To Do' },
 	{ value: 'IN_PROGRESS', label: 'In Progress' },
 	{ value: 'IN_REVIEW', label: 'Review' },
