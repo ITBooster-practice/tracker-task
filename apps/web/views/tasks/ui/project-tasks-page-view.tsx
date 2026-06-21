@@ -3,7 +3,11 @@
 import { useParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 
-import type { TaskStatus as ApiTaskStatus, TaskType as ApiTaskType } from '@repo/types'
+import type {
+	TaskStatus as ApiTaskStatus,
+	TaskType as ApiTaskType,
+	Task,
+} from '@repo/types'
 import {
 	Avatar,
 	AvatarFallback,
@@ -29,6 +33,9 @@ import {
 import { useProjectDetail } from '@/shared/api/use-projects'
 import { useTasksList } from '@/shared/api/use-tasks'
 import { useTeamMembers } from '@/shared/api/use-team-members'
+
+import { CreateTaskSheet } from './create-task-sheet'
+import { EditTaskDialog } from './edit-task-dialog'
 
 const TASK_LIMIT = 20
 const ALL = 'ALL'
@@ -136,6 +143,9 @@ export function ProjectTasksPageView() {
 	const [typeFilter, setTypeFilter] = useState<string>(ALL)
 	const [statusFilter, setStatusFilter] = useState<string>(ALL)
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+	const [isCreateOpen, setIsCreateOpen] = useState(false)
+	const [editingTask, setEditingTask] = useState<Task | null>(null)
+	const [isEditOpen, setIsEditOpen] = useState(false)
 	const { paginationParams, setPage } = usePagination({ initialLimit: TASK_LIMIT })
 
 	const filterParams = useMemo(
@@ -207,7 +217,10 @@ export function ProjectTasksPageView() {
 							{project?.name ?? '...'}
 						</p>
 					</div>
-					<Button className='h-10 shrink-0 rounded-[var(--radius-control)] bg-primary px-5 text-[14px] font-medium text-primary-foreground hover:bg-primary/90'>
+					<Button
+						onClick={() => setIsCreateOpen(true)}
+						className='h-10 shrink-0 rounded-[var(--radius-control)] bg-primary px-5 text-[14px] font-medium text-primary-foreground hover:bg-primary/90'
+					>
 						<Plus className='mr-1.5 size-4' />
 						Создать задачу
 					</Button>
@@ -334,8 +347,12 @@ export function ProjectTasksPageView() {
 									return (
 										<tr
 											key={task.id}
+											onClick={() => {
+												setEditingTask(task)
+												setIsEditOpen(true)
+											}}
 											className={cn(
-												'border-b border-border transition-colors last:border-b-0',
+												'cursor-pointer border-b border-border transition-colors last:border-b-0',
 												isSelected ? 'bg-primary/5' : 'hover:bg-muted/40',
 											)}
 										>
@@ -435,6 +452,24 @@ export function ProjectTasksPageView() {
 					</div>
 				)}
 			</div>
+
+			<CreateTaskSheet
+				teamId={teamId}
+				projectId={projectId}
+				open={isCreateOpen}
+				onOpenChange={setIsCreateOpen}
+			/>
+
+			<EditTaskDialog
+				teamId={teamId}
+				projectId={projectId}
+				task={editingTask}
+				open={isEditOpen}
+				onOpenChange={(open) => {
+					setIsEditOpen(open)
+					if (!open) setEditingTask(null)
+				}}
+			/>
 		</div>
 	)
 }
