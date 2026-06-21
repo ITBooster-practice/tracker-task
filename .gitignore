@@ -66,5 +66,15 @@ pnpm-debug.log*
 .DS_Store
 *.pem
 
+# AI agents
+.agents/
+.claude/
+.codex/
+.junie/
+CLAUDE.md
+skills-lock.json
+.playwright-mcp/
+
+
 *storybook.log
 storybook-static
