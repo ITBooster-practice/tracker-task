@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 
 import type {
@@ -33,8 +33,8 @@ import {
 import { useProjectDetail } from '@/shared/api/use-projects'
 import { useTasksList } from '@/shared/api/use-tasks'
 import { useTeamMembers } from '@/shared/api/use-team-members'
+import { teamRoutes } from '@/shared/config'
 
-import { CreateTaskSheet } from './create-task-sheet'
 import { EditTaskDialog } from './edit-task-dialog'
 
 const TASK_LIMIT = 20
@@ -135,6 +135,7 @@ const TableHead = () => (
 )
 
 export function ProjectTasksPageView() {
+	const router = useRouter()
 	const params = useParams<{ id: string; projectId: string }>()
 	const teamId = decodeURIComponent(params.id)
 	const projectId = decodeURIComponent(params.projectId)
@@ -143,7 +144,6 @@ export function ProjectTasksPageView() {
 	const [typeFilter, setTypeFilter] = useState<string>(ALL)
 	const [statusFilter, setStatusFilter] = useState<string>(ALL)
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-	const [isCreateOpen, setIsCreateOpen] = useState(false)
 	const [editingTask, setEditingTask] = useState<Task | null>(null)
 	const [isEditOpen, setIsEditOpen] = useState(false)
 	const { paginationParams, setPage } = usePagination({ initialLimit: TASK_LIMIT })
@@ -218,7 +218,7 @@ export function ProjectTasksPageView() {
 						</p>
 					</div>
 					<Button
-						onClick={() => setIsCreateOpen(true)}
+						onClick={() => router.push(teamRoutes.projectTasksNew(teamId, projectId))}
 						className='h-10 shrink-0 rounded-[var(--radius-control)] bg-primary px-5 text-[14px] font-medium text-primary-foreground hover:bg-primary/90'
 					>
 						<Plus className='mr-1.5 size-4' />
@@ -452,13 +452,6 @@ export function ProjectTasksPageView() {
 					</div>
 				)}
 			</div>
-
-			<CreateTaskSheet
-				teamId={teamId}
-				projectId={projectId}
-				open={isCreateOpen}
-				onOpenChange={setIsCreateOpen}
-			/>
 
 			<EditTaskDialog
 				teamId={teamId}

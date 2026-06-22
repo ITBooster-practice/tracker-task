@@ -9,6 +9,7 @@ import {
 	isAuthRoute,
 	isProtectedRoute,
 	SIDEBAR_ROUTE_IDS,
+	teamRoutes,
 } from '@/shared/config/routes'
 
 describe('buildLoginHref', () => {
@@ -80,6 +81,24 @@ describe('getAuthRedirectPath', () => {
 describe('invitationRoutes', () => {
 	it('строит ссылку по токену', () => {
 		expect(invitationRoutes.token('token-1')).toBe('/invitations/token-1')
+	})
+})
+
+describe('teamRoutes', () => {
+	it('projectTasksNew строит корректный URL', () => {
+		expect(teamRoutes.projectTasksNew('team-1', 'proj-1')).toBe(
+			'/teams/team-1/projects/proj-1/tasks/new',
+		)
+	})
+
+	it('projectTasks строит корректный URL', () => {
+		expect(teamRoutes.projectTasks('team-1', 'proj-1')).toBe(
+			'/teams/team-1/projects/proj-1/tasks',
+		)
+	})
+
+	it('settings строит корректный URL', () => {
+		expect(teamRoutes.settings('team-1')).toBe('/teams/team-1/settings')
 	})
 })
 
