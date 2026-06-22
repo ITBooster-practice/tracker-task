@@ -1,6 +1,6 @@
-import { vi } from 'vitest'
+import { vi, type Mock } from 'vitest'
 
-export const toastMock = {
+export const toastMock: { success: Mock; error: Mock } = {
 	success: vi.fn(),
 	error: vi.fn(),
 }
