@@ -24,6 +24,7 @@
 		"test:e2e": "dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- vitest run --config ./vitest.config.e2e.ts --reporter=verbose",
 		"lint": "eslint \"{src,apps,libs,test,prisma}/**/*.ts\"",
 		"prisma:generate": "prisma generate",
+		"prisma:db:update": "prisma generate && prisma migrate deploy",
 		"prisma:migrate": "prisma migrate dev",
 		"prisma:studio": "prisma studio",
 		"prisma:seed": "ts-node prisma/seed.ts",
