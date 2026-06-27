@@ -28,10 +28,11 @@
 		"local:migrate": "docker compose -f docker-compose.local.yml exec api sh -c \"node_modules/.bin/prisma migrate deploy --config prisma.config.mjs\"",
 		"local:reset": "docker compose -f docker-compose.local.yml down -v",
 		"prisma:generate": "turbo run prisma:generate",
+		"prisma:db:update": "pnpm --filter api prisma:db:update",
 		"prisma:migrate": "pnpm --filter api prisma:migrate",
 		"prisma:studio": "pnpm --filter api prisma:studio",
 		"prisma:seed": "pnpm --filter api prisma:seed",
-		"prisma:reset": "pnpm --filter api prisma:migrate reset --force",
+		"prisma:reset": "pnpm --filter api prisma:reset",
 		"storybook": "pnpm --filter @repo/ui storybook",
 		"storybook:build": "pnpm --filter @repo/ui build-storybook"
 	},

@@ -2,7 +2,7 @@
  * Seed файл для заполнения базы данных тестовыми данными
  *
  * ВАЖНО: Перед запуском seed необходимо:
- * 1. Выполнить миграции: pnpm prisma:migrate
+ * 1. Выполнить миграции схемы и backfill: pnpm prisma:db:update
  * 2. Сгенерировать Prisma Client: pnpm prisma:generate
  *
  * Запуск:
