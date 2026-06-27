@@ -117,14 +117,14 @@ Mailpit-UI (входящие письма в dev): http://localhost:8025
 ### 6. Настройка Prisma
 
 ```bash
-# Применение миграций (обязательно при первом запуске)
-pnpm prisma:migrate
+# Применение миграций к уже существующей БД
+pnpm prisma:db:update
 
 # (Опционально) Открыть Prisma Studio для просмотра данных
 pnpm prisma:studio
 ```
 
-> **Примечание:** `prisma:generate` запустится автоматически при `pnpm dev`, но миграции нужно применить вручную.
+> **Примечание:** `prisma:generate` запустится автоматически при `pnpm dev`, но обновление схемы существующей БД нужно запускать отдельно через `pnpm prisma:db:update`.
 
 ### 7. Запустить проект в dev-режиме
 
@@ -213,6 +213,17 @@ tracker-task/
 3. Попробуйте пересоздать миграции:
    ```bash
    pnpm prisma:migrate
+   ```
+
+Если при `pnpm prisma:db:update` появляется ошибка `P3009` (есть failed migration):
+
+1. Пометить упавшую миграцию как откатанную:
+   ```bash
+   pnpm --filter api exec prisma migrate resolve --rolled-back <migration_id>
+   ```
+2. Повторно применить миграции:
+   ```bash
+   pnpm prisma:db:update
    ```
 
 ### Проблемы с Redis
