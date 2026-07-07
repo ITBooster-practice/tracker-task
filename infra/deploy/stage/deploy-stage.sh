@@ -18,14 +18,14 @@ IMAGE_TAG="$1"
 # Пути к файлам
 # -----------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Каталог shared можно переопределить переменной окружения STAGE_SHARED_PATH.
-SHARED_DIR="${STAGE_SHARED_PATH:-$SCRIPT_DIR}"
+# Каталог stage можно переопределить переменной окружения STAGE_STAGE_PATH.
+STAGE_DIR="${STAGE_STAGE_PATH:-$SCRIPT_DIR}"
 
-COMPOSE_FILE="$SHARED_DIR/docker-compose.stage.yml"
-ENV_FILE="$SHARED_DIR/.env.stage"
-GHCR_ENV="$SHARED_DIR/.ghcr.env"
-WEB_RUNTIME_ENV_FILE="$SHARED_DIR/.env.web"
-WEB_FEATURE_FLAGS_FILE="$SHARED_DIR/.env.feature-flags"
+COMPOSE_FILE="$STAGE_DIR/docker-compose.stage.yml"
+ENV_FILE="$STAGE_DIR/.env.stage"
+GHCR_ENV="$STAGE_DIR/.ghcr.env"
+WEB_RUNTIME_ENV_FILE="$STAGE_DIR/.env.web"
+WEB_FEATURE_FLAGS_FILE="$STAGE_DIR/.env.feature-flags"
 
 # -----------------------------
 # Проверка наличия файлов
