@@ -36,7 +36,7 @@ jobs:
       STAGE_PORT: '22'
       STAGE_USER: deploy
       STAGE_SCRIPTS_PATH: /opt/tracker/scripts
-      STAGE_DEPLOY_PATH: /opt/tracker/stage
+      STAGE_SHARED_PATH: /opt/tracker/shared
       STAGE_URL: https://stage.easy-tasktraker.ru
 
     steps:
@@ -87,7 +87,7 @@ jobs:
         shell: bash
         run: |
           ssh -i ~/.ssh/stage_deploy_key -p "$STAGE_PORT" "$STAGE_USER@$STAGE_HOST" \
-            "cd '$STAGE_SCRIPTS_PATH' && chmod +x deploy-stage.sh && ./deploy-stage.sh '${{ steps.meta.outputs.image_tag }}'"
+            "cd '$STAGE_SCRIPTS_PATH' && chmod +x deploy-stage.sh && STAGE_SHARED_PATH='$STAGE_SHARED_PATH' ./deploy-stage.sh '${{ steps.meta.outputs.image_tag }}'"
 
       - name: Verify stage endpoint
         shell: bash
@@ -103,7 +103,7 @@ jobs:
         shell: bash
         run: |
           ssh -i ~/.ssh/stage_deploy_key -p "$STAGE_PORT" "$STAGE_USER@$STAGE_HOST" \
-            "cd '$STAGE_SCRIPTS_PATH' && set -a && source .env.stage && set +a && docker compose -f docker-compose.stage.yml exec -T api sh -c 'wget -q -O - http://127.0.0.1:3000/health'"
+            "cd '$STAGE_SHARED_PATH' && set -a && source .env.stage && set +a && docker compose -f docker-compose.stage.yml exec -T api sh -c 'wget -q -O - http://127.0.0.1:3000/health'"
 
       - name: Write job summary
         shell: bash
@@ -115,4 +115,5 @@ jobs:
             echo "- URL: $STAGE_URL"
             echo "- Тег образа: ${{ steps.meta.outputs.image_tag }}"
             echo "- Путь к скриптам: $STAGE_SCRIPTS_PATH"
+            echo "- Путь к shared: $STAGE_SHARED_PATH"
           } >> "$GITHUB_STEP_SUMMARY"
