@@ -1,102 +1,249 @@
-# CI/CD старт-план: спокойно и по шагам
+# CI/CD старт-план: пошагово, как отдельный runbook
 
-Этот документ фиксирует практичный маршрут внедрения CI/CD без перегруза.
-Цель: сначала получить рабочий цикл для stage, затем безопасно подключить production.
+Этот документ описывает полный маршрут внедрения CI/CD для проекта:
 
-## Что уже есть в проекте
+1. Сначала стабилизируем stage-цикл.
+2. Затем подключаем автоматизацию через GitHub Actions.
+3. После этого добавляем безопасный запуск production.
 
-- Локальный stage одной командой: `pnpm stage`.
-- CI-проверки на GitHub Actions: lint, type-check, test, build.
-- Проработанный инфраструктурный план и релизный процесс в `docs/infra`.
+Фокус этого runbook: практичные шаги, что именно создать, где настроить, чем проверить.
 
-## Минимальная цель v1
+## 0. Что уже готово в репозитории
 
-1. После merge в `main`: собрать `api` и `web` образы, тегнуть commit hash, запушить в GHCR.
-2. После успешного CI: задеплоить stage на VPS.
-3. Добавить ручной запуск той же цепочки через кнопку (`workflow_dispatch`).
+- Есть базовый CI workflow в [../../../.github/workflows/ci.yml](../../../.github/workflows/ci.yml).
+- Есть ручной stage-флоу и runbooks:
+  - [step-1-vps-bootstrap.md](./step-1-vps-bootstrap.md)
+  - [step-2-manual-stage-deploy.md](./step-2-manual-stage-deploy.md)
+  - [step-3-build-and-push-images.md](./step-3-build-and-push-images.md)
+- Есть stage-артефакты деплоя:
+  - [../../../infra/deploy/stage/docker-compose.stage.yml](../../../infra/deploy/stage/docker-compose.stage.yml)
+  - [../../../infra/deploy/stage/.env.stage.example](../../../infra/deploy/stage/.env.stage.example)
+  - [../../../infra/deploy/stage/deploy-stage.sh](../../../infra/deploy/stage/deploy-stage.sh)
 
-## Почему такой порядок
+## 1. Минимальная цель CI/CD v1
 
-- Вы быстро получаете результат, который можно увидеть глазами: сайт на stage-домене с HTTPS.
-- Меньше риск «сломать всё сразу».
-- Легче отлаживать по слоям: сначала сервер и ручной деплой, потом автоматизация.
+После merge в `main` автоматически происходит:
 
-## Этапы внедрения
+1. Зелёный CI (`lint`, `type-check`, `test`, `build`).
+2. Сборка и push `api`/`web` образов в GHCR.
+3. Теги образов:
 
-### Этап 1. Серверный каркас
+- `sha-<short_sha>` (основной immutable тег)
+- `main-latest` (удобный alias)
 
-- Подготовить VPS: `deploy`-пользователь, SSH по ключам, UFW, Docker/Compose.
-- Настроить DNS: `stage.<domain>` -> VPS.
-- Поднять reverse proxy (Caddy) и проверить HTTPS на stage-домене.
+4. SSH-деплой на stage VPS с этим `sha-*` тегом.
+5. Доступность stage-домена по HTTPS после обновления.
 
-Подробный runbook с командами: [step-1-vps-bootstrap.md](./step-1-vps-bootstrap.md).
+## 2. Архитектура пайплайна (простая и безопасная)
 
-Результат: рабочий HTTPS-вход на сервер.
+Рекомендуемый набор workflow-файлов:
 
-### Этап 2. Ручной stage-деплой (без GitHub Actions)
+1. [../../../.github/workflows/ci.yml](../../../.github/workflows/ci.yml) — уже есть, оставляем как quality gate.
+2. `.github/workflows/cd-build-images.yml` — сборка и публикация образов.
+3. `.github/workflows/cd-deploy-stage.yml` — деплой stage после успешной сборки образов.
+4. `.github/workflows/cd-manual-dispatch.yml` — ручная кнопка запуска (`workflow_dispatch`).
 
-- Подготовить на сервере stage compose + `.env.stage`.
-- Сделать скрипт `deploy-stage.sh`.
-- Прогонять руками деплой конкретного image tag и проверять health.
+Почему раздельно:
 
-Подробный runbook с командами: [step-2-manual-stage-deploy.md](./step-2-manual-stage-deploy.md).
+- проще отлаживать падения по слоям;
+- можно перезапускать только нужный этап;
+- меньше риск случайно задеплоить не то.
 
-Результат: понятный и повторяемый ручной деплой.
+## 3. Подготовка секретов и environments в GitHub
 
-### Этап 3. Сборка и публикация образов в GHCR
+Перед написанием CD workflow заполните секреты.
 
-- Добавить workflow сборки образов.
-- Тегировать минимум двумя тегами:
-  - `sha-<short_sha>` (неизменяемый, для отката)
-  - `main-latest` (удобный алиас)
+### 3.1 Repository secrets
 
-Ручная сборка до подключения GitHub Actions: [step-3-build-and-push-images.md](./step-3-build-and-push-images.md).
+Добавить в `Settings -> Secrets and variables -> Actions`:
 
-Результат: после merge образы автоматически появляются в реестре.
+1. `GHCR_USERNAME` — GitHub логин или org bot-user.
+2. `GHCR_TOKEN` — PAT c `write:packages`, `read:packages`.
+3. `STAGE_SSH_HOST` — IP/host stage VPS.
+4. `STAGE_SSH_PORT` — обычно `22`.
+5. `STAGE_SSH_USER` — обычно `deploy`.
+6. `STAGE_SSH_PRIVATE_KEY` — приватный ключ для подключения к серверу.
+7. `STAGE_DEPLOY_PATH` — обычно `/opt/tracker/stage`.
 
-### Этап 4. Автодеплой stage после успешного CI
+### 3.2 GitHub Environments
 
-- Добавить workflow деплоя stage.
-- Запуск только если CI прошёл успешно и push был в `main`.
-- По SSH вызывать `deploy-stage.sh` на сервере.
+Создать environments:
 
-Результат: merge в `main` -> автоматически обновлён stage.
+1. `stage`:
 
-### Этап 5. Ручная кнопка
+- без обязательных ревьюеров на старте;
+- можно добавить environment-specific secrets позже.
 
-- Добавить `workflow_dispatch` с параметрами:
-  - `target` (`stage`/`prod`)
-  - `ref` (ветка/коммит)
-  - `image_tag` (опционально)
+2. `production`:
 
-Результат: можно проверить сборку/деплой без отдельного релизного процесса.
+- включить `Required reviewers`;
+- запуск только вручную.
 
-## Честное ограничение
+### 3.3 Права workflow
 
-Без коммита GitHub Actions не запускается, потому что workflow работает на базе состояния git-ревизии.
-Но можно запускать вручную любой нужный `ref` и не ждать merge в `main`.
+Для workflow, который пушит образы в GHCR, нужны права:
 
-## Безопасный старт production
+```yaml
+permissions:
+  contents: read
+  packages: write
+```
 
-- Прод-деплой только через GitHub Environment `production` с required reviewers.
-- Откат через запуск workflow с предыдущим `sha-*` тегом.
-- Stage и prod держать на разных `.env` и compose-проектах.
+## 4. Пошаговое внедрение (как делать по дням)
 
-## План на 7 дней
+### Этап 1. Серверный каркас для stage
+
+Сделать по [step-1-vps-bootstrap.md](./step-1-vps-bootstrap.md).
+
+Результат этапа:
+
+- DNS резолвится на VPS.
+- Caddy поднят.
+- `https://stage.<domain>` отвечает с валидным TLS.
+
+### Этап 2. Ручной deploy stage без GitHub Actions
+
+Сделать по [step-2-manual-stage-deploy.md](./step-2-manual-stage-deploy.md).
+
+Результат этапа:
+
+- `deploy-stage.sh <tag>` работает руками.
+- Health API проходит.
+- Web + API + Mailpit доступны за Basic Auth.
+
+### Этап 3. Ручная сборка и push в GHCR
+
+Сделать по [step-3-build-and-push-images.md](./step-3-build-and-push-images.md).
+
+Результат этапа:
+
+- Образы `tracker-api` и `tracker-web` есть в GHCR.
+- Тег `sha-<short_sha>` можно деплоить на stage.
+
+### Этап 4. Написать workflow сборки образов (`cd-build-images.yml`)
+
+Что добавить:
+
+1. Триггеры:
+
+- `push` в `main`;
+- `workflow_dispatch` (на будущее для ручного запуска).
+
+2. `needs` на CI:
+
+- либо через `workflow_run` от CI,
+- либо отдельным процессом, где build запускается только после зелёного CI.
+
+3. Логин в GHCR.
+4. Сборка `apps/api/Dockerfile` и `apps/web/Dockerfile` из корня repo.
+5. Публикация тегов `sha-<short_sha>` и `main-latest`.
+6. Вывод `image_tag` как output для следующего workflow.
+
+Что проверить после внедрения:
+
+1. После merge в `main` появился новый `sha-*` тег в GHCR.
+2. `main-latest` обновился.
+3. Build web использует корректный `NEXT_PUBLIC_API_URL` для stage.
+
+### Этап 5. Написать workflow автодеплоя stage (`cd-deploy-stage.yml`)
+
+Что добавить:
+
+1. Триггер после успешной сборки образов.
+2. `environment: stage`.
+3. SSH-подключение к VPS.
+4. Запуск на сервере:
+
+```bash
+cd /opt/tracker/stage
+./deploy-stage.sh sha-<short_sha>
+```
+
+5. Пост-проверка:
+
+- `curl` на stage endpoint;
+- логирование версии/тега в job summary.
+
+Что проверить после внедрения:
+
+1. Merge в `main` инициирует автообновление stage.
+2. В логах виден именно тот `sha-*`, который собран в build job.
+3. Stage открывается по HTTPS после завершения workflow.
+
+### Этап 6. Добавить ручную кнопку (`cd-manual-dispatch.yml`)
+
+Рекомендуемые input-параметры:
+
+1. `target` (`stage` | `prod`).
+2. `ref` (ветка/тег/commit SHA).
+3. `image_tag` (опционально, если нужен точечный rollback).
+4. `skip_build` (`true`/`false`, опционально).
+
+Правила:
+
+1. Для `target=prod` — только environment `production`.
+2. Для `target=prod` — обязательное ручное подтверждение reviewers.
+3. Если `image_tag` задан, деплой делается строго по нему.
+
+### Этап 7. Подключить production безопасно
+
+Минимальные guardrails:
+
+1. Отдельный compose-проект и `.env` для prod.
+2. Отдельный домен и Caddy site block.
+3. Только ручной запуск прод-деплоя.
+4. Зафиксированная стратегия rollback на `sha-*`.
+
+## 5. Откат (rollback) как обязательная часть CI/CD
+
+Минимальная рабочая схема:
+
+1. Берем последний стабильный `sha-*` из GHCR или из истории workflow.
+2. Запускаем manual workflow с параметром `image_tag=<stable_sha_tag>`.
+3. Выполняем тот же `deploy-stage.sh`/`deploy-prod.sh` с этим тегом.
+4. Проверяем health и доступность домена.
+
+Важно: откат не должен пересобирать образы, только переключать тег.
+
+## 6. Проверки после каждого этапа
+
+Проверка 1 (build):
+
+1. Образы существуют в GHCR.
+2. Теги совпадают с commit SHA.
+
+Проверка 2 (deploy):
+
+1. API health отвечает `200`.
+2. Web отвечает по HTTPS.
+
+Проверка 3 (операционка):
+
+1. В workflow summary есть `commit`, `image_tag`, `target`.
+2. Логи деплоя понятны и позволяют быстро диагностировать падение.
+
+## 7. Честные ограничения
+
+1. Без коммита workflow нельзя запустить на «локальном состоянии файлов».
+2. `workflow_dispatch` позволяет запускать на любом существующем `ref`.
+3. Для frontend важно не перепутать `NEXT_PUBLIC_API_URL`, так как это build-time переменная.
+
+## 8. План внедрения на 7 дней
 
 1. VPS hardening + Docker + Caddy + HTTPS для stage.
-2. Ручной `deploy-stage.sh`, запуск по тегу.
-3. Workflow сборки образов в GHCR.
-4. Workflow автодеплоя stage после CI.
-5. Кнопка `workflow_dispatch` для stage.
-6. Production environment с ручным подтверждением.
-7. Rollback workflow + короткая операционная инструкция.
+2. Ручной `deploy-stage.sh` с деплоем по `sha-*`.
+3. `cd-build-images.yml` с push в GHCR.
+4. `cd-deploy-stage.yml` после успешного build.
+5. `cd-manual-dispatch.yml` для ручных запусков.
+6. `production` environment с required reviewers.
+7. Rollback-процедура и короткая операционная инструкция в docs.
 
-## Definition of Done для первого цикла
+## 9. Definition of Done для первого цикла
 
-После merge в `main` автоматически выполняется:
+Считаем CI/CD v1 внедренным, когда одновременно выполняется все ниже:
 
-1. CI зелёный.
-2. Сборка `api`/`web` и push в GHCR с `sha-*` тегами.
-3. Деплой на stage VPS.
-4. Stage сайт доступен по HTTPS-домену.
+1. Merge в `main` запускает CI и CI стабильно зеленый.
+2. После CI публикуются `api`/`web` образы в GHCR с `sha-*` и `main-latest`.
+3. Stage деплоится автоматически по SSH без ручных действий.
+4. Stage-домен доступен по HTTPS, API health отвечает `200`.
+5. Есть рабочий ручной запуск workflow и проверенный rollback на предыдущий `sha-*`.

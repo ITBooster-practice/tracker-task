@@ -1,0 +1,114 @@
+name: Deploy Stage
+
+on:
+  workflow_run:
+    workflows: ['Build and Push Stage Images']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (example: release-v1.0.0-sha-a1b2c3d)'
+        required: true
+        type: string
+      ref:
+        description: Git ref with deployment scripts
+        required: false
+        default: main
+        type: string
+
+concurrency:
+  group: deploy-stage
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-stage:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    environment: stage
+    env:
+      STAGE_HOST: 135.106.139.159
+      STAGE_PORT: '22'
+      STAGE_USER: deploy
+      STAGE_SCRIPTS_PATH: /opt/tracker/scripts
+      STAGE_DEPLOY_PATH: /opt/tracker/stage
+      STAGE_URL: https://stage.easy-tasktraker.ru
+
+    steps:
+      - name: Checkout workflow commit
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Checkout manual ref
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve deployment tag
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            commit_sha="${{ github.event.workflow_run.head_sha }}"
+            short_sha="$(git rev-parse --short=7 "$commit_sha")"
+            release_tag="$(git describe --tags --abbrev=0 --match 'v*' "$commit_sha")"
+            image_tag="release-${release_tag}-sha-$short_sha"
+          else
+            image_tag="${{ inputs.image_tag }}"
+          fi
+
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          cat > ~/.ssh/stage_deploy_key <<'EOF'
+          ${{ secrets.STAGE_SSH_PRIVATE_KEY }}
+          EOF
+          chmod 600 ~/.ssh/stage_deploy_key
+          ssh-keyscan -p "$STAGE_PORT" "$STAGE_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Run remote deploy
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/stage_deploy_key -p "$STAGE_PORT" "$STAGE_USER@$STAGE_HOST" \
+            "cd '$STAGE_SCRIPTS_PATH' && chmod +x deploy-stage.sh && ./deploy-stage.sh '${{ steps.meta.outputs.image_tag }}'"
+
+      - name: Verify stage endpoint
+        shell: bash
+        run: |
+          curl --silent --show-error --head "$STAGE_URL" >/tmp/stage_headers.txt
+          if ! grep -q '^HTTP/.* 401' /tmp/stage_headers.txt; then
+            echo 'Ожидался ответ stage-шлюза с HTTP 401 (Basic Auth).' >&2
+            cat /tmp/stage_headers.txt >&2
+            exit 1
+          fi
+
+      - name: Verify API health on server
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/stage_deploy_key -p "$STAGE_PORT" "$STAGE_USER@$STAGE_HOST" \
+            "cd '$STAGE_SCRIPTS_PATH' && set -a && source .env.stage && set +a && docker compose -f docker-compose.stage.yml exec -T api sh -c 'wget -q -O - http://127.0.0.1:3000/health'"
+
+      - name: Write job summary
+        shell: bash
+        run: |
+          {
+            echo "## Деплой stage"
+            echo
+            echo "- Хост: $STAGE_HOST"
+            echo "- URL: $STAGE_URL"
+            echo "- Тег образа: ${{ steps.meta.outputs.image_tag }}"
+            echo "- Путь к скриптам: $STAGE_SCRIPTS_PATH"
+          } >> "$GITHUB_STEP_SUMMARY"
