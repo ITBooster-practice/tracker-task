@@ -1,9 +1,7 @@
 name: Сборка и публикация stage-образов
 
 on:
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -14,7 +12,7 @@ on:
         type: string
 
 concurrency:
-  group: build-stage-images-${{ github.event_name }}-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || inputs.ref }}
+  group: build-stage-images-${{ github.event_name }}-${{ github.event_name == 'push' && github.ref_name || inputs.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -23,9 +21,6 @@ permissions:
 
 jobs:
   build-and-push:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     env:
       REGISTRY: ghcr.io
@@ -34,10 +29,10 @@ jobs:
 
     steps:
       - name: Checkout коммита workflow
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'push'
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -53,8 +48,8 @@ jobs:
         id: meta
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            commit_sha="${{ github.event.workflow_run.head_sha }}"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            commit_sha="${{ github.sha }}"
           else
             commit_sha="$(git rev-parse HEAD)"
           fi
@@ -62,13 +57,15 @@ jobs:
           short_sha="$(git rev-parse --short=7 "$commit_sha")"
           release_tag="$(git describe --tags --abbrev=0 --match 'v*' "$commit_sha")"
           image_tag="release-${release_tag}-sha-$short_sha"
+          image_namespace="$(echo "$IMAGE_NAMESPACE" | tr '[:upper:]' '[:lower:]')"
 
-          api_tags="$REGISTRY/$IMAGE_NAMESPACE/tracker-api:$image_tag"
-          web_tags="$REGISTRY/$IMAGE_NAMESPACE/tracker-web:$image_tag"
+          api_tags="$REGISTRY/$image_namespace/tracker-api:$image_tag"
+          web_tags="$REGISTRY/$image_namespace/tracker-web:$image_tag"
 
           echo "commit_sha=$commit_sha" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "image_namespace=$image_namespace" >> "$GITHUB_OUTPUT"
           echo "api_tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "$api_tags" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
@@ -117,7 +114,7 @@ jobs:
             echo "- Коммит: ${{ steps.meta.outputs.commit_sha }}"
             echo "- Релизный тег: ${{ steps.meta.outputs.release_tag }}"
             echo "- Тег образа: ${{ steps.meta.outputs.image_tag }}"
-            echo "- API-образ: ghcr.io/${{ env.IMAGE_NAMESPACE }}/tracker-api:${{ steps.meta.outputs.image_tag }}"
-            echo "- WEB-образ: ghcr.io/${{ env.IMAGE_NAMESPACE }}/tracker-web:${{ steps.meta.outputs.image_tag }}"
+            echo "- API-образ: ghcr.io/${{ steps.meta.outputs.image_namespace }}/tracker-api:${{ steps.meta.outputs.image_tag }}"
+            echo "- WEB-образ: ghcr.io/${{ steps.meta.outputs.image_namespace }}/tracker-web:${{ steps.meta.outputs.image_tag }}"
             echo "- Stage API URL: ${{ env.STAGE_API_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"
