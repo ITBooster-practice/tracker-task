@@ -89,7 +89,11 @@ const handleRefresh = async (request: NextRequest) => {
 		return response
 	} catch {
 		await clearAuthCookies()
-		return clearAuthCookiesInResponse(request, createLoginRedirect(request))
+		const response = isAuthRoute(pathname)
+			? NextResponse.next()
+			: createLoginRedirect(request)
+
+		return clearAuthCookiesInResponse(request, response)
 	}
 }
 
