@@ -14,6 +14,8 @@ import {
 } from '@/shared/lib/api/refresh-auth-session'
 import { isTokenExpiredSoon } from '@/shared/lib/session'
 
+const AUTH_COOKIE_NAMES = ['accessToken', 'refreshToken'] as const
+
 const createLoginRedirect = (request: NextRequest) => {
 	const { pathname, search } = request.nextUrl
 	const url = new URL(ROUTES.login, request.url)
@@ -23,6 +25,24 @@ const createLoginRedirect = (request: NextRequest) => {
 	}
 
 	return NextResponse.redirect(url)
+}
+
+const clearAuthCookiesInResponse = (request: NextRequest, response: NextResponse) => {
+	const cookieDomain = request.nextUrl.hostname
+	const secure = request.nextUrl.protocol === 'https:'
+
+	AUTH_COOKIE_NAMES.forEach((cookieName) => {
+		response.cookies.set(cookieName, '', {
+			httpOnly: true,
+			secure,
+			sameSite: secure ? 'strict' : 'lax',
+			domain: cookieDomain,
+			expires: new Date(0),
+			path: '/',
+		})
+	})
+
+	return response
 }
 
 const shouldRefresh = (request: NextRequest) => {
@@ -69,7 +89,7 @@ const handleRefresh = async (request: NextRequest) => {
 		return response
 	} catch {
 		await clearAuthCookies()
-		return createLoginRedirect(request)
+		return clearAuthCookiesInResponse(request, createLoginRedirect(request))
 	}
 }
 
@@ -78,7 +98,10 @@ export async function proxy(request: NextRequest) {
 
 	if (shouldClearAuthCookies(request)) {
 		await clearAuthCookies()
-		return NextResponse.redirect(new URL(ROUTES.login, request.url))
+		return clearAuthCookiesInResponse(
+			request,
+			NextResponse.redirect(new URL(ROUTES.login, request.url)),
+		)
 	}
 
 	if (shouldRefresh(request)) {
