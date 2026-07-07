@@ -123,16 +123,23 @@ docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 # Ожидание готовности API
 # -----------------------------
 echo "⏳ Ожидание готовности API..."
+api_ready=false
 
 for i in {1..30}; do
   if docker compose -f "$COMPOSE_FILE" exec -T api \
-    sh -c "wget -q -O - http://127.0.0.1:3000/health" >/dev/null 2>&1; then
+    sh -c "wget -q -O - http://127.0.0.1:3000/" >/dev/null 2>&1; then
     echo "✅ API готов"
+    api_ready=true
     break
   fi
 
   sleep 2
 done
+
+if [[ "$api_ready" != true ]]; then
+  echo "❌ API не поднялся за отведённое время"
+  exit 1
+fi
 
 # -----------------------------
 # Запуск миграций Prisma

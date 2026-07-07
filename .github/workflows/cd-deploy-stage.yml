@@ -103,7 +103,7 @@ jobs:
         shell: bash
         run: |
           ssh -i ~/.ssh/stage_deploy_key -p "$STAGE_PORT" "$STAGE_USER@$STAGE_HOST" \
-            "cd '$STAGE_STAGE_PATH' && set -a && source .env.stage && set +a && docker compose -f docker-compose.stage.yml exec -T api sh -c 'wget -q -O - http://127.0.0.1:3000/health'"
+            "cd '$STAGE_STAGE_PATH' && set -a && source .env.stage && set +a && docker compose -f docker-compose.stage.yml exec -T api sh -c 'wget -q -O - http://127.0.0.1:3000/'"
 
       - name: Write job summary
         shell: bash
