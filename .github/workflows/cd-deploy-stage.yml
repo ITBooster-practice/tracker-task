@@ -23,6 +23,7 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   deploy-stage:
@@ -104,6 +105,13 @@ jobs:
         run: |
           ssh -i ~/.ssh/stage_deploy_key -p "$STAGE_PORT" "$STAGE_USER@$STAGE_HOST" \
             "cd '$STAGE_STAGE_PATH' && set -a && source .env.stage && set +a && docker compose -f docker-compose.stage.yml exec -T api sh -c 'wget -q -O - http://127.0.0.1:3000/'"
+
+      - name: Cleanup old GHCR images
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/cleanup-ghcr-images.sh "${{ github.repository_owner }}" 3
 
       - name: Write job summary
         shell: bash
