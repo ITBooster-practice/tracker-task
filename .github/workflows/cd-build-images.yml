@@ -26,6 +26,10 @@ jobs:
       REGISTRY: ghcr.io
       IMAGE_NAMESPACE: ${{ github.repository_owner }}
       STAGE_API_URL: https://stage.easy-tasktraker.ru/api
+      NEXT_PUBLIC_FEATURE_PROJECTS: ${{ vars.NEXT_PUBLIC_FEATURE_PROJECTS || 'true' }}
+      NEXT_PUBLIC_FEATURE_TASKS: ${{ vars.NEXT_PUBLIC_FEATURE_TASKS || 'true' }}
+      NEXT_PUBLIC_FEATURE_TEAM_SETTINGS: ${{ vars.NEXT_PUBLIC_FEATURE_TEAM_SETTINGS || 'true' }}
+      NEXT_PUBLIC_FEATURE_BOARDS: ${{ vars.NEXT_PUBLIC_FEATURE_BOARDS || 'true' }}
 
     steps:
       - name: Checkout коммита workflow
@@ -101,6 +105,10 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_API_URL=${{ env.STAGE_API_URL }}
+            NEXT_PUBLIC_FEATURE_PROJECTS=${{ env.NEXT_PUBLIC_FEATURE_PROJECTS }}
+            NEXT_PUBLIC_FEATURE_TASKS=${{ env.NEXT_PUBLIC_FEATURE_TASKS }}
+            NEXT_PUBLIC_FEATURE_TEAM_SETTINGS=${{ env.NEXT_PUBLIC_FEATURE_TEAM_SETTINGS }}
+            NEXT_PUBLIC_FEATURE_BOARDS=${{ env.NEXT_PUBLIC_FEATURE_BOARDS }}
           tags: ${{ steps.meta.outputs.web_tags }}
           cache-from: type=gha,scope=tracker-web
           cache-to: type=gha,mode=max,scope=tracker-web
@@ -117,4 +125,8 @@ jobs:
             echo "- API-образ: ghcr.io/${{ steps.meta.outputs.image_namespace }}/tracker-api:${{ steps.meta.outputs.image_tag }}"
             echo "- WEB-образ: ghcr.io/${{ steps.meta.outputs.image_namespace }}/tracker-web:${{ steps.meta.outputs.image_tag }}"
             echo "- Stage API URL: ${{ env.STAGE_API_URL }}"
+            echo "- FEATURE_PROJECTS: ${{ env.NEXT_PUBLIC_FEATURE_PROJECTS }}"
+            echo "- FEATURE_TASKS: ${{ env.NEXT_PUBLIC_FEATURE_TASKS }}"
+            echo "- FEATURE_TEAM_SETTINGS: ${{ env.NEXT_PUBLIC_FEATURE_TEAM_SETTINGS }}"
+            echo "- FEATURE_BOARDS: ${{ env.NEXT_PUBLIC_FEATURE_BOARDS }}"
           } >> "$GITHUB_STEP_SUMMARY"
