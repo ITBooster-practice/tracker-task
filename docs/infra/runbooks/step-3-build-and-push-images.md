@@ -63,7 +63,6 @@ echo "$GHCR_TOKEN" | docker login "$GHCR_REGISTRY" -u "$GHCR_USERNAME" --passwor
 docker build \
   -f apps/api/Dockerfile \
   -t "$GHCR_REGISTRY/$GITHUB_ORG/tracker-api:$IMAGE_TAG" \
-  -t "$GHCR_REGISTRY/$GITHUB_ORG/tracker-api:main-latest" \
   .
 ```
 
@@ -86,7 +85,6 @@ docker build \
   -f apps/web/Dockerfile \
   --build-arg NEXT_PUBLIC_API_URL=https://stage.<ВАШ_ДОМЕН>/api \
   -t "$GHCR_REGISTRY/$GITHUB_ORG/tracker-web:$IMAGE_TAG" \
-  -t "$GHCR_REGISTRY/$GITHUB_ORG/tracker-web:main-latest" \
   .
 ```
 
@@ -97,7 +95,6 @@ docker build \
   -f apps/web/Dockerfile \
   --build-arg NEXT_PUBLIC_API_URL=https://stage.<IP_СЕРВЕРА>.sslip.io/api \
   -t "$GHCR_REGISTRY/$GITHUB_ORG/tracker-web:$IMAGE_TAG" \
-  -t "$GHCR_REGISTRY/$GITHUB_ORG/tracker-web:main-latest" \
   .
 ```
 
@@ -111,10 +108,7 @@ docker images | grep tracker-web
 
 ```bash
 docker push "$GHCR_REGISTRY/$GITHUB_ORG/tracker-api:$IMAGE_TAG"
-docker push "$GHCR_REGISTRY/$GITHUB_ORG/tracker-api:main-latest"
-
 docker push "$GHCR_REGISTRY/$GITHUB_ORG/tracker-web:$IMAGE_TAG"
-docker push "$GHCR_REGISTRY/$GITHUB_ORG/tracker-web:main-latest"
 ```
 
 ## 7. Проверить образы в GHCR
@@ -122,49 +116,24 @@ docker push "$GHCR_REGISTRY/$GITHUB_ORG/tracker-web:main-latest"
 Через GitHub UI:
 
 ```text
-https://github.com/<ВАШ_GITHUB_ЛОГИН_ИЛИ_ОРГ>?tab=packages
+https://github.com/<ВАШ_GITHUB_ЛОГИН_ИЛИ_ОРГ>/packages
 ```
 
 Через API:
 
 ```bash
-curl -u "$GHCR_USERNAME:$GHCR_TOKEN" \
-  "https://ghcr.io/v2/$GITHUB_ORG/tracker-api/tags/list"
-
-curl -u "$GHCR_USERNAME:$GHCR_TOKEN" \
-  "https://ghcr.io/v2/$GITHUB_ORG/tracker-web/tags/list"
+docker pull ghcr.io/$GITHUB_ORG/tracker-api:$IMAGE_TAG
+docker pull ghcr.io/$GITHUB_ORG/tracker-web:$IMAGE_TAG
 ```
 
-Ожидаемо: оба тега (`sha-*` и `main-latest`) присутствуют в ответе.
+Ожидаемо: в выводе команды отображается сообщение:
 
-## 8. Сделать пакеты публичными (если нужно)
+Status: Image is up to date for ghcr.io/.../tracker-api:v1.0.0
+Status: Image is up to date for ghcr.io/.../tracker-web:v1.0.0
 
-По умолчанию GHCR-пакеты создаются как private. Для деплоя с сервера без токена сделайте их публичными:
+Это подтверждает, что указанные теги (v1.0.0) существуют в registry и доступны для скачивания.
 
-```text
-https://github.com/users/<ЛОГИН>/packages/container/tracker-api/settings
-https://github.com/users/<ЛОГИН>/packages/container/tracker-web/settings
-```
-
-Или оставьте приватными — тогда сервер будет логиниться через переменные `GHCR_*` перед pull, что и делает `deploy-stage.sh`.
-
-## 9. Обновить `.env.stage` на сервере
-
-Если репозитории образов ещё не прописаны в `.env.stage`, укажите их (без тега — тег подставляет `deploy-stage.sh`):
-
-```bash
-# На сервере:
-nano /opt/tracker/stage/.env.stage
-```
-
-```env
-API_IMAGE=ghcr.io/<ВАШ_GITHUB_ЛОГИН_ИЛИ_ОРГ>/tracker-api:sha-<TAG>
-WEB_IMAGE=ghcr.io/<ВАШ_GITHUB_ЛОГИН_ИЛИ_ОРГ>/tracker-web:sha-<TAG>
-```
-
-Достаточно указать репозиторий с любым временным тегом — скрипт заменит его на переданный при запуске.
-
-## 10. Задеплоить образ на stage
+## 8. Задеплоить образ на stage
 
 ```bash
 # На сервере:
@@ -174,7 +143,7 @@ cd /opt/tracker/stage
 
 Где `$IMAGE_TAG` — тег из шага 2, например `sha-a1b2c3d`.
 
-## 11. Что делать после Шага 3
+## 9. Что делать после Шага 3
 
 Ручной цикл готов: собрать образ → запушить → задеплоить на stage.
 

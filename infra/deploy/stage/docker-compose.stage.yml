@@ -65,15 +65,14 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+    env_file:
+      - ./.env.web
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-
-      NEXT_PUBLIC_FEATURE_PROJECTS: ${NEXT_PUBLIC_FEATURE_PROJECTS}
-      NEXT_PUBLIC_FEATURE_TASKS: ${NEXT_PUBLIC_FEATURE_TASKS}
-      NEXT_PUBLIC_FEATURE_TEAM_SETTINGS: ${NEXT_PUBLIC_FEATURE_TEAM_SETTINGS}
-      NEXT_PUBLIC_FEATURE_BOARDS: ${NEXT_PUBLIC_FEATURE_BOARDS}
+      WEB_RUNTIME_ENV_HASH: ${WEB_RUNTIME_ENV_HASH}
+    volumes:
+      - ./.env.web:/app/apps/web/.env.development:ro
     networks:
       - stage
 
