@@ -12,6 +12,8 @@
 - [Swagger](./swagger/README.md) — API документация
 - [Teams](./teams/README.md) — Команды, участники, приглашения, роли
 - [Tasks](./tasks.md) — Задачи, канбан-доска, логика position
+- [Runtime feature flags](./feature-flags.md) — Хранение, guard, аудит и SSE
+- [Разработчик системы](./system-developer.md) — Исключительное право управления флагами
 
 ### База данных
 
@@ -47,9 +49,9 @@
 
 ### Аутентификация (JWT + Cookie)
 
-- `accessToken` — Bearer-токен, передаётся в `Authorization: Bearer <token>`
+- `accessToken` — HttpOnly cookie, JWT проверяется сервером
 - `refreshToken` — HTTP-only cookie, управляется сервером автоматически; хранится в Redis с TTL
-- Защищённые маршруты: декоратор `@Authorization()` (= `@UseGuards(JwtGuard)`)
+- Защищённые маршруты: декоратор `@Authorization()` (= `@UseGuards(JwtGuard, FeatureGuard)`); требования функций задаёт `@RequireFeatures(...)`
 - `@Authorized()` — param-декоратор для получения объекта пользователя из запроса
 
 ### Команды и приглашения
