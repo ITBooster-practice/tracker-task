@@ -46,6 +46,93 @@ describe('Runtime feature flags (e2e)', () => {
 		await app.close()
 		await prisma.$disconnect()
 	})
+	it('blocks direct API access for disabled projects, tasks, boards and settings', async () => {
+		const team = await request(server)
+			.post('/teams/new')
+			.set('Cookie', developerCookies)
+			.send({ name: 'Feature team' })
+			.expect(201)
+		const teamId = team.body.id as string
+		const project = await request(server)
+			.post('/teams/' + teamId + '/projects')
+			.set('Cookie', developerCookies)
+			.send({ name: 'Feature project' })
+			.expect(201)
+		const projectPath = '/teams/' + teamId + '/projects'
+		const taskPath = projectPath + '/' + project.body.id + '/tasks'
+		const toggle = async (key: string, enabled: boolean) => {
+			const flag = await prisma.featureFlag.findUniqueOrThrow({ where: { key } })
+			const revision = await prisma.featureFlagsRevision.findUniqueOrThrow({
+				where: { id: 'global' },
+			})
+			await request(server)
+				.patch('/feature-flags/' + flag.id)
+				.set('Cookie', developerCookies)
+				.send({ enabled, expectedVersion: revision.version })
+				.expect(200)
+		}
+		await toggle('projects', false)
+		await request(server).get(projectPath).expect(401)
+		for (const method of ['get', 'post', 'patch', 'delete'] as const) {
+			const path =
+				method === 'get' || method === 'post'
+					? projectPath
+					: projectPath + '/' + project.body.id
+			const blocked = await request(server)
+				[method](path)
+				.set('Cookie', developerCookies)
+				.send({ name: 'Blocked' })
+				.expect(403)
+			expect(blocked.body.code).toBe('FEATURE_DISABLED')
+		}
+		await request(server).get(taskPath).set('Cookie', developerCookies).expect(403)
+		await toggle('projects', true)
+		await request(server).get(projectPath).set('Cookie', userCookies).expect(403)
+		await toggle('tasks', false)
+		for (const [method, path] of [
+			['get', taskPath],
+			['post', taskPath],
+			['get', taskPath + '/missing'],
+			['patch', taskPath + '/missing'],
+			['patch', taskPath + '/missing/move'],
+			['delete', taskPath + '/missing'],
+			['get', taskPath + '/board'],
+		] as const) {
+			await request(server)
+				[method](path)
+				.set('Cookie', developerCookies)
+				.send({ title: 'Blocked' })
+				.expect(403)
+		}
+		await toggle('tasks', true)
+		await toggle('boards', false)
+		await request(server)
+			.get(taskPath + '/board')
+			.set('Cookie', developerCookies)
+			.expect(403)
+		await request(server).get(taskPath).set('Cookie', developerCookies).expect(200)
+		await toggle('team-settings', false)
+		for (const [method, path] of [
+			['patch', '/teams/' + teamId],
+			['delete', '/teams/' + teamId],
+			['get', '/teams/' + teamId + '/members'],
+			['patch', '/teams/' + teamId + '/members/any/role'],
+			['delete', '/teams/' + teamId + '/members/any'],
+			['get', '/teams/' + teamId + '/invitations'],
+			['post', '/teams/' + teamId + '/invitations'],
+			['delete', '/teams/' + teamId + '/invitations/any'],
+		] as const) {
+			await request(server)
+				[method](path)
+				.set('Cookie', developerCookies)
+				.send({ name: 'Blocked' })
+				.expect(403)
+		}
+		await request(server).get('/teams').set('Cookie', developerCookies).expect(200)
+		await request(server).get('/invitations/me').set('Cookie', userCookies).expect(200)
+		await request(server).get('/auth/me').set('Cookie', userCookies).expect(200)
+	})
+
 	const newFlag = { key: 'boards-redesign-v2', title: 'Обновление досок', enabled: false }
 	async function create() {
 		return request(server)
