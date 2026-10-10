@@ -78,3 +78,6 @@ skills-lock.json
 
 *storybook.log
 storybook-static
+
+# Local plans and drafts
+/docs/plans/
