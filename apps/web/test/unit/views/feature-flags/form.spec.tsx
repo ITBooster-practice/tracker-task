@@ -251,7 +251,7 @@ describe('Feature flag form', () => {
 				.getAllByRole('alert')
 				.some((alert) => alert.textContent?.includes('дату и время')),
 		).toBe(true)
-		fireEvent.click(screen.getByRole('button', { name: 'Убрать дату' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Очистить дату' }))
 		fireEvent.click(screen.getByRole('checkbox', { name: 'Функция включена' }))
 		fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
 		await waitFor(() =>

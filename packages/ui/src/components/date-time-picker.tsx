@@ -142,6 +142,18 @@ export function DateTimePicker({
 		selected && upper && localDay(selected) === localDay(upper)
 			? localTime(upper)
 			: undefined
+	const clearButton = value && (
+		<Button
+			type='button'
+			variant='ghost'
+			size='sm'
+			className='w-fit shrink-0'
+			disabled={disabled}
+			onClick={() => onChange('')}
+		>
+			Очистить дату
+		</Button>
+	)
 	return (
 		<div className='grid gap-2'>
 			<Label htmlFor={inputId}>{label}</Label>
@@ -270,6 +282,7 @@ export function DateTimePicker({
 				<TimePicker
 					id={inputId + '-time'}
 					label={timeLabel}
+					action={clearButton}
 					value={value.split('T')[1] ?? '00:00'}
 					min={timeMin}
 					max={timeMax}
@@ -282,18 +295,7 @@ export function DateTimePicker({
 					onChange={(time) => onChange(localDay(selected) + 'T' + time)}
 				/>
 			)}
-			{value && (
-				<Button
-					type='button'
-					variant='ghost'
-					size='sm'
-					className='w-fit'
-					disabled={disabled}
-					onClick={() => onChange('')}
-				>
-					Убрать дату
-				</Button>
-			)}
+			{!(selected && withTime) && clearButton}
 			{description && (
 				<p id={inputId + '-hint'} className='text-sm text-muted-foreground'>
 					{description}
