@@ -69,7 +69,7 @@ cp .env.stage.example .env.stage
 
 Runtime-флаги хранятся в БД; загрузка env-файла с флагами не нужна. Задайте SYSTEM_DEVELOPER_USER_ID в .env.stage после регистрации аккаунта разработчика. Начальные четыре флага создаются включёнными: перенесите прежние выключенные состояния до открытия приложения пользователям. [Runbook флагов](../../work/feature-flags.md).
 
-NEXT_PUBLIC_API_URL берётся из .env.stage и должен совпадать с URL, вшитым при сборке web-образа. Файл .env.web содержит URL API, без флагов.
+NEXT_PUBLIC_API_URL берётся из .env.stage и должен совпадать с URL, вшитым при сборке web-образа. Файл .env.web содержит публичный URL API, без флагов. Серверные запросы web идут на API_INTERNAL_URL=http://api:3000 из Compose с cookie-сессией; они не проходят внешнюю Basic Auth. Это не отменяет JWT-проверку и guards.
 
 ## 3. Подготовить доступ к GHCR
 
