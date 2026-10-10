@@ -1,12 +1,14 @@
-import { notFound } from 'next/navigation'
+import { FEATURE_KEYS } from '@repo/types'
 
 import { TeamSettingsPageView } from '@/views/teams'
-import { FEATURES } from '@/shared/config'
+import { FeatureGate } from '@/features/feature-flags'
+import { requireServerFeature } from '@/shared/lib/feature-flags/server'
 
-export default function TeamSettingsPage() {
-	if (!FEATURES.TEAM_SETTINGS) {
-		notFound()
-	}
-
-	return <TeamSettingsPageView />
+export default async function TeamSettingsPage() {
+	await requireServerFeature(FEATURE_KEYS.TEAM_SETTINGS)
+	return (
+		<FeatureGate feature={FEATURE_KEYS.TEAM_SETTINGS}>
+			<TeamSettingsPageView />
+		</FeatureGate>
+	)
 }

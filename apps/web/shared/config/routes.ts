@@ -24,6 +24,7 @@ export const ROUTES = {
 	teamsNew: '/teams/new',
 	tasks: '/tasks',
 	boards: '/boards',
+	featureFlags: '/admin/feature-flags',
 } as const
 
 const LEGACY_ROUTE_SEGMENTS = {
@@ -37,6 +38,7 @@ const LEGACY_ROUTES = {
 export const AUTH_ROUTE_PATHS = [ROUTES.login, ROUTES.register] as const
 
 export const PROTECTED_ROUTE_PREFIXES = [
+	ROUTES.featureFlags,
 	ROUTES.profile,
 	ROUTES.teams,
 	ROUTES.tasks,
@@ -75,6 +77,7 @@ export const SIDEBAR_ROUTE_IDS = {
 	teamSettings: 'team.settings',
 	tasks: 'tasks',
 	boards: 'boards',
+	featureFlags: 'feature-flags',
 } as const
 
 export type SidebarRouteId = (typeof SIDEBAR_ROUTE_IDS)[keyof typeof SIDEBAR_ROUTE_IDS]
@@ -132,6 +135,9 @@ export function getSidebarRouteId(
 	if (!pathname) {
 		return null
 	}
+
+	if (isSameRouteOrDescendant(pathname, ROUTES.featureFlags))
+		return SIDEBAR_ROUTE_IDS.featureFlags
 
 	const segments = pathname.split('/').filter(Boolean)
 	const [firstSegment, secondSegment, thirdSegment] = segments

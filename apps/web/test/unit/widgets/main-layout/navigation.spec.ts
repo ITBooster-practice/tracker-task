@@ -1,127 +1,59 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+
+import { FEATURE_KEYS, type FeatureFlagsSnapshot } from '@repo/types'
 
 import { getSidebarSections } from '@/widgets/main-layout/model/sidebar/navigation'
 
-const { mockFeatures } = vi.hoisted(() => ({
-	mockFeatures: {
-		PROJECTS: true,
-		TASKS: true,
-		BOARDS: true,
-		TEAM_SETTINGS: true,
-	},
-}))
-
-vi.mock('@/shared/config', () => ({
-	FEATURES: mockFeatures,
-	ROUTES: {
-		teams: '/teams',
-		tasks: '/tasks',
-		boards: '/boards',
-	},
-	SIDEBAR_ROUTE_IDS: {
-		teams: 'teams',
-		teamProjects: 'team.projects',
-		teamProject: 'team.project',
-		teamSettings: 'team.settings',
-		tasks: 'tasks',
-		boards: 'boards',
-	},
-	teamRoutes: {
-		projects: (teamId: string) => `/teams/${teamId}/projects`,
-		project: (teamId: string, projectId: string) =>
-			`/teams/${teamId}/projects/${projectId}`,
-		projectTasks: (teamId: string, projectId: string) =>
-			`/teams/${teamId}/projects/${projectId}/tasks`,
-		settings: (teamId: string) => `/teams/${teamId}/settings`,
-	},
-}))
-
-function findItem(sections: ReturnType<typeof getSidebarSections>, title: string) {
-	for (const section of sections) {
-		const found = section.items.find((item) => item.title === title)
-		if (found) return found
-	}
-	return undefined
+const snapshot: FeatureFlagsSnapshot = {
+	version: 1,
+	flags: Object.values(FEATURE_KEYS).map((key) => ({
+		key,
+		enabled: true,
+		updatedAt: '2026-10-10T00:00:00.000Z',
+	})),
 }
-
-describe('getSidebarSections', () => {
-	it('Проекты: teamId есть', () => {
-		const sections = getSidebarSections('team-1')
-		const item = findItem(sections, 'Проекты')
-
-		expect(item?.href).toBe('/teams/team-1/projects')
+const find = (
+	title: string,
+	data: FeatureFlagsSnapshot | null = snapshot,
+	developer = false,
+	team: string | null = 'team-1',
+	project: string | null = 'project-1',
+) =>
+	getSidebarSections(team, project, data, developer)
+		.flatMap((section) => section.items)
+		.find((item) => item.title === title)
+describe('Runtime sidebar navigation', () => {
+	it('keeps team/project-specific links', () => {
+		expect(find('Проекты')?.href).toBe('/teams/team-1/projects')
+		expect(find('Обзор проекта')?.href).toBe('/teams/team-1/projects/project-1')
+		expect(find('Задачи')?.href).toBe('/teams/team-1/projects/project-1/tasks')
+		expect(find('Настройки команды')?.href).toBe('/teams/team-1/settings')
+		expect(find('Доска')?.href).toBe('/boards')
 	})
-
-	it('Проекты: teamId = null', () => {
-		const sections = getSidebarSections(null)
-		const item = findItem(sections, 'Проекты')
-
-		expect(item?.href).toBe('#')
+	it('keeps unresolved selectors as placeholders', () => {
+		expect(find('Проекты', snapshot, false, null)?.href).toBe('#')
+		expect(find('Задачи', snapshot, false, 'team-1', null)?.href).toBe('#')
+		expect(find('Обзор проекта', snapshot, false, 'team-1', null)).toBeUndefined()
 	})
-
-	it('Доска ведёт на канонический /boards', () => {
-		const sections = getSidebarSections('team-1')
-		const item = findItem(sections, 'Доска')
-
-		expect(item?.href).toBe('/boards')
-		expect(item?.routeId).toBe('boards')
+	it('hides flagged sections before loading', () => {
+		for (const title of ['Проекты', 'Задачи', 'Доска', 'Настройки команды'])
+			expect(find(title, null)).toBeUndefined()
+		expect(find('Команды', null)).toBeDefined()
 	})
-
-	it('Настройки команды: TEAM_SETTINGS включён', () => {
-		mockFeatures.TEAM_SETTINGS = true
-
-		const sections = getSidebarSections('team-1')
-		const item = findItem(sections, 'Настройки команды')
-
-		expect(item).toBeDefined()
-		expect(item?.href).toBe('/teams/team-1/settings')
+	it('hides dependents when projects are disabled', () => {
+		const disabled = {
+			...snapshot,
+			flags: snapshot.flags.map((flag) => ({
+				...flag,
+				enabled: flag.key !== 'projects',
+			})),
+		}
+		for (const title of ['Проекты', 'Обзор проекта', 'Задачи', 'Доска'])
+			expect(find(title, disabled)).toBeUndefined()
+		expect(find('Настройки команды', disabled)).toBeDefined()
 	})
-
-	it('Настройки команды: TEAM_SETTINGS выключен', () => {
-		mockFeatures.TEAM_SETTINGS = false
-
-		const sections = getSidebarSections('team-1')
-		const item = findItem(sections, 'Настройки команды')
-
-		expect(item).toBeUndefined()
-	})
-
-	it('Обзор проекта появляется когда projectId задан', () => {
-		const sections = getSidebarSections('team-1', 'proj-1')
-		const item = findItem(sections, 'Обзор проекта')
-
-		expect(item).toBeDefined()
-		expect(item?.href).toBe('/teams/team-1/projects/proj-1')
-		expect(item?.routeId).toBe('team.project')
-	})
-
-	it('Обзор проекта отсутствует без projectId', () => {
-		const sections = getSidebarSections('team-1')
-		const item = findItem(sections, 'Обзор проекта')
-
-		expect(item).toBeUndefined()
-	})
-
-	it('Задачи: teamId и projectId есть → ведёт на страницу задач проекта', () => {
-		const sections = getSidebarSections('team-1', 'proj-1')
-		const item = findItem(sections, 'Задачи')
-
-		expect(item?.href).toBe('/teams/team-1/projects/proj-1/tasks')
-		expect(item?.routeId).toBe('tasks')
-	})
-
-	it('Задачи: нет teamId или projectId → href = "#"', () => {
-		const withoutProject = getSidebarSections('team-1')
-		expect(findItem(withoutProject, 'Задачи')?.href).toBe('#')
-
-		const withoutTeam = getSidebarSections(null, 'proj-1')
-		expect(findItem(withoutTeam, 'Задачи')?.href).toBe('#')
-	})
-
-	it('всегда содержит секции Работа, Инструменты, Управление', () => {
-		const sections = getSidebarSections('team-1')
-		const titles = sections.map((s) => s.title)
-
-		expect(titles).toEqual(['Работа', 'Инструменты', 'Управление'])
+	it('shows the management link only to the system developer', () => {
+		expect(find('Флаги функций')).toBeUndefined()
+		expect(find('Флаги функций', snapshot, true)?.href).toBe('/admin/feature-flags')
 	})
 })

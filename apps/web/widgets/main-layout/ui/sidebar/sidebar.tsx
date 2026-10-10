@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import React from 'react'
 
-import type { TeamRole } from '@repo/types'
+import { FEATURE_KEYS, type TeamRole } from '@repo/types'
 import { Avatar, AvatarFallback, cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
@@ -17,6 +17,8 @@ import {
 	teamRoutes,
 	type SidebarRouteId,
 } from '@/shared/config'
+import { useFeatureFlags } from '@/shared/lib/feature-flags/context'
+import { hasFeature } from '@/shared/lib/feature-flags/feature-flags'
 import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
 
 import {
@@ -55,6 +57,9 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
 	const params = useParams<{ id?: string; projectId?: string }>()
+	const flags = useFeatureFlags()
+	const snapshot = flags.status === 'ready' ? flags.snapshot : null
+	const projectsEnabled = hasFeature(snapshot, FEATURE_KEYS.PROJECTS)
 	const profileQuery = useMe()
 	const { data: teamsData } = useTeamsList({ page: 1, limit: 50 })
 	const teams = teamsData?.data ?? []
@@ -63,8 +68,8 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const teamId = typeof params.id === 'string' ? params.id : null
 	const currentTeam = teams.find((t) => t.id === teamId) ?? null
 
-	const { data: projectsData } = useProjectsList(teamId ?? '')
-	const projects = projectsData?.data ?? []
+	const { data: projectsData } = useProjectsList(projectsEnabled ? (teamId ?? '') : '')
+	const projects = projectsEnabled ? (projectsData?.data ?? []) : []
 
 	const projectId = typeof params.projectId === 'string' ? params.projectId : null
 	const currentProject = projects.find((p) => p.id === projectId) ?? null
@@ -77,7 +82,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 		getNameInitials(currentUserName) || sidebarCurrentUser.initials
 
 	const activeRouteId = getSidebarRouteId(pathname)
-	const sections = getSidebarSections(teamId, projectId)
+	const sections = getSidebarSections(teamId, projectId, snapshot, flags.canManage)
 	const collapsedItems = sections.flatMap((section) => section.items)
 
 	const teamOptions = teams.map((t) => ({
@@ -175,7 +180,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									isOpen={isOpen}
 									emptyLabel='Нет проектов'
 									placeholder='Выберите проект'
-									disabled={!teamId}
+									disabled={!teamId || !projectsEnabled}
 									onSelect={handleSelectProject}
 								/>
 							</div>
@@ -222,7 +227,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									isOpen={isOpen}
 									emptyLabel='Нет проектов'
 									placeholder='Выберите проект'
-									disabled={!teamId}
+									disabled={!teamId || !projectsEnabled}
 									onSelect={handleSelectProject}
 								/>
 							</div>

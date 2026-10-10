@@ -1,3 +1,4 @@
+import { FEATURE_KEYS, type FeatureFlagsSnapshot } from '@repo/types'
 import {
 	Bell,
 	FolderKanban,
@@ -11,72 +12,62 @@ import {
 	Users,
 } from '@repo/ui/icons'
 
-import { FEATURES, ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config'
+import { ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config/routes'
+import { hasFeature } from '@/shared/lib/feature-flags/feature-flags'
 
 import type { SidebarNavSection, SidebarUserCard, SidebarWorkspace } from './types'
 
-function getTeamScopedHref(
-	teamId: string | null | undefined,
-	route: 'projects' | 'settings',
-) {
-	if (!teamId) {
-		return '#'
-	}
-
-	return teamRoutes[route](teamId)
-}
-
-function getProjectTasksHref(
-	teamId: string | null | undefined,
-	projectId: string | null | undefined,
-) {
-	if (!teamId || !projectId) return '#'
-	return teamRoutes.projectTasks(teamId, projectId)
-}
-
+const teamHref = (teamId: string | null | undefined, route: 'projects' | 'settings') =>
+	teamId ? teamRoutes[route](teamId) : '#'
 export const sidebarWorkspace: SidebarWorkspace = {
 	title: 'Tracker Task',
 	subtitle: 'Product Team',
 }
-
 export function getSidebarSections(
 	activeTeamId?: string | null,
 	activeProjectId?: string | null,
+	snapshot: FeatureFlagsSnapshot | null = null,
+	canManage = false,
 ): SidebarNavSection[] {
-	const projectOverviewItem =
-		activeTeamId && activeProjectId
-			? [
-					{
-						title: 'Обзор проекта',
-						href: teamRoutes.project(activeTeamId, activeProjectId),
-						routeId: SIDEBAR_ROUTE_IDS.teamProject,
-						icon: LayoutGrid,
-					},
-				]
-			: []
-
+	const enabled = (key: string) => hasFeature(snapshot, key)
 	return [
 		{
 			title: 'Работа',
 			items: [
-				...projectOverviewItem,
-				{
-					title: 'Доска',
-					href: ROUTES.boards,
-					routeId: SIDEBAR_ROUTE_IDS.boards,
-					icon: KanbanSquare,
-				},
-				{
-					title: 'Задачи',
-					href: getProjectTasksHref(activeTeamId, activeProjectId),
-					routeId: SIDEBAR_ROUTE_IDS.tasks,
-					icon: ListTodo,
-				},
-				{
-					title: 'Бэклог',
-					href: '#',
-					icon: Layers3,
-				},
+				...(activeTeamId && activeProjectId && enabled(FEATURE_KEYS.PROJECTS)
+					? [
+							{
+								title: 'Обзор проекта',
+								href: teamRoutes.project(activeTeamId, activeProjectId),
+								routeId: SIDEBAR_ROUTE_IDS.teamProject,
+								icon: LayoutGrid,
+							},
+						]
+					: []),
+				...(enabled(FEATURE_KEYS.BOARDS)
+					? [
+							{
+								title: 'Доска',
+								href: ROUTES.boards,
+								routeId: SIDEBAR_ROUTE_IDS.boards,
+								icon: KanbanSquare,
+							},
+						]
+					: []),
+				...(enabled(FEATURE_KEYS.TASKS)
+					? [
+							{
+								title: 'Задачи',
+								href:
+									activeTeamId && activeProjectId
+										? teamRoutes.projectTasks(activeTeamId, activeProjectId)
+										: '#',
+								routeId: SIDEBAR_ROUTE_IDS.tasks,
+								icon: ListTodo,
+							},
+						]
+					: []),
+				{ title: 'Бэклог', href: '#', icon: Layers3 },
 			],
 		},
 		{
@@ -88,11 +79,7 @@ export function getSidebarSections(
 					icon: Sparkles,
 					iconClassName: 'text-accent',
 				},
-				{
-					title: 'Уведомления',
-					href: '#',
-					icon: Bell,
-				},
+				{ title: 'Уведомления', href: '#', icon: Bell },
 			],
 		},
 		{
@@ -104,32 +91,40 @@ export function getSidebarSections(
 					routeId: SIDEBAR_ROUTE_IDS.teams,
 					icon: Users,
 				},
-				{
-					title: 'Проекты',
-					href: getTeamScopedHref(activeTeamId, 'projects'),
-					routeId: SIDEBAR_ROUTE_IDS.teamProjects,
-					icon: FolderKanban,
-				},
-				...(FEATURES.TEAM_SETTINGS
+				...(enabled(FEATURE_KEYS.PROJECTS)
+					? [
+							{
+								title: 'Проекты',
+								href: teamHref(activeTeamId, 'projects'),
+								routeId: SIDEBAR_ROUTE_IDS.teamProjects,
+								icon: FolderKanban,
+							},
+						]
+					: []),
+				...(enabled(FEATURE_KEYS.TEAM_SETTINGS)
 					? [
 							{
 								title: 'Настройки команды',
-								href: getTeamScopedHref(activeTeamId, 'settings'),
+								href: teamHref(activeTeamId, 'settings'),
 								routeId: SIDEBAR_ROUTE_IDS.teamSettings,
 								icon: Settings,
 							},
 						]
 					: []),
-				{
-					title: 'Администрирование',
-					href: '#',
-					icon: Shield,
-				},
+				...(canManage
+					? [
+							{
+								title: 'Флаги функций',
+								href: ROUTES.featureFlags,
+								routeId: SIDEBAR_ROUTE_IDS.featureFlags,
+								icon: Shield,
+							},
+						]
+					: []),
 			],
 		},
 	]
 }
-
 export const sidebarCurrentUser: SidebarUserCard = {
 	initials: 'AI',
 	name: 'Алексей Иванов',

@@ -1,20 +1,14 @@
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
 import { cookies } from 'next/headers'
-import { notFound } from 'next/navigation'
 
 import { ProjectDetailPageView } from '@/views/projects'
 import { projectsKeys } from '@/shared/api/use-projects'
-import { FEATURES } from '@/shared/config'
 
 export default async function ProjectDetailPage({
 	params,
 }: {
 	params: Promise<{ id: string; projectId: string }>
 }) {
-	if (!FEATURES.PROJECTS) {
-		notFound()
-	}
-
 	const { id: teamId, projectId } = await params
 	const cookieStore = await cookies()
 	const cookieHeader = cookieStore
