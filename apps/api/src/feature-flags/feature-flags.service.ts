@@ -3,6 +3,7 @@ import {
 	ForbiddenException,
 	Injectable,
 	NotFoundException,
+	UnprocessableEntityException,
 } from '@nestjs/common'
 import {
 	REQUIRED_FEATURE_KEYS,
@@ -90,22 +91,30 @@ export class FeatureFlagsService {
 		).version
 	}
 	create(actorId: string, dto: CreateFeatureFlag) {
-		return this.mutate(actorId, undefined, async (tx) => ({
-			flag: await tx.featureFlag.create({
-				data: {
-					...dto,
-					expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
-					createdById: actorId,
-				},
-			}),
-			before: null,
-			action: 'CREATE',
-		}))
+		return this.mutate(actorId, undefined, async (tx) => {
+			this.validateDeadline(dto.expiresAt)
+			return {
+				flag: await tx.featureFlag.create({
+					data: {
+						...dto,
+						expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+						createdById: actorId,
+					},
+				}),
+				before: null,
+				action: 'CREATE',
+			}
+		})
 	}
 	update(actorId: string, id: string, dto: UpdateFeatureFlag) {
 		const { expectedVersion, ...data } = dto
 		return this.mutate(actorId, expectedVersion, async (tx) => {
 			const before = await this.activeFlag(tx, id)
+			if (
+				data.expiresAt &&
+				new Date(data.expiresAt).getTime() !== before.expiresAt?.getTime()
+			)
+				this.validateDeadline(data.expiresAt)
 			const flag = await tx.featureFlag.update({
 				where: { id },
 				data: {
@@ -146,6 +155,16 @@ export class FeatureFlagsService {
 			take: 100,
 		})
 	}
+	private validateDeadline(value: string | null | undefined) {
+		const milliseconds = value ? new Date(value).getTime() : null
+		if (
+			milliseconds !== null &&
+			(!Number.isFinite(milliseconds) || milliseconds < Date.now())
+		)
+			throw new UnprocessableEntityException(
+				'Плановая дата и время не могут быть раньше текущего времени сервера',
+			)
+	}
 	private async activeFlag(tx: Prisma.TransactionClient, id: string) {
 		const flag = await tx.featureFlag.findUnique({ where: { id } })
 		if (!flag) throw new NotFoundException('Флаг не найден')
@@ -160,7 +179,7 @@ export class FeatureFlagsService {
 	) {
 		try {
 			const result = await this.prisma.$transaction(async (tx) => {
-				// The shared revision row serializes writers and prevents stale concurrent edits.
+				// Блокировка общей версии сериализует записи и исключает изменения по устаревшему снимку.
 				const revision = await tx.featureFlagsRevision.update({
 					where: { id: 'global' },
 					data: { version: { increment: 1 } },
