@@ -7,7 +7,9 @@ import {
 	type CreateFeatureFlag,
 	type FeatureFlag,
 } from '@repo/types'
-import { Button, Input, Label, Textarea } from '@repo/ui'
+import { Button, Checkbox, Input, Label, Textarea } from '@repo/ui'
+
+import { FeatureFlagDeadline } from './feature-flag-deadline'
 
 interface Props {
 	flag: FeatureFlag | null
@@ -35,12 +37,17 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 			className='grid gap-4'
 			onSubmit={async (event) => {
 				event.preventDefault()
+				const plannedDate = expiresAt ? new Date(expiresAt) : null
+				if (plannedDate && Number.isNaN(plannedDate.getTime())) {
+					setValidation('Укажите корректную дату и время завершения.')
+					return
+				}
 				const parsed = createFeatureFlagSchema.safeParse({
 					key,
 					title,
 					description: description.trim() || null,
 					enabled,
-					expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+					expiresAt: plannedDate?.toISOString() ?? null,
 				})
 				if (!parsed.success) {
 					setValidation(parsed.error.issues.map((issue) => issue.message).join('; '))
@@ -90,28 +97,25 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 					disabled={pending}
 				/>
 			</div>
+			<FeatureFlagDeadline value={expiresAt} onChange={setExpiresAt} disabled={pending} />
 			<div className='grid gap-2'>
-				<Label htmlFor='flag-expires'>Плановая дата завершения</Label>
-				<Input
-					id='flag-expires'
-					type='datetime-local'
-					value={expiresAt}
-					onChange={(event) => setExpiresAt(event.target.value)}
-					disabled={pending}
-				/>
-				<p className='text-sm text-muted-foreground'>
-					Напоминание для разработчика. Дата не переключает флаг автоматически.
+				<div className='flex items-center gap-2'>
+					<Checkbox
+						id='flag-enabled'
+						checked={enabled}
+						onCheckedChange={(checked) => setEnabled(checked === true)}
+						disabled={pending}
+						aria-describedby='flag-enabled-hint'
+					/>
+					<Label htmlFor='flag-enabled' className='cursor-pointer'>
+						Функция включена
+					</Label>
+				</div>
+				<p id='flag-enabled-hint' className='text-sm text-muted-foreground'>
+					После сохранения флаг разрешит доступ к функции. Если снять отметку, доступ
+					будет закрыт.
 				</p>
 			</div>
-			<Label className='flex items-center gap-2'>
-				<input
-					type='checkbox'
-					checked={enabled}
-					onChange={(event) => setEnabled(event.target.checked)}
-					disabled={pending}
-				/>
-				Функция включена
-			</Label>
 			{(validation || error) && (
 				<p role='alert' className='text-sm text-destructive'>
 					{validation || error}

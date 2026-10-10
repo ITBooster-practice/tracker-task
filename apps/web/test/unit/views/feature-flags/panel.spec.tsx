@@ -88,6 +88,14 @@ describe('Developer flag panel', () => {
 	})
 	beforeEach(() => {
 		vi.clearAllMocks()
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe = vi.fn()
+				unobserve = vi.fn()
+				disconnect = vi.fn()
+			},
+		)
 		vi.mocked(featureFlagsService.list).mockResolvedValue({ version: 5, flags: [flag] })
 		vi.mocked(featureFlagsService.create).mockResolvedValue({ version: 6, flag })
 		vi.mocked(featureFlagsService.update).mockResolvedValue({ version: 6, flag })
@@ -108,7 +116,10 @@ describe('Developer flag panel', () => {
 			},
 		])
 	})
-	afterEach(cleanup)
+	afterEach(() => {
+		cleanup()
+		vi.unstubAllGlobals()
+	})
 	it('denies ordinary users without requesting the private list', () => {
 		mount(false)
 		expect(screen.getByText('Доступ запрещён')).toBeDefined()
