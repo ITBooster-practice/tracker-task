@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import type { CreateFeatureFlag, FeatureFlag } from '@repo/types'
+import type { CreateFeatureFlag, FeatureFlag, UpdateFeatureFlag } from '@repo/types'
 import {
 	Button,
 	ConfirmDialog,
@@ -37,7 +37,12 @@ import { FeatureFlagsAccessDenied } from './feature-flags-access-denied'
 type Editor = { flag: FeatureFlag | null; version: number }
 type Action =
 	| { type: 'create'; value: CreateFeatureFlag }
-	| { type: 'update'; id: string; value: Partial<CreateFeatureFlag>; version: number }
+	| {
+			type: 'update'
+			id: string
+			value: Omit<UpdateFeatureFlag, 'expectedVersion'>
+			version: number
+	  }
 	| { type: 'archive'; id: string; version: number }
 const date = (value: string) => new Date(value).toLocaleString('ru-RU')
 const actionNames: Record<string, string> = {
@@ -66,10 +71,8 @@ export function FeatureFlagsPageView() {
 			if (action.type === 'create') return featureFlagsService.create(action.value)
 			if (action.type === 'archive')
 				return featureFlagsService.archive(action.id, action.version)
-			const value = { ...action.value }
-			delete value.key
 			return featureFlagsService.update(action.id, {
-				...value,
+				...action.value,
 				expectedVersion: action.version,
 			})
 		},
@@ -194,6 +197,22 @@ export function FeatureFlagsPageView() {
 								</div>
 								<FeatureFlagStatus flag={flag} />
 							</div>
+							<p
+								className={
+									flag.connectedFeature
+										? 'text-sm text-sky-700 dark:text-sky-300'
+										: 'text-sm text-muted-foreground'
+								}
+							>
+								{flag.connectedFeature
+									? 'Подключён: ' + flag.connectedFeature
+									: 'Не подключён к приложению'}
+							</p>
+							{!flag.connectedFeature && !flag.archivedAt && (
+								<p className='text-xs text-muted-foreground'>
+									Включение станет доступно после подключения и выпуска обновления.
+								</p>
+							)}
 							{flag.description && (
 								<p className='whitespace-pre-wrap text-sm'>{flag.description}</p>
 							)}
@@ -207,7 +226,11 @@ export function FeatureFlagsPageView() {
 										<Button
 											size='sm'
 											variant='outline'
-											disabled={mutation.isPending || list.isError}
+											disabled={
+												mutation.isPending ||
+												list.isError ||
+												(!flag.enabled && !flag.connectedFeature)
+											}
 											aria-label={
 												(flag.enabled ? 'Выключить ' : 'Включить ') + flag.title
 											}
@@ -301,7 +324,11 @@ export function FeatureFlagsPageView() {
 										? {
 												type: 'update',
 												id: editor.flag.id,
-												value,
+												value: {
+													title: value.title,
+													description: value.description,
+													expiresAt: value.expiresAt,
+												},
 												version: editor.version,
 											}
 										: { type: 'create', value },

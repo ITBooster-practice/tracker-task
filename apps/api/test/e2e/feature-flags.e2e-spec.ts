@@ -133,7 +133,7 @@ describe('Runtime feature flags (e2e)', () => {
 		await request(server).get('/auth/me').set('Cookie', userCookies).expect(200)
 	})
 
-	const newFlag = { key: 'boards-redesign-v2', title: 'Обновление досок', enabled: false }
+	const newFlag = { key: 'boards-redesign-v2', title: 'Обновление досок' }
 	async function create() {
 		return request(server)
 			.post('/feature-flags')
@@ -175,7 +175,7 @@ describe('Runtime feature flags (e2e)', () => {
 		await request(server)
 			.patch('/feature-flags/' + created.body.flag.id)
 			.set('Cookie', developerCookies)
-			.send({ expiresAt, enabled: true, expectedVersion: 1 })
+			.send({ expiresAt, expectedVersion: 1 })
 			.expect(422)
 		expect(
 			(
@@ -215,6 +215,95 @@ describe('Runtime feature flags (e2e)', () => {
 			.send({ expiresAt: null, expectedVersion: 2 })
 			.expect(200)
 	})
+
+	it('создаёт заготовку и запрещает её включение без изменения версии, аудита и снимка', async () => {
+		const created = await create()
+		expect(created.body.flag).toMatchObject({
+			enabled: false,
+			connectedFeature: null,
+			required: false,
+		})
+		const before = await request(server)
+			.get('/feature-flags/snapshot')
+			.set('Cookie', userCookies)
+			.expect(200)
+		const rejected = await request(server)
+			.patch('/feature-flags/' + created.body.flag.id)
+			.set('Cookie', developerCookies)
+			.send({ enabled: true, title: 'Не должно сохраниться', expectedVersion: 1 })
+			.expect(422)
+		expect(rejected.body.message).toContain('не подключён')
+		expect(
+			await prisma.featureFlag.findUniqueOrThrow({ where: { id: created.body.flag.id } }),
+		).toMatchObject({ enabled: false, title: newFlag.title })
+		expect(
+			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
+				.version,
+		).toBe(1)
+		expect(await prisma.featureFlagAudit.count()).toBe(1)
+		await request(server)
+			.get('/feature-flags/snapshot')
+			.set('Cookie', userCookies)
+			.set('If-None-Match', before.headers.etag)
+			.expect(304)
+		await request(server)
+			.patch('/feature-flags/' + created.body.flag.id)
+			.set('Cookie', developerCookies)
+			.send({ description: 'План подключения', expectedVersion: 1 })
+			.expect(200)
+	})
+	it('возвращает подключение из реестра и разрешает переключать подключённый флаг', async () => {
+		const list = await request(server)
+			.get('/feature-flags')
+			.set('Cookie', developerCookies)
+			.expect(200)
+		const boards = list.body.flags.find((flag: { key: string }) => flag.key === 'boards')
+		expect(boards).toMatchObject({ connectedFeature: 'Доски', required: true })
+		for (const [version, enabled] of [
+			[0, false],
+			[1, true],
+		] as const) {
+			const updated = await request(server)
+				.patch('/feature-flags/' + boards.id)
+				.set('Cookie', developerCookies)
+				.send({ enabled, expectedVersion: version })
+				.expect(200)
+			expect(updated.body.flag).toMatchObject({ enabled, connectedFeature: 'Доски' })
+		}
+	})
+	it('разрешает выключить старую включённую заготовку', async () => {
+		const created = await create()
+		await prisma.featureFlag.update({
+			where: { id: created.body.flag.id },
+			data: { enabled: true },
+		})
+		const updated = await request(server)
+			.patch('/feature-flags/' + created.body.flag.id)
+			.set('Cookie', developerCookies)
+			.send({ enabled: false, expectedVersion: 1 })
+			.expect(200)
+		expect(updated.body.flag.enabled).toBe(false)
+	})
+	it.each([
+		{ ...newFlag, enabled: true },
+		{ ...newFlag, enabled: false },
+		{ ...newFlag, key: 'projects', enabled: true },
+		{ ...newFlag, connectedFeature: 'Доски' },
+	])(
+		'не позволяет включить флаг при создании или подделать подключение: %j',
+		async (body) => {
+			await request(server)
+				.post('/feature-flags')
+				.set('Cookie', developerCookies)
+				.send(body)
+				.expect(422)
+			expect(await prisma.featureFlagAudit.count()).toBe(0)
+			expect(
+				(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
+					.version,
+			).toBe(0)
+		},
+	)
 	it('requires authentication for snapshot and management', async () => {
 		await request(server).get('/feature-flags/snapshot').expect(401)
 		await request(server).post('/feature-flags').send(newFlag).expect(401)
@@ -281,14 +370,14 @@ describe('Runtime feature flags (e2e)', () => {
 				.body.canManage,
 		).toBe(true)
 	})
-	it('creates, toggles, edits and audits in monotonically versioned transactions', async () => {
+	it('creates and edits drafts in monotonically versioned transactions', async () => {
 		const created = await create()
 		const id = created.body.flag.id as string
 		expect(created.body.version).toBe(1)
 		const updated = await request(server)
 			.patch('/feature-flags/' + id)
 			.set('Cookie', developerCookies)
-			.send({ enabled: true, title: 'Новое название', expectedVersion: 1 })
+			.send({ title: 'Новое название', expectedVersion: 1 })
 			.expect(200)
 		expect(updated.body.version).toBe(2)
 		const audit = await request(server)
@@ -301,7 +390,7 @@ describe('Runtime feature flags (e2e)', () => {
 			action: 'UPDATE',
 			version: 2,
 			before: { enabled: false },
-			after: { enabled: true },
+			after: { enabled: false, title: 'Новое название' },
 		})
 	})
 	it('rejects stale updates without changing state, revision or audit', async () => {

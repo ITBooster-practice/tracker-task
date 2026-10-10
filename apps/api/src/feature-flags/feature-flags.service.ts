@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common'
 import {
 	REQUIRED_FEATURE_KEYS,
+	getConnectedFeature,
 	type CreateFeatureFlag,
 	type FeatureFlagsList,
 	type FeatureFlagsSnapshot,
@@ -26,6 +27,7 @@ const toFlag = (flag: FeatureFlag) => ({
 	archivedAt: flag.archivedAt?.toISOString() ?? null,
 	expiresAt: flag.expiresAt?.toISOString() ?? null,
 	required: REQUIRED_FEATURE_KEYS.includes(flag.key),
+	connectedFeature: getConnectedFeature(flag.key),
 })
 
 @Injectable()
@@ -97,6 +99,7 @@ export class FeatureFlagsService {
 				flag: await tx.featureFlag.create({
 					data: {
 						...dto,
+						enabled: false,
 						expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
 						createdById: actorId,
 					},
@@ -110,6 +113,10 @@ export class FeatureFlagsService {
 		const { expectedVersion, ...data } = dto
 		return this.mutate(actorId, expectedVersion, async (tx) => {
 			const before = await this.activeFlag(tx, id)
+			if (data.enabled === true && !getConnectedFeature(before.key))
+				throw new UnprocessableEntityException(
+					'Флаг не подключён к приложению. Добавьте проверки и запись в FEATURE_REGISTRY, затем выпустите обновление.',
+				)
 			if (
 				data.expiresAt &&
 				new Date(data.expiresAt).getTime() !== before.expiresAt?.getTime()

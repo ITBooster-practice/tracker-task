@@ -7,7 +7,7 @@ import {
 	type CreateFeatureFlag,
 	type FeatureFlag,
 } from '@repo/types'
-import { Button, Checkbox, Input, Label, parseLocalDateTime, Textarea } from '@repo/ui'
+import { Button, Input, Label, parseLocalDateTime, Textarea } from '@repo/ui'
 
 import { useServerClock } from '@/shared/lib/feature-flags/use-server-clock'
 
@@ -27,22 +27,14 @@ function localDate(value: string | null) {
 		.toISOString()
 		.slice(0, 16)
 }
-const sections: Record<string, string> = {
-	projects: 'Проекты',
-	tasks: 'Задачи',
-	boards: 'Доски',
-	'team-settings': 'Настройки команды',
-}
 export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Props) {
 	const [key, setKey] = useState(flag?.key ?? '')
 	const [title, setTitle] = useState(flag?.title ?? '')
 	const [description, setDescription] = useState(flag?.description ?? '')
-	const [enabled, setEnabled] = useState(flag?.enabled ?? false)
 	const [expiresAt, setExpiresAt] = useState(localDate(flag?.expiresAt ?? null))
 	const [validation, setValidation] = useState('')
 	const clock = useServerClock()
 	const unchangedDeadline = expiresAt === localDate(flag?.expiresAt ?? null)
-	const section = Object.hasOwn(sections, key) ? sections[key] : undefined
 	return (
 		<form
 			className='grid gap-4'
@@ -69,7 +61,6 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 					key,
 					title,
 					description: description.trim() || null,
-					enabled,
 					expiresAt: unchangedDeadline
 						? (flag?.expiresAt ?? null)
 						: (plannedDate?.toISOString() ?? null),
@@ -134,31 +125,11 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 				isError={clock.isError}
 				retry={clock.retry}
 			/>
-			<div className='grid gap-2'>
-				<div className='flex items-center gap-2'>
-					<Checkbox
-						id='flag-enabled'
-						checked={enabled}
-						onCheckedChange={(checked) => setEnabled(checked === true)}
-						disabled={pending}
-						aria-describedby='flag-enabled-hint'
-					/>
-					<Label htmlFor='flag-enabled' className='cursor-pointer'>
-						Функция включена
-					</Label>
-				</div>
-				<p id='flag-enabled-hint' className='text-sm text-muted-foreground'>
-					{section
-						? 'После сохранения включит раздел «' +
-							section +
-							'» (ключ ' +
-							key +
-							') для пользователей с правами на него. Снятая отметка закроет раздел и его API. Другие необходимые флаги также должны быть включены.'
-						: 'Этот чекбокс задаёт состояние флага' +
-							(key ? ' «' + key + '»' : '') +
-							'. Доступ изменится только к той функции, для которой разработчик добавит проверки этого ключа в код frontend и API. Создание флага само по себе не подключает его к разделу приложения.'}
-				</p>
-			</div>
+			<p className='text-sm text-muted-foreground'>
+				{flag
+					? 'Состояние флага меняется кнопкой на карточке. Сохранение этой формы изменит только название, описание и срок.'
+					: 'Новый флаг будет выключен. Включить его можно на карточке после подключения к приложению.'}
+			</p>
 			{(validation || error) && (
 				<p role='alert' className='text-sm text-destructive'>
 					{validation || error}
