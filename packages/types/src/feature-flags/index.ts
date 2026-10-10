@@ -48,6 +48,45 @@ export type CreateFeatureFlag = z.infer<typeof createFeatureFlagSchema>
 export type UpdateFeatureFlag = z.infer<typeof updateFeatureFlagSchema>
 export type ArchiveFeatureFlag = z.infer<typeof archiveFeatureFlagSchema>
 
+const snapshotItemSchema = z.object({
+	key: z.string(),
+	enabled: z.boolean(),
+	updatedAt: z.iso.datetime(),
+})
+export const featureFlagsSnapshotSchema = z.object({
+	version: z.number().int(),
+	flags: z.array(snapshotItemSchema),
+})
+const flagSchema = snapshotItemSchema.extend({
+	id: z.string(),
+	title: z.string(),
+	description: z.string().nullable(),
+	createdAt: z.iso.datetime(),
+	archivedAt: z.iso.datetime().nullable(),
+	expiresAt: z.iso.datetime().nullable(),
+	createdById: z.string(),
+	required: z.boolean(),
+})
+export const featureFlagsListSchema = z.object({
+	version: z.number().int(),
+	flags: z.array(flagSchema),
+})
+export const featureFlagsAccessSchema = z.object({ canManage: z.boolean() })
+export const featureFlagMutationSchema = z.object({
+	version: z.number().int(),
+	flag: flagSchema,
+})
+export const featureFlagAuditSchema = z.object({
+	id: z.string(),
+	flagId: z.string(),
+	actorId: z.string(),
+	action: z.string(),
+	before: z.unknown(),
+	after: z.unknown(),
+	version: z.number().int(),
+	createdAt: z.iso.datetime(),
+})
+
 export interface FeatureFlagSnapshotItem {
 	key: FeatureFlagKey
 	enabled: boolean

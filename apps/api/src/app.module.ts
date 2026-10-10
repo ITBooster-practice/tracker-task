@@ -3,6 +3,8 @@ import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ZodSerializerInterceptor } from 'nestjs-zod'
 
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module'
+
 import { AppService } from './app.service'
 import { AppController } from './app.controller'
 
@@ -25,6 +27,7 @@ import { TasksModule } from './tasks/tasks.module'
 		TeamsModule,
 		ProjectsModule,
 		TasksModule,
+		FeatureFlagsModule,
 	],
 	controllers: [AppController],
 	providers: [
