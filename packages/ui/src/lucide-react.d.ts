@@ -5,6 +5,8 @@ declare module 'lucide-react' {
 		SVGProps<SVGSVGElement> & RefAttributes<SVGSVGElement>
 	>
 
+	export const CalendarIcon: LucideIcon
+	export const ClockIcon: LucideIcon
 	export const CheckIcon: LucideIcon
 	export const ChevronDownIcon: LucideIcon
 	export const ChevronUpIcon: LucideIcon
