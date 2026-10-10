@@ -8,6 +8,7 @@ import { featureFlagsKeys } from '@/shared/api/use-feature-flags'
 import { ROUTES } from '@/shared/config'
 import { authService } from '@/shared/lib/api/auth-service'
 import { isApiError } from '@/shared/lib/api/utils'
+import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-service'
 import { getServerFeatureSnapshot } from '@/shared/lib/feature-flags/server'
 import { getQueryClient } from '@/shared/lib/query-client'
 
@@ -27,6 +28,10 @@ export default async function DashboardLayout({ children, modal }: Props) {
 		await queryClient.prefetchQuery({
 			queryKey: featureFlagsKeys.snapshot,
 			queryFn: getServerFeatureSnapshot,
+		})
+		await queryClient.prefetchQuery({
+			queryKey: featureFlagsKeys.access,
+			queryFn: ({ signal }) => featureFlagsService.access(signal),
 		})
 	} catch (error) {
 		if (isApiError(error) && error.statusCode === 401) {
