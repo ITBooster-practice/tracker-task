@@ -7,7 +7,9 @@ import {
 	type CreateFeatureFlag,
 	type FeatureFlag,
 } from '@repo/types'
-import { Button, Checkbox, Input, Label, Textarea } from '@repo/ui'
+import { Button, Checkbox, Input, Label, parseLocalDateTime, Textarea } from '@repo/ui'
+
+import { useServerClock } from '@/shared/lib/feature-flags/use-server-clock'
 
 import { FeatureFlagDeadline } from './feature-flag-deadline'
 
@@ -25,6 +27,12 @@ function localDate(value: string | null) {
 		.toISOString()
 		.slice(0, 16)
 }
+const sections: Record<string, string> = {
+	projects: 'Проекты',
+	tasks: 'Задачи',
+	boards: 'Доски',
+	'team-settings': 'Настройки команды',
+}
 export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Props) {
 	const [key, setKey] = useState(flag?.key ?? '')
 	const [title, setTitle] = useState(flag?.title ?? '')
@@ -32,14 +40,29 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 	const [enabled, setEnabled] = useState(flag?.enabled ?? false)
 	const [expiresAt, setExpiresAt] = useState(localDate(flag?.expiresAt ?? null))
 	const [validation, setValidation] = useState('')
+	const clock = useServerClock()
+	const unchangedDeadline = expiresAt === localDate(flag?.expiresAt ?? null)
+	const section = sections[key]
 	return (
 		<form
 			className='grid gap-4'
 			onSubmit={async (event) => {
 				event.preventDefault()
-				const plannedDate = expiresAt ? new Date(expiresAt) : null
-				if (plannedDate && Number.isNaN(plannedDate.getTime())) {
+				const plannedDate = expiresAt ? parseLocalDateTime(expiresAt) : null
+				if (expiresAt && !plannedDate) {
 					setValidation('Укажите корректную дату и время завершения.')
+					return
+				}
+				if (
+					plannedDate &&
+					!unchangedDeadline &&
+					(!clock.now || plannedDate < clock.now)
+				) {
+					setValidation(
+						clock.now
+							? 'Дата и время не могут быть раньше текущего времени сервера.'
+							: 'Дождитесь загрузки времени сервера.',
+					)
 					return
 				}
 				const parsed = createFeatureFlagSchema.safeParse({
@@ -47,10 +70,16 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 					title,
 					description: description.trim() || null,
 					enabled,
-					expiresAt: plannedDate?.toISOString() ?? null,
+					expiresAt: unchangedDeadline
+						? (flag?.expiresAt ?? null)
+						: (plannedDate?.toISOString() ?? null),
 				})
 				if (!parsed.success) {
 					setValidation(parsed.error.issues.map((issue) => issue.message).join('; '))
+					return
+				}
+				if (!event.currentTarget.checkValidity()) {
+					setValidation('Укажите корректную дату и время завершения.')
 					return
 				}
 				setValidation('')
@@ -97,7 +126,14 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 					disabled={pending}
 				/>
 			</div>
-			<FeatureFlagDeadline value={expiresAt} onChange={setExpiresAt} disabled={pending} />
+			<FeatureFlagDeadline
+				value={expiresAt}
+				onChange={setExpiresAt}
+				disabled={pending}
+				now={clock.now}
+				isError={clock.isError}
+				retry={clock.retry}
+			/>
 			<div className='grid gap-2'>
 				<div className='flex items-center gap-2'>
 					<Checkbox
@@ -112,8 +148,15 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 					</Label>
 				</div>
 				<p id='flag-enabled-hint' className='text-sm text-muted-foreground'>
-					После сохранения флаг разрешит доступ к функции. Если снять отметку, доступ
-					будет закрыт.
+					{section
+						? 'После сохранения включит раздел «' +
+							section +
+							'» (ключ ' +
+							key +
+							') для пользователей с правами на него. Снятая отметка закроет раздел и его API. Другие необходимые флаги также должны быть включены.'
+						: 'Этот чекбокс задаёт состояние флага' +
+							(key ? ' «' + key + '»' : '') +
+							'. Доступ изменится только к той функции, для которой разработчик добавит проверки этого ключа в код frontend и API. Создание флага само по себе не подключает его к разделу приложения.'}
 				</p>
 			</div>
 			{(validation || error) && (

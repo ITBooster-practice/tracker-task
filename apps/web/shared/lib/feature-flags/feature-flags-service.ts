@@ -3,6 +3,7 @@ import {
 	featureFlagMutationSchema,
 	featureFlagsAccessSchema,
 	featureFlagsListSchema,
+	featureFlagsServerTimeSchema,
 	featureFlagsSnapshotSchema,
 	type CreateFeatureFlag,
 	type FeatureFlagsSnapshot,
@@ -26,6 +27,11 @@ export const featureFlagsService = {
 		})
 		if (response.status === 304 && known) return known
 		return featureFlagsSnapshotSchema.parse(response.data)
+	},
+	async serverTime(signal?: AbortSignal) {
+		return featureFlagsServerTimeSchema.parse(
+			(await client.get(endpoint + '/server-time', { signal })).data,
+		)
 	},
 	async access(signal?: AbortSignal) {
 		return featureFlagsAccessSchema.parse(

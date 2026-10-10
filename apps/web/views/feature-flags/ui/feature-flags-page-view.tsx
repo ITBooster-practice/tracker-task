@@ -83,7 +83,9 @@ export function FeatureFlagsPageView() {
 					? 'Данные изменились или ключ уже занят. Список обновлён; проверьте изменения и откройте форму заново.'
 					: isApiError(cause) && cause.statusCode === 403
 						? 'Право управления недоступно.'
-						: 'Не удалось сохранить изменение. Повторите попытку.',
+						: isApiError(cause) && cause.statusCode === 422
+							? cause.message
+							: 'Не удалось сохранить изменение. Повторите попытку.',
 			)
 			if (isApiError(cause) && cause.statusCode === 403)
 				queryClient.setQueryData(featureFlagsKeys.access, { canManage: false })

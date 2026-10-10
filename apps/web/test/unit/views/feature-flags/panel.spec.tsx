@@ -29,6 +29,7 @@ import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-se
 vi.mock('@/shared/lib/feature-flags/feature-flags-service', () => ({
 	featureFlagsService: {
 		list: vi.fn(),
+		serverTime: vi.fn().mockResolvedValue({ serverTime: '2026-10-10T12:34:30.000Z' }),
 		create: vi.fn(),
 		update: vi.fn(),
 		archive: vi.fn(),
@@ -75,7 +76,7 @@ describe('Developer flag panel', () => {
 		'scrollIntoView',
 	)
 	beforeAll(() => {
-		// Radix Select scrolls focused options; jsdom does not implement this API.
+		// Radix Select прокручивает список к выбранному пункту; jsdom не поддерживает scrollIntoView.
 		Object.defineProperty(Element.prototype, 'scrollIntoView', {
 			configurable: true,
 			value: vi.fn(),
