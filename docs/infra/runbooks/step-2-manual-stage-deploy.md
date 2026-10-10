@@ -21,7 +21,6 @@
 - [infra/deploy/stage/docker-compose.stage.yml](../../../infra/deploy/stage/docker-compose.stage.yml)
 - [infra/deploy/stage/.env.stage.example](../../../infra/deploy/stage/.env.stage.example)
 - [infra/deploy/stage/deploy-stage.sh](../../../infra/deploy/stage/deploy-stage.sh)
-- [apps/web/.env.feature-flags](../../../apps/web/.env.feature-flags)
 
 ## 1. Скопировать шаблоны на сервер
 
@@ -33,7 +32,6 @@ Windows PowerShell:
 scp -i $HOME\.ssh\<ИМЯ_SSH_КЛЮЧА> "E:\vscod\tracker-task\infra\deploy\stage\docker-compose.stage.yml" deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
 scp -i $HOME\.ssh\<ИМЯ_SSH_КЛЮЧА> "E:\vscod\tracker-task\infra\deploy\stage\.env.stage.example" deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
 scp -i $HOME\.ssh\<ИМЯ_SSH_КЛЮЧА> "E:\vscod\tracker-task\infra\deploy\stage\deploy-stage.sh" deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
-scp -i $HOME\.ssh\<ИМЯ_SSH_КЛЮЧА> "E:\vscod\tracker-task\apps\web\.env.feature-flags" deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
 ```
 
 Linux/macOS:
@@ -42,7 +40,6 @@ Linux/macOS:
 scp -i ~/.ssh/<ИМЯ_SSH_КЛЮЧА> ./infra/deploy/stage/docker-compose.stage.yml deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
 scp -i ~/.ssh/<ИМЯ_SSH_КЛЮЧА> ./infra/deploy/stage/.env.stage.example deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
 scp -i ~/.ssh/<ИМЯ_SSH_КЛЮЧА> ./infra/deploy/stage/deploy-stage.sh deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
-scp -i ~/.ssh/<ИМЯ_SSH_КЛЮЧА> ./apps/web/.env.feature-flags deploy@<IP_СЕРВЕРА>:/opt/tracker/stage/
 ```
 
 Проверка на сервере:
@@ -70,14 +67,9 @@ cp .env.stage.example .env.stage
 - почтовые переменные: `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`, `MAIL_FROM_NAME`
 - в `.env.stage` оставьте только `NEXT_PUBLIC_API_URL`
 
-Feature flags и другие общие публичные web-переменные храните в [apps/web/.env.feature-flags](../../../apps/web/.env.feature-flags).
+Runtime-флаги хранятся в БД; загрузка env-файла с флагами не нужна. Задайте SYSTEM_DEVELOPER_USER_ID в .env.stage после регистрации аккаунта разработчика. Начальные четыре флага создаются включёнными: перенесите прежние выключенные состояния до открытия приложения пользователям. [Runbook флагов](../../work/feature-flags.md).
 
-Важно: при deploy значения собираются так:
-
-- `NEXT_PUBLIC_API_URL` берётся из `.env.stage`;
-- остальные `NEXT_PUBLIC_*` берутся из `apps/web/.env.feature-flags`;
-- итоговый файл попадает в окружение `web` контейнера и в `/app/apps/web/.env.development`;
-- если удалить флаг из `apps/web/.env.feature-flags`, он исчезнет из контейнера при следующем deploy.
+NEXT_PUBLIC_API_URL берётся из .env.stage и должен совпадать с URL, вшитым при сборке web-образа. Файл .env.web содержит URL API, без флагов.
 
 ## 3. Подготовить доступ к GHCR
 

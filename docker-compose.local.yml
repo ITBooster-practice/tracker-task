@@ -100,11 +100,6 @@ services:
       args:
         # URL для браузера (клиентские компоненты) — через Caddy снаружи
         NEXT_PUBLIC_API_URL: http://localhost/api
-        # Включаем все фичи, чтобы проверить их в production-образе.
-        NEXT_PUBLIC_FEATURE_PROJECTS: true
-        NEXT_PUBLIC_FEATURE_TASKS: true
-        NEXT_PUBLIC_FEATURE_TEAM_SETTINGS: true
-        NEXT_PUBLIC_FEATURE_BOARDS: true
     depends_on:
       - api
     networks:

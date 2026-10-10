@@ -25,7 +25,6 @@ COMPOSE_FILE="$STAGE_DIR/docker-compose.stage.yml"
 ENV_FILE="$STAGE_DIR/.env.stage"
 GHCR_ENV="$STAGE_DIR/.ghcr.env"
 WEB_RUNTIME_ENV_FILE="$STAGE_DIR/.env.web"
-WEB_FEATURE_FLAGS_FILE="$STAGE_DIR/.env.feature-flags"
 
 # -----------------------------
 # Проверка наличия файлов
@@ -37,11 +36,6 @@ fi
 
 if [[ ! -f "$GHCR_ENV" ]]; then
   echo "❌ Не найден файл $GHCR_ENV"
-  exit 1
-fi
-
-if [[ ! -f "$WEB_FEATURE_FLAGS_FILE" ]]; then
-  echo "❌ Не найден файл $WEB_FEATURE_FLAGS_FILE"
   exit 1
 fi
 
@@ -90,7 +84,6 @@ export API_IMAGE WEB_IMAGE
 {
   echo "# Автогенерируется из .env.stage при каждом deploy"
   echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL"
-  grep -E '^NEXT_PUBLIC_[A-Z0-9_]+=.*$' "$WEB_FEATURE_FLAGS_FILE" | grep -v '^NEXT_PUBLIC_API_URL=' || true
 } > "$WEB_RUNTIME_ENV_FILE"
 
 WEB_RUNTIME_ENV_HASH="$(sha256sum "$WEB_RUNTIME_ENV_FILE" | awk '{print $1}')"
