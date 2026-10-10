@@ -8,7 +8,16 @@ import {
 	waitFor,
 	within,
 } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from 'vitest'
 
 import type { FeatureFlag } from '@repo/types'
 
@@ -61,6 +70,22 @@ function mount(canManage = true) {
 	return { ...view, client }
 }
 describe('Developer flag panel', () => {
+	const scrollIntoView = Object.getOwnPropertyDescriptor(
+		Element.prototype,
+		'scrollIntoView',
+	)
+	beforeAll(() => {
+		// Radix Select scrolls focused options; jsdom does not implement this API.
+		Object.defineProperty(Element.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: vi.fn(),
+		})
+	})
+	afterAll(() => {
+		if (scrollIntoView)
+			Object.defineProperty(Element.prototype, 'scrollIntoView', scrollIntoView)
+		else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+	})
 	beforeEach(() => {
 		vi.clearAllMocks()
 		vi.mocked(featureFlagsService.list).mockResolvedValue({ version: 5, flags: [flag] })
@@ -232,9 +257,10 @@ describe('Developer flag panel', () => {
 		mount()
 		await screen.findByText(flag.title)
 		expect(screen.queryByText('Архивная панель')).toBeNull()
-		fireEvent.change(screen.getByLabelText('Состояние'), {
-			target: { value: 'archived' },
+		fireEvent.keyDown(screen.getByRole('combobox', { name: 'Состояние' }), {
+			key: 'ArrowDown',
 		})
+		fireEvent.click(await screen.findByRole('option', { name: 'Архивные' }))
 		expect(screen.getByText('Архивная панель')).toBeDefined()
 		fireEvent.change(screen.getByLabelText('Поиск по названию или ключу'), {
 			target: { value: 'old-key' },
