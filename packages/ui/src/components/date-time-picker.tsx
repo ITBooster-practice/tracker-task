@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { TimePicker } from './time-picker'
 import {
 	displayDay,
+	formatDayInput,
 	localDay,
 	localTime,
 	minuteCeiling,
@@ -161,7 +162,28 @@ export function DateTimePicker({
 							.filter(Boolean)
 							.join(' ') || undefined
 					}
-					onChange={(event) => edit(event.target.value)}
+					onChange={(event) => {
+						const field = event.currentTarget
+						const raw = field.value
+						const position = field.selectionStart ?? raw.length
+						const formatted = formatDayInput(raw)
+						const digitsBeforeCursor = raw.slice(0, position).replace(/\D/g, '').length
+						let cursor = formatted.length
+						if (position !== raw.length) {
+							cursor = 0
+							let digits = 0
+							while (cursor < formatted.length && digits < digitsBeforeCursor) {
+								if (/\d/.test(formatted[cursor]!)) digits++
+								cursor++
+							}
+						}
+						edit(formatted)
+						// Восстанавливаем курсор после вставки точек, чтобы можно было редактировать середину даты.
+						queueMicrotask(() => {
+							if (field.isConnected && document.activeElement === field)
+								field.setSelectionRange(cursor, cursor)
+						})
+					}}
 					onBlur={() => {
 						if (dirty) edit(draft, true)
 					}}
