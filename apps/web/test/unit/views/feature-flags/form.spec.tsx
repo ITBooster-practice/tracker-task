@@ -58,6 +58,12 @@ describe('Feature flag form', () => {
 		expect(document.getElementById('flag-enabled-hint')?.textContent).toContain(
 			'проверки этого ключа в код',
 		)
+		fireEvent.change(screen.getByLabelText('Технический ключ'), {
+			target: { value: 'constructor' },
+		})
+		expect(document.getElementById('flag-enabled-hint')?.textContent).toContain(
+			'Создание флага само по себе не подключает его к разделу приложения.',
+		)
 	})
 	it('blocks newly expired deadlines at submit and date selection without server time', () => {
 		const onSubmit = vi.fn()
