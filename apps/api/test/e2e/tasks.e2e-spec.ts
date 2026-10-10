@@ -366,7 +366,7 @@ describe('Tasks (e2e)', () => {
 	// ── PATCH /teams/:teamId/projects/:projectId/tasks/:taskId/move ──────────
 
 	describe('Board', () => {
-		it('200 — участник получает доску: 5 колонок, задачи распределены по статусам', async () => {
+		it('200 — участник получает доску: 4 колонки, задачи распределены по статусам', async () => {
 			await createTask(ownerCookies, { title: 'Todo task', status: 'TODO' })
 			await createTask(ownerCookies, { title: 'In-progress task', status: 'IN_PROGRESS' })
 
@@ -381,11 +381,11 @@ describe('Tasks (e2e)', () => {
 			}>
 
 			expect(Array.isArray(columns)).toBe(true)
-			expect(columns).toHaveLength(5)
+			expect(columns).toHaveLength(4)
 
 			const statuses = columns.map((c) => c.status)
 			expect(statuses).toEqual(
-				expect.arrayContaining(['TODO', 'BACKLOG', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']),
+				expect.arrayContaining(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']),
 			)
 
 			const todoColumn = columns.find((c) => c.status === 'TODO')!
@@ -451,15 +451,13 @@ describe('Tasks (e2e)', () => {
 	// ── DELETE /teams/:teamId/projects/:projectId/tasks/:taskId ──────────────
 
 	describe('DELETE /teams/:teamId/projects/:projectId/tasks/:taskId', () => {
-		it('200 — OWNER может удалить задачу', async () => {
+		it('204 — OWNER может удалить задачу', async () => {
 			const task = await createTask(ownerCookies, { title: 'Task to delete' })
 
-			const res = await request(server)
+			await request(server)
 				.delete(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
 				.set('Cookie', ownerCookies)
-				.expect(200)
-
-			expect(res.body).toMatchObject({ success: true })
+				.expect(204)
 
 			// Verify it's gone
 			await request(server)
