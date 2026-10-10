@@ -31,6 +31,17 @@ export function displayDay(value: string) {
 	const [year, month, day] = value.split('T')[0]!.split('-')
 	return year && month && day ? [day, month, year].join('.') : ''
 }
+export function formatDayInput(value: string) {
+	const parsed = parseDayInput(value)
+	if (parsed) return displayDay(parsed)
+	const digits = value.replace(/\D/g, '').slice(0, 8)
+	const formatted = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)]
+		.filter(Boolean)
+		.join('.')
+	return value.endsWith('.') && (digits.length === 2 || digits.length === 4)
+		? formatted + '.'
+		: formatted
+}
 export function parseDayInput(value: string): string | null {
 	const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value.trim())
 	if (!match) return null

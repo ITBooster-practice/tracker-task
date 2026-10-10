@@ -48,6 +48,40 @@ describe('Shared date and time picker', () => {
 		fireEvent.change(input, { target: { value: '' } })
 		expect(screen.getByTestId('value').textContent).toBe('')
 	})
+	it('adds date separators to digits, handles paste and deletion', () => {
+		render(<Example />)
+		const input = screen.getByLabelText('Дата') as HTMLInputElement
+		for (const [typed, expected] of [
+			['2', '2'],
+			['24', '24'],
+			['240', '24.0'],
+			['24.02', '24.02'],
+			['24.022', '24.02.2'],
+			['24.02.2028', '24.02.2028'],
+		]) {
+			fireEvent.change(input, { target: { value: typed } })
+			expect(input.value).toBe(expected)
+		}
+		expect(screen.getByTestId('value').textContent).toBe('2028-02-24')
+		fireEvent.change(input, { target: { value: '24021995' } })
+		expect(input.value).toBe('24.02.1995')
+		fireEvent.change(input, { target: { value: '1.2.2028' } })
+		expect(input.value).toBe('01.02.2028')
+		fireEvent.change(input, { target: { value: '31.02.2028' } })
+		expect(input.checkValidity()).toBe(false)
+		fireEvent.change(input, { target: { value: '' } })
+		expect(input.value).toBe('')
+		expect(screen.getByTestId('value').textContent).toBe('')
+	})
+	it('formats compact input without allowing a past server deadline', () => {
+		render(<Example withTime minValue={server} referenceDate={server} />)
+		const input = screen.getByLabelText('Дата') as HTMLInputElement
+		fireEvent.change(input, { target: { value: '24021995' } })
+		expect(input.value).toBe('24.02.1995')
+		expect(input.checkValidity()).toBe(false)
+		expect(screen.getByRole('alert').textContent).toContain('не раньше')
+		expect(screen.getByTestId('value').textContent).toBe('')
+	})
 	it('uses the supplied clock even if the computer clock is years ahead', () => {
 		vi.spyOn(Date, 'now').mockReturnValue(new Date(2040, 1, 1).getTime())
 		render(<Example withTime minValue={server} referenceDate={server} />)
