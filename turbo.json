@@ -5,17 +5,13 @@
 		"NODE_ENV",
 		"NEXT_PUBLIC_FEATURE_FLAGS_DEV_FALLBACK",
 		"DATABASE_URL",
-		"NEXT_PUBLIC_API_URL",
-		"NEXT_PUBLIC_FEATURE_PROJECTS",
-		"NEXT_PUBLIC_FEATURE_TASKS",
-		"NEXT_PUBLIC_FEATURE_BOARDS",
-		"NEXT_PUBLIC_FEATURE_TEAM_SETTINGS"
+		"NEXT_PUBLIC_API_URL"
 	],
 	"tasks": {
 		"dev": {
 			"cache": false,
 			"persistent": true,
-			"env": ["DATABASE_URL", "PORT"]
+			"env": ["DATABASE_URL", "PORT", "SYSTEM_DEVELOPER_USER_ID"]
 		},
 		"build": {
 			"dependsOn": ["^build"],

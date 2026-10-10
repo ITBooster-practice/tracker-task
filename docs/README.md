@@ -57,7 +57,7 @@ Self-hosted трекер, который можно развернуть на с
 - Auth-flow: cookies-based JWT + автоматический refresh (`shared/lib/api`)
 - Profile-страница (`views/profile`): карточка, команды, приглашения
 - Teams UI: список, создание, настройки команды, инвайты участников
-- Feature flags на `NEXT_PUBLIC_*` (см. [work/feature-flags.md](./work/feature-flags.md))
+- Runtime feature flags в PostgreSQL (см. [work/feature-flags.md](./work/feature-flags.md))
 
 ### Backend
 
