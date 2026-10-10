@@ -12,6 +12,9 @@ import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-se
 import { getServerFeatureSnapshot } from '@/shared/lib/feature-flags/server'
 import { getQueryClient } from '@/shared/lib/query-client'
 
+// All dashboard routes read the authenticated session and runtime feature snapshot.
+export const dynamic = 'force-dynamic'
+
 interface Props {
 	children: React.ReactNode
 	modal: React.ReactNode
