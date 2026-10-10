@@ -91,6 +91,8 @@ services:
   # Web
   web:
     image: tracker-web:local
+    environment:
+      API_INTERNAL_URL: http://api:3000
     container_name: local-tracker-task-web
     pull_policy: never # образ только локальный, не тянуть из Docker Hub
     restart: unless-stopped
