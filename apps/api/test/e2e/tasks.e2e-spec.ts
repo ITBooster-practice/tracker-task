@@ -13,11 +13,11 @@ describe('Tasks (e2e)', () => {
 	let prisma: PrismaService
 	let redisClient: Redis
 
-	// owner — creates team, project and tasks; has OWNER role
+	// owner создаёт команду, проект и задачи; имеет роль OWNER.
 	let ownerCookies: string
-	// member — invited/joined team; has MEMBER role
+	// member принимает приглашение в команду; имеет роль MEMBER.
 	let memberCookies: string
-	// stranger — not in the team at all
+	// stranger не состоит в команде.
 	let strangerCookies: string
 
 	let teamId: string
@@ -38,11 +38,11 @@ describe('Tasks (e2e)', () => {
 	})
 
 	beforeEach(async () => {
-		// Clean up all related data (tasks are cascade-deleted with projects/teams)
+		// Задачи удаляются каскадно вместе с проектами и командами.
 		await resetE2eState(prisma, redisClient)
 		await prisma.project.deleteMany()
 
-		// Register users
+		// Регистрируем пользователей.
 		const owner = await registerAndLogin(app, 'task-owner@example.com')
 		const member = await registerAndLogin(app, 'task-member@example.com')
 		const stranger = await registerAndLogin(app, 'task-stranger@example.com')
@@ -51,7 +51,7 @@ describe('Tasks (e2e)', () => {
 		memberCookies = member.cookies
 		strangerCookies = stranger.cookies
 
-		// Create team (owner automatically becomes OWNER member)
+		// Создатель команды автоматически получает роль OWNER.
 		const createTeamRes = await request(server)
 			.post('/teams/new')
 			.set('Cookie', ownerCookies)
@@ -60,7 +60,7 @@ describe('Tasks (e2e)', () => {
 
 		teamId = createTeamRes.body.id as string
 
-		// Invite and accept member into team
+		// Приглашаем участника и принимаем приглашение.
 		const inviteRes = await request(server)
 			.post(`/teams/${teamId}/invitations`)
 			.set('Cookie', ownerCookies)
@@ -74,7 +74,7 @@ describe('Tasks (e2e)', () => {
 			.set('Cookie', memberCookies)
 			.expect(200)
 
-		// Create project (owner creates it)
+		// Владелец команды создаёт проект.
 		const createProjectRes = await request(server)
 			.post(`/teams/${teamId}/projects`)
 			.set('Cookie', ownerCookies)
@@ -83,10 +83,7 @@ describe('Tasks (e2e)', () => {
 
 		projectId = createProjectRes.body.id as string
 	})
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// Helper to create a task via the API
-	// ─────────────────────────────────────────────────────────────────────────
+	// Создаём задачу через API.
 	async function createTask(cookies: string, overrides: Record<string, unknown> = {}) {
 		const res = await request(server)
 			.post(`/teams/${teamId}/projects/${projectId}/tasks`)
@@ -126,8 +123,6 @@ describe('Tasks (e2e)', () => {
 		})
 		expect(task).toHaveProperty('description')
 	}
-
-	// ── POST /teams/:teamId/projects/:projectId/tasks ─────────────────────────
 
 	describe('POST /teams/:teamId/projects/:projectId/tasks', () => {
 		it('201 — участник команды (MEMBER) создаёт задачу и получает объект задачи', async () => {
@@ -210,8 +205,6 @@ describe('Tasks (e2e)', () => {
 		})
 	})
 
-	// ── GET /teams/:teamId/projects/:projectId/tasks ──────────────────────────
-
 	describe('GET /teams/:teamId/projects/:projectId/tasks', () => {
 		it('200 — возвращает пагинированный список задач', async () => {
 			await createTask(ownerCookies, { title: 'Task A' })
@@ -232,7 +225,7 @@ describe('Tasks (e2e)', () => {
 		})
 
 		it('200 — фильтрация по status=IN_PROGRESS возвращает только задачи с нужным статусом', async () => {
-			// Create tasks with different statuses
+			// Создаём задачи с разными статусами.
 			await createTask(ownerCookies, { title: 'TODO task', status: 'TODO' })
 			await createTask(ownerCookies, { title: 'In-progress task', status: 'IN_PROGRESS' })
 			await createTask(ownerCookies, {
@@ -259,8 +252,6 @@ describe('Tasks (e2e)', () => {
 				.expect(403)
 		})
 	})
-
-	// ── GET /teams/:teamId/projects/:projectId/tasks/:taskId ──────────────────
 
 	describe('GET /teams/:teamId/projects/:projectId/tasks/:taskId', () => {
 		it('200 — возвращает существующую задачу', async () => {
@@ -297,11 +288,9 @@ describe('Tasks (e2e)', () => {
 		})
 	})
 
-	// ── PATCH /teams/:teamId/projects/:projectId/tasks/:taskId ────────────────
-
 	describe('PATCH /teams/:teamId/projects/:projectId/tasks/:taskId', () => {
 		it('200 — создатель задачи (MEMBER) может обновить свою задачу', async () => {
-			// Member creates a task — they are the creator
+			// Участник создаёт задачу и становится её автором.
 			const task = await createTask(memberCookies, { title: 'Member task' })
 
 			const res = await request(server)
@@ -320,7 +309,7 @@ describe('Tasks (e2e)', () => {
 		})
 
 		it('200 — OWNER может обновить чужую задачу', async () => {
-			// Member creates the task
+			// Участник создаёт задачу.
 			const task = await createTask(memberCookies, { title: 'Member task' })
 
 			const res = await request(server)
@@ -333,7 +322,7 @@ describe('Tasks (e2e)', () => {
 		})
 
 		it('403 — MEMBER не может обновить чужую задачу', async () => {
-			// Owner creates the task — member is NOT the creator
+			// Владелец создаёт задачу; участник не является её автором.
 			const task = await createTask(ownerCookies, { title: 'Owner task' })
 
 			await request(server)
@@ -361,9 +350,6 @@ describe('Tasks (e2e)', () => {
 				.expect(400)
 		})
 	})
-
-	// ── GET /teams/:teamId/projects/:projectId/tasks/board ───────────────────
-	// ── PATCH /teams/:teamId/projects/:projectId/tasks/:taskId/move ──────────
 
 	describe('Board', () => {
 		it('200 — участник получает доску: 4 колонки, задачи распределены по статусам', async () => {
@@ -448,8 +434,6 @@ describe('Tasks (e2e)', () => {
 		})
 	})
 
-	// ── DELETE /teams/:teamId/projects/:projectId/tasks/:taskId ──────────────
-
 	describe('DELETE /teams/:teamId/projects/:projectId/tasks/:taskId', () => {
 		it('204 — OWNER может удалить задачу', async () => {
 			const task = await createTask(ownerCookies, { title: 'Task to delete' })
@@ -459,7 +443,7 @@ describe('Tasks (e2e)', () => {
 				.set('Cookie', ownerCookies)
 				.expect(204)
 
-			// Verify it's gone
+			// Проверяем, что задача удалена.
 			await request(server)
 				.get(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
 				.set('Cookie', ownerCookies)
@@ -467,7 +451,7 @@ describe('Tasks (e2e)', () => {
 		})
 
 		it('403 — MEMBER не может удалить задачу (даже свою)', async () => {
-			// Member creates a task but still cannot delete it (only OWNER/ADMIN can)
+			// Авторство задачи не даёт права на удаление: оно доступно только OWNER и ADMIN.
 			const task = await createTask(memberCookies, { title: 'Member task to delete' })
 
 			await request(server)
