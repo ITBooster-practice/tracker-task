@@ -1,3 +1,5 @@
+import { RequireFeatures } from '../../feature-flags/feature.guard'
+import { FEATURE_KEYS } from '@repo/types'
 import {
 	Body,
 	Controller,
@@ -29,6 +31,7 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto'
 import { RolesGuard } from '../../guards/roles.guard'
 import { ApiPaginatedOkResponse } from '../../utils/swagger.util'
 
+@RequireFeatures(FEATURE_KEYS.TEAM_SETTINGS)
 @ApiTags('Team Members')
 @ApiBearerAuth()
 @Authorization()

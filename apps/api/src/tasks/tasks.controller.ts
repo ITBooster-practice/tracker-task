@@ -1,3 +1,5 @@
+import { RequireFeatures } from '../feature-flags/feature.guard'
+import { FEATURE_KEYS } from '@repo/types'
 import {
 	Body,
 	Controller,
@@ -31,6 +33,7 @@ import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 import { TasksService } from './tasks.service'
 
+@RequireFeatures(FEATURE_KEYS.PROJECTS, FEATURE_KEYS.TASKS)
 @ApiTags('Tasks')
 @ApiBearerAuth()
 @Authorization()
@@ -75,6 +78,7 @@ export class TasksController {
 	@ApiOperation({ summary: 'Получить доску (задачи, сгруппированные по статусам)' })
 	@ApiOkResponse({ type: BoardResponseDto, description: 'Структура канбан-доски' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
+	@RequireFeatures(FEATURE_KEYS.BOARDS)
 	@Get('board')
 	getBoard(
 		@Param('teamId') teamId: string,
