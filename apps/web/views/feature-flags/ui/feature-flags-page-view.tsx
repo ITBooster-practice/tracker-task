@@ -50,6 +50,7 @@ export function FeatureFlagsPageView() {
 	const [filter, setFilter] = useState('active')
 	const [editor, setEditor] = useState<Editor | null>(null)
 	const [archive, setArchive] = useState<FeatureFlag | null>(null)
+	const [archiveVersion, setArchiveVersion] = useState(0)
 	const [auditId, setAuditId] = useState('')
 	const [error, setError] = useState('')
 	const audit = useFeatureFlagAudit(canManage ? auditId : '')
@@ -168,7 +169,7 @@ export function FeatureFlagsPageView() {
 					Обновить
 				</Button>
 			</div>
-			{error && !editor && (
+			{error && !editor && !archive && (
 				<p role='alert' className='text-destructive'>
 					{error}
 				</p>
@@ -248,6 +249,7 @@ export function FeatureFlagsPageView() {
 											}
 											onClick={() => {
 												setError('')
+												setArchiveVersion(list.data?.version ?? 0)
 												setArchive(flag)
 											}}
 										>
@@ -329,12 +331,18 @@ export function FeatureFlagsPageView() {
 						(await run({
 							type: 'archive',
 							id: archive.id,
-							version: list.data?.version ?? 0,
+							version: archiveVersion,
 						}))
 					)
 						setArchive(null)
 				}}
-			/>
+			>
+				{error && (
+					<p role='alert' className='text-sm text-destructive'>
+						{error}
+					</p>
+				)}
+			</ConfirmDialog>
 			{auditId && (
 				<section className='grid gap-3 rounded-lg border p-4' aria-label='История флага'>
 					<div className='flex items-center justify-between'>

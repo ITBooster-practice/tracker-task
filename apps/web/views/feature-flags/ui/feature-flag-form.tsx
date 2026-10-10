@@ -65,7 +65,8 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 				/>
 				<p id='flag-key-hint' className='text-sm text-muted-foreground'>
 					Латинские буквы, цифры и дефисы. Ключ нельзя изменить или использовать повторно
-					после архивации.
+					после архивации. Для нового ключа создайте флаг, переведите проверки в коде и
+					завершите поддержку старого.
 				</p>
 			</div>
 			<div className='grid gap-2'>
