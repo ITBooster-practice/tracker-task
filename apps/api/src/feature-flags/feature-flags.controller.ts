@@ -103,7 +103,7 @@ export class FeatureFlagsController {
 	@Post()
 	@ApiBody({ type: CreateFeatureFlagDto })
 	@UseGuards(SystemDeveloperGuard)
-	@ApiOperation({ summary: 'Создать флаг с новым техническим ключом' })
+	@ApiOperation({ summary: 'Создать выключенный флаг с новым техническим ключом' })
 	@ApiCreatedResponse({ type: FeatureFlagMutationDto })
 	@ApiForbiddenResponse({ description: 'Только разработчик системы' })
 	@ApiConflictResponse({ description: 'Ключ существует или зарезервирован архивом' })
@@ -126,7 +126,8 @@ export class FeatureFlagsController {
 	@ApiConflictResponse({ description: 'Устаревшая версия или флаг архивирован' })
 	@ApiNotFoundResponse({ description: 'Флаг не найден' })
 	@ApiUnprocessableEntityResponse({
-		description: 'Некорректные поля или плановый срок раньше времени сервера',
+		description:
+			'Некорректные поля, попытка включить неподключённый флаг или плановый срок раньше времени сервера',
 	})
 	update(
 		@Authorized('id') userId: string,

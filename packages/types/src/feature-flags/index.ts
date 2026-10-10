@@ -1,14 +1,12 @@
 import { z } from 'zod'
 
-export const FEATURE_KEYS = {
-	PROJECTS: 'projects',
-	TASKS: 'tasks',
-	BOARDS: 'boards',
-	TEAM_SETTINGS: 'team-settings',
-} as const
+export {
+	FEATURE_KEYS,
+	FEATURE_REGISTRY,
+	REQUIRED_FEATURE_KEYS,
+	getConnectedFeature,
+} from './registry'
 
-// Удалять ключ можно только после удаления его проверок из всех поддерживаемых версий приложения.
-export const REQUIRED_FEATURE_KEYS: readonly string[] = Object.values(FEATURE_KEYS)
 export type FeatureFlagKey = string
 
 export const featureFlagKeySchema = z
@@ -22,7 +20,6 @@ export const featureFlagKeySchema = z
 const fields = {
 	title: z.string().trim().min(1).max(100),
 	description: z.string().trim().max(1000).nullable().optional(),
-	enabled: z.boolean(),
 	expiresAt: z.iso.datetime().nullable().optional(),
 }
 export const createFeatureFlagSchema = z.strictObject({
@@ -33,7 +30,7 @@ export const updateFeatureFlagSchema = z
 	.strictObject({
 		title: fields.title.optional(),
 		description: fields.description,
-		enabled: fields.enabled.optional(),
+		enabled: z.boolean().optional(),
 		expiresAt: fields.expiresAt,
 		expectedVersion: z.number().int().nonnegative(),
 	})
@@ -66,6 +63,7 @@ const flagSchema = snapshotItemSchema.extend({
 	expiresAt: z.iso.datetime().nullable(),
 	createdById: z.string(),
 	required: z.boolean(),
+	connectedFeature: z.string().nullable(),
 })
 export const featureFlagsListSchema = z.object({
 	version: z.number().int(),
@@ -106,6 +104,7 @@ export interface FeatureFlag extends FeatureFlagSnapshotItem {
 	expiresAt: string | null
 	createdById: string
 	required: boolean
+	connectedFeature: string | null
 }
 export interface FeatureFlagsList {
 	version: number

@@ -17,7 +17,7 @@ vi.mock('@/shared/lib/feature-flags/use-server-clock', () => ({
 beforeEach(() => {
 	clock.now = new Date(2026, 9, 10, 12, 34, 30)
 	clock.isError = false
-	// Radix Checkbox измеряет скрытое поле; в jsdom нет ResizeObserver.
+	// Radix измеряет элементы; в jsdom нет ResizeObserver.
 	vi.stubGlobal(
 		'ResizeObserver',
 		class {
@@ -33,7 +33,7 @@ afterEach(() => {
 	vi.useRealTimers()
 })
 describe('Feature flag form', () => {
-	it('names the protected section and explains that a new key needs code checks', () => {
+	it('создаёт заготовку без переключателя состояния', () => {
 		render(
 			<FeatureFlagForm
 				flag={null}
@@ -43,27 +43,8 @@ describe('Feature flag form', () => {
 				onCancel={vi.fn()}
 			/>,
 		)
-		fireEvent.change(screen.getByLabelText('Технический ключ'), {
-			target: { value: 'boards' },
-		})
-		expect(document.getElementById('flag-enabled-hint')?.textContent).toContain(
-			'раздел «Доски»',
-		)
-		fireEvent.change(screen.getByLabelText('Технический ключ'), {
-			target: { value: 'search-v3' },
-		})
-		expect(document.getElementById('flag-enabled-hint')?.textContent).toContain(
-			'search-v3',
-		)
-		expect(document.getElementById('flag-enabled-hint')?.textContent).toContain(
-			'проверки этого ключа в код',
-		)
-		fireEvent.change(screen.getByLabelText('Технический ключ'), {
-			target: { value: 'constructor' },
-		})
-		expect(document.getElementById('flag-enabled-hint')?.textContent).toContain(
-			'Создание флага само по себе не подключает его к разделу приложения.',
-		)
+		expect(screen.queryByRole('checkbox')).toBeNull()
+		expect(screen.getByText(/Новый флаг будет выключен/)).toBeDefined()
 	})
 	it('blocks newly expired deadlines at submit and date selection without server time', () => {
 		const onSubmit = vi.fn()
@@ -125,6 +106,7 @@ describe('Feature flag form', () => {
 			expiresAt,
 			archivedAt: null,
 			required: true,
+			connectedFeature: 'Доски',
 			createdById: 'developer',
 			createdAt: expiresAt,
 			updatedAt: expiresAt,
@@ -194,13 +176,11 @@ describe('Feature flag form', () => {
 		fireEvent.change(screen.getByLabelText('Время завершения'), {
 			target: { value: '12:00' },
 		})
-		fireEvent.click(screen.getByLabelText('Функция включена'))
 		fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
 		await waitFor(() =>
 			expect(onSubmit).toHaveBeenCalledWith({
 				key: 'search-v2',
 				title: 'Search',
-				enabled: true,
 				description: 'Release next month',
 				expiresAt: new Date('2026-11-10T12:00').toISOString(),
 			}),
@@ -219,6 +199,7 @@ describe('Feature flag form', () => {
 			expiresAt,
 			archivedAt: null,
 			required: false,
+			connectedFeature: null,
 			createdById: 'developer',
 			createdAt: expiresAt,
 			updatedAt: expiresAt,
@@ -238,10 +219,10 @@ describe('Feature flag form', () => {
 		)
 		fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
 		await waitFor(() =>
-			expect(onSubmit).toHaveBeenLastCalledWith(
-				expect.objectContaining({ expiresAt, enabled: true }),
-			),
+			expect(onSubmit).toHaveBeenLastCalledWith(expect.objectContaining({ expiresAt })),
 		)
+		expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty('enabled')
+		expect(screen.queryByRole('checkbox')).toBeNull()
 		onSubmit.mockClear()
 		fireEvent.change(screen.getByLabelText('Время завершения'), { target: { value: '' } })
 		fireEvent.submit(screen.getByRole('button', { name: 'Сохранить' }).closest('form')!)
@@ -252,11 +233,10 @@ describe('Feature flag form', () => {
 				.some((alert) => alert.textContent?.includes('дату и время')),
 		).toBe(true)
 		fireEvent.click(screen.getByRole('button', { name: 'Очистить дату' }))
-		fireEvent.click(screen.getByRole('checkbox', { name: 'Функция включена' }))
 		fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
 		await waitFor(() =>
 			expect(onSubmit).toHaveBeenLastCalledWith(
-				expect.objectContaining({ expiresAt: null, enabled: false }),
+				expect.objectContaining({ expiresAt: null }),
 			),
 		)
 	})

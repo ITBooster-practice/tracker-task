@@ -55,7 +55,6 @@ describe('Feature flag transactions', () => {
 				service.create('developer', {
 					key: base.key,
 					title: base.title,
-					enabled: false,
 					expiresAt,
 				}),
 			).rejects.toBeInstanceOf(UnprocessableEntityException)
@@ -68,13 +67,49 @@ describe('Feature flag transactions', () => {
 			expect(event).not.toHaveBeenCalled()
 		},
 	)
+
+	it.each(['search-v1', 'constructor', 'toString'])(
+		'не включает неподключённый ключ %s',
+		async (key) => {
+			const { service, prisma, event } = setup()
+			prisma.featureFlag.findUnique.mockResolvedValue({ ...base, key })
+			await expect(
+				service.update('developer', base.id, { enabled: true, expectedVersion: 4 }),
+			).rejects.toThrow('Флаг не подключён к приложению')
+			expect(prisma.featureFlag.update).not.toHaveBeenCalled()
+			expect(prisma.featureFlagAudit.create).not.toHaveBeenCalled()
+			expect(event).not.toHaveBeenCalled()
+		},
+	)
+	it('разрешает выключить ранее включённый неподключённый флаг', async () => {
+		const { service, prisma } = setup()
+		prisma.featureFlag.findUnique.mockResolvedValue({ ...base, enabled: true })
+		await service.update('developer', base.id, { enabled: false, expectedVersion: 4 })
+		expect(prisma.featureFlag.update).toHaveBeenCalledWith({
+			where: { id: base.id },
+			data: { enabled: false, expiresAt: undefined },
+		})
+	})
+	it('не назначает подключение неизвестному ключу в списке', async () => {
+		const { service } = setup()
+		expect((await service.list()).flags[0]).toMatchObject({
+			connectedFeature: null,
+			required: false,
+		})
+	})
+	it('создаёт подключённый флаг выключенным', async () => {
+		const { service, prisma } = setup()
+		await service.create('developer', { key: 'boards', title: 'Доски' })
+		expect(prisma.featureFlag.create).toHaveBeenCalledWith({
+			data: expect.objectContaining({ key: 'boards', enabled: false }),
+		})
+	})
 	it('accepts a deadline equal to the server clock', async () => {
 		const { service } = setup()
 		await expect(
 			service.create('developer', {
 				key: base.key,
 				title: base.title,
-				enabled: false,
 				expiresAt: new Date(Date.now()).toISOString(),
 			}),
 		).resolves.toMatchObject({ version: 5 })
@@ -114,6 +149,7 @@ describe('Feature flag transactions', () => {
 		])
 		expect((await service.list()).flags[0]).toMatchObject({
 			required: true,
+			connectedFeature: 'Доски',
 			archivedAt: base.createdAt.toISOString(),
 			expiresAt: base.createdAt.toISOString(),
 		})
@@ -124,7 +160,6 @@ describe('Feature flag transactions', () => {
 		const result = await service.create('developer', {
 			key: base.key,
 			title: 'Search',
-			enabled: false,
 			expiresAt: base.createdAt.toISOString(),
 		})
 		expect(result.version).toBe(5)
@@ -149,7 +184,7 @@ describe('Feature flag transactions', () => {
 	})
 	it('creates an undated flag with a null expiry', async () => {
 		const { service, prisma } = setup()
-		await service.create('developer', { key: base.key, title: 'Search', enabled: false })
+		await service.create('developer', { key: base.key, title: 'Search' })
 		expect(prisma.featureFlag.create).toHaveBeenCalledWith({
 			data: expect.objectContaining({ expiresAt: null }),
 		})
@@ -158,6 +193,7 @@ describe('Feature flag transactions', () => {
 		'preserves, clears or changes expiry: %j',
 		async (expiresAt) => {
 			const { service, prisma } = setup()
+			prisma.featureFlag.findUnique.mockResolvedValue({ ...base, key: 'boards' })
 			await service.update('developer', base.id, {
 				enabled: true,
 				expectedVersion: 4,
@@ -169,7 +205,7 @@ describe('Feature flag transactions', () => {
 			})
 			expect(prisma.featureFlagAudit.create).toHaveBeenCalledWith({
 				data: expect.objectContaining({
-					before: expect.objectContaining({ key: base.key }),
+					before: expect.objectContaining({ key: 'boards' }),
 					action: 'UPDATE',
 				}),
 			})
@@ -188,7 +224,7 @@ describe('Feature flag transactions', () => {
 		const { service, prisma, event } = setup()
 		prisma.$transaction.mockRejectedValue(new Error('commit failed'))
 		await expect(
-			service.create('developer', { key: base.key, title: 'Search', enabled: true }),
+			service.create('developer', { key: base.key, title: 'Search' }),
 		).rejects.toThrow('commit failed')
 		expect(event).not.toHaveBeenCalled()
 	})
@@ -247,7 +283,7 @@ describe('Feature flag transactions', () => {
 			}),
 		)
 		await expect(
-			service.create('developer', { key: base.key, title: base.title, enabled: true }),
+			service.create('developer', { key: base.key, title: base.title }),
 		).rejects.toBeInstanceOf(ConflictException)
 		expect(event).not.toHaveBeenCalled()
 	})

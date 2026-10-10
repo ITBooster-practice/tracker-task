@@ -48,6 +48,13 @@ const flag: FeatureFlag = {
 	createdAt: '2026-10-10T00:00:00.000Z',
 	updatedAt: '2026-10-10T00:00:00.000Z',
 	required: false,
+	connectedFeature: null,
+}
+const connectedFlag: FeatureFlag = {
+	...flag,
+	key: 'boards',
+	connectedFeature: 'Доски',
+	required: true,
 }
 function mount(canManage = true) {
 	const client = new QueryClient({
@@ -126,6 +133,45 @@ describe('Developer flag panel', () => {
 		expect(screen.getByText('Доступ запрещён')).toBeDefined()
 		expect(featureFlagsService.list).not.toHaveBeenCalled()
 	})
+
+	it('блокирует включение заготовки и объясняет причину', async () => {
+		mount()
+		const button = await screen.findByRole('button', { name: 'Включить ' + flag.title })
+		expect(button.hasAttribute('disabled')).toBe(true)
+		expect(screen.getByText('Не подключён к приложению')).toBeDefined()
+		expect(screen.getByText(/Включение станет доступно после подключения/)).toBeDefined()
+		fireEvent.click(button)
+		expect(featureFlagsService.update).not.toHaveBeenCalled()
+	})
+	it('показывает подключение из ответа API независимо от названия флага', async () => {
+		vi.mocked(featureFlagsService.list).mockResolvedValue({
+			version: 5,
+			flags: [connectedFlag],
+		})
+		mount()
+		await screen.findByText('Подключён: Доски')
+		expect(
+			screen
+				.getByRole('button', { name: 'Включить ' + flag.title })
+				.hasAttribute('disabled'),
+		).toBe(false)
+	})
+	it('разрешает выключить старый неподключённый флаг', async () => {
+		vi.mocked(featureFlagsService.list).mockResolvedValue({
+			version: 5,
+			flags: [{ ...flag, enabled: true }],
+		})
+		mount()
+		fireEvent.click(
+			await screen.findByRole('button', { name: 'Выключить ' + flag.title }),
+		)
+		await waitFor(() =>
+			expect(featureFlagsService.update).toHaveBeenCalledWith(flag.id, {
+				enabled: false,
+				expectedVersion: 5,
+			}),
+		)
+	})
 	it('creates a disabled flag with a permanent technical key', async () => {
 		mount()
 		await screen.findByText(flag.title)
@@ -139,7 +185,6 @@ describe('Developer flag panel', () => {
 			expect(featureFlagsService.create).toHaveBeenCalledWith({
 				key: 'new-search-v1',
 				title: 'Поиск',
-				enabled: false,
 				description: null,
 				expiresAt: null,
 			}),
@@ -147,6 +192,10 @@ describe('Developer flag panel', () => {
 		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 	})
 	it('toggles using the current revision and waits for acknowledgment', async () => {
+		vi.mocked(featureFlagsService.list).mockResolvedValue({
+			version: 5,
+			flags: [{ ...connectedFlag, enabled: false }],
+		})
 		let resolve!: (value: { version: number; flag: FeatureFlag }) => void
 		vi.mocked(featureFlagsService.update).mockImplementation(
 			() =>
@@ -170,6 +219,10 @@ describe('Developer flag panel', () => {
 		resolve({ version: 6, flag: { ...flag, enabled: true } })
 	})
 	it('keeps the technical key read-only when editing and excludes it from PATCH', async () => {
+		vi.mocked(featureFlagsService.list).mockResolvedValue({
+			version: 5,
+			flags: [{ ...connectedFlag, enabled: true }],
+		})
 		mount()
 		fireEvent.click(
 			await screen.findByRole('button', { name: 'Редактировать ' + flag.title }),
@@ -182,7 +235,6 @@ describe('Developer flag panel', () => {
 		await waitFor(() =>
 			expect(featureFlagsService.update).toHaveBeenCalledWith(flag.id, {
 				title: 'Другое название',
-				enabled: false,
 				description: null,
 				expiresAt: null,
 				expectedVersion: 5,
@@ -243,6 +295,10 @@ describe('Developer flag panel', () => {
 		).toBe(true)
 	})
 	it('reports concurrent edits and refreshes rather than overwriting', async () => {
+		vi.mocked(featureFlagsService.list).mockResolvedValue({
+			version: 5,
+			flags: [{ ...connectedFlag, enabled: false }],
+		})
 		vi.mocked(featureFlagsService.update).mockRejectedValue({
 			message: 'Conflict',
 			statusCode: 409,
