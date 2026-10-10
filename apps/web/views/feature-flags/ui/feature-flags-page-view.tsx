@@ -26,6 +26,7 @@ import { useFeatureFlags } from '@/shared/lib/feature-flags/context'
 import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-service'
 
 import { FeatureFlagForm } from './feature-flag-form'
+import { FeatureFlagsAccessDenied } from './feature-flags-access-denied'
 
 type Editor = { flag: FeatureFlag | null; version: number }
 type Action =
@@ -91,13 +92,7 @@ export function FeatureFlagsPageView() {
 			return false
 		}
 	}
-	if (!canManage)
-		return (
-			<section className='p-6' role='alert'>
-				<h1 className='text-xl font-semibold'>Доступ запрещён</h1>
-				<p>Управление флагами доступно только разработчику системы.</p>
-			</section>
-		)
+	if (!canManage) return <FeatureFlagsAccessDenied />
 	const flags = (list.data?.flags ?? []).filter((flag) => {
 		const matches = (flag.key + ' ' + flag.title)
 			.toLowerCase()
