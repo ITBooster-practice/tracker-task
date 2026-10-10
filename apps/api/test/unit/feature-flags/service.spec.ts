@@ -1,5 +1,9 @@
-import { ConflictException, NotFoundException } from '@nestjs/common'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+	ConflictException,
+	NotFoundException,
+	UnprocessableEntityException,
+} from '@nestjs/common'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PrismaService } from '../../../prisma/prisma.service'
 import { Prisma } from '../../../generated/prisma/client'
 import { FeatureFlagsService } from '../../../src/feature-flags/feature-flags.service'
@@ -38,7 +42,58 @@ function setup() {
 	return { prisma, service, event }
 }
 describe('Feature flag transactions', () => {
-	beforeEach(() => vi.clearAllMocks())
+	beforeEach(() => {
+		vi.clearAllMocks()
+		vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-10-09T12:34:30Z').getTime())
+	})
+	afterEach(() => vi.restoreAllMocks())
+	it.each(['2026-10-08T23:59:00Z', '2026-10-09T12:34:00Z', 'invalid'])(
+		'rejects a new deadline before server time: %s',
+		async (expiresAt) => {
+			const { service, prisma, event } = setup()
+			await expect(
+				service.create('developer', {
+					key: base.key,
+					title: base.title,
+					enabled: false,
+					expiresAt,
+				}),
+			).rejects.toBeInstanceOf(UnprocessableEntityException)
+			await expect(
+				service.update('developer', base.id, { expiresAt, expectedVersion: 4 }),
+			).rejects.toBeInstanceOf(UnprocessableEntityException)
+			expect(prisma.featureFlag.create).not.toHaveBeenCalled()
+			expect(prisma.featureFlag.update).not.toHaveBeenCalled()
+			expect(prisma.featureFlagAudit.create).not.toHaveBeenCalled()
+			expect(event).not.toHaveBeenCalled()
+		},
+	)
+	it('accepts a deadline equal to the server clock', async () => {
+		const { service } = setup()
+		await expect(
+			service.create('developer', {
+				key: base.key,
+				title: base.title,
+				enabled: false,
+				expiresAt: new Date(Date.now()).toISOString(),
+			}),
+		).resolves.toMatchObject({ version: 5 })
+	})
+	it('allows preserving or clearing an unchanged historic deadline', async () => {
+		const { service, prisma } = setup()
+		const expiresAt = new Date('2026-10-08T12:00:45.123Z')
+		prisma.featureFlag.findUnique.mockResolvedValue({ ...base, expiresAt })
+		await expect(
+			service.update('developer', base.id, {
+				title: 'Changed',
+				expiresAt: expiresAt.toISOString(),
+				expectedVersion: 4,
+			}),
+		).resolves.toMatchObject({ version: 5 })
+		await expect(
+			service.update('developer', base.id, { expiresAt: null, expectedVersion: 4 }),
+		).resolves.toMatchObject({ version: 5 })
+	})
 	it('reads a consistent snapshot without exposing management metadata', async () => {
 		const { service, prisma } = setup()
 		prisma.featureFlag.findMany.mockResolvedValue([

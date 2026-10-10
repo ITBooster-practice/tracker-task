@@ -142,6 +142,79 @@ describe('Runtime feature flags (e2e)', () => {
 			.expect(201)
 	}
 
+	it('returns an authenticated, uncached API clock only to the developer', async () => {
+		await request(server).get('/feature-flags/server-time').expect(401)
+		await request(server)
+			.get('/feature-flags/server-time')
+			.set('Cookie', userCookies)
+			.expect(403)
+		const before = Date.now()
+		const clock = await request(server)
+			.get('/feature-flags/server-time')
+			.set('Cookie', developerCookies)
+			.expect(200)
+		expect(clock.headers['cache-control']).toBe('private, no-store')
+		expect(new Date(clock.body.serverTime).getTime()).toBeGreaterThanOrEqual(before)
+		expect(new Date(clock.body.serverTime).getTime()).toBeLessThanOrEqual(Date.now())
+	})
+	it('rejects past deadlines through POST and PATCH without altering revision or audit', async () => {
+		const expiresAt = new Date(Date.now() - 60_000).toISOString()
+		const rejected = await request(server)
+			.post('/feature-flags')
+			.set('Cookie', developerCookies)
+			.send({ ...newFlag, expiresAt })
+			.expect(422)
+		expect(rejected.body.message).toContain('времени сервера')
+		expect(await prisma.featureFlag.count({ where: { key: newFlag.key } })).toBe(0)
+		expect(await prisma.featureFlagAudit.count()).toBe(0)
+		expect(
+			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
+				.version,
+		).toBe(0)
+		const created = await create()
+		await request(server)
+			.patch('/feature-flags/' + created.body.flag.id)
+			.set('Cookie', developerCookies)
+			.send({ expiresAt, enabled: true, expectedVersion: 1 })
+			.expect(422)
+		expect(
+			(
+				await prisma.featureFlag.findUniqueOrThrow({
+					where: { id: created.body.flag.id },
+				})
+			).enabled,
+		).toBe(false)
+		expect(await prisma.featureFlagAudit.count()).toBe(1)
+		expect(
+			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
+				.version,
+		).toBe(1)
+	})
+	it('accepts a future deadline and permits other edits after that saved deadline passes', async () => {
+		const expiresAt = new Date(Date.now() + 86_400_000).toISOString()
+		const created = await request(server)
+			.post('/feature-flags')
+			.set('Cookie', developerCookies)
+			.send({ ...newFlag, expiresAt })
+			.expect(201)
+		expect(created.body.flag.expiresAt).toBe(expiresAt)
+		const historic = new Date(Date.now() - 86_400_000)
+		await prisma.featureFlag.update({
+			where: { id: created.body.flag.id },
+			data: { expiresAt: historic },
+		})
+		const edited = await request(server)
+			.patch('/feature-flags/' + created.body.flag.id)
+			.set('Cookie', developerCookies)
+			.send({ title: 'Changed', expiresAt: historic.toISOString(), expectedVersion: 1 })
+			.expect(200)
+		expect(edited.body.flag.expiresAt).toBe(historic.toISOString())
+		await request(server)
+			.patch('/feature-flags/' + created.body.flag.id)
+			.set('Cookie', developerCookies)
+			.send({ expiresAt: null, expectedVersion: 2 })
+			.expect(200)
+	})
 	it('requires authentication for snapshot and management', async () => {
 		await request(server).get('/feature-flags/snapshot').expect(401)
 		await request(server).post('/feature-flags').send(newFlag).expect(401)

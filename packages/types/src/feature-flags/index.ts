@@ -7,7 +7,7 @@ export const FEATURE_KEYS = {
 	TEAM_SETTINGS: 'team-settings',
 } as const
 
-/** Remove a key from this registry only after removing its checks from all supported releases. */
+// Удалять ключ можно только после удаления его проверок из всех поддерживаемых версий приложения.
 export const REQUIRED_FEATURE_KEYS: readonly string[] = Object.values(FEATURE_KEYS)
 export type FeatureFlagKey = string
 
@@ -71,6 +71,7 @@ export const featureFlagsListSchema = z.object({
 	version: z.number().int(),
 	flags: z.array(flagSchema),
 })
+export const featureFlagsServerTimeSchema = z.object({ serverTime: z.iso.datetime() })
 export const featureFlagsAccessSchema = z.object({ canManage: z.boolean() })
 export const featureFlagMutationSchema = z.object({
 	version: z.number().int(),

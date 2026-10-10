@@ -43,6 +43,7 @@ import {
 	FeatureFlagsAccessDto,
 	FeatureFlagsListDto,
 	FeatureFlagsSnapshotDto,
+	FeatureFlagsServerTimeDto,
 	UpdateFeatureFlagDto,
 } from './dto/feature-flags.dto'
 
@@ -71,6 +72,16 @@ export class FeatureFlagsController {
 		}
 		return snapshot
 	}
+	@Get('server-time')
+	@UseGuards(SystemDeveloperGuard)
+	@ApiOperation({ summary: 'Время API для выбора плановой даты флага' })
+	@ApiOkResponse({ type: FeatureFlagsServerTimeDto })
+	@ApiForbiddenResponse({ description: 'Только разработчик системы' })
+	@Header('Cache-Control', 'private, no-store')
+	serverTime() {
+		return { serverTime: new Date().toISOString() }
+	}
+
 	@Get('access')
 	@ApiOperation({ summary: 'Право текущего пользователя управлять флагами' })
 	@ApiOkResponse({ type: FeatureFlagsAccessDto })
@@ -96,7 +107,9 @@ export class FeatureFlagsController {
 	@ApiCreatedResponse({ type: FeatureFlagMutationDto })
 	@ApiForbiddenResponse({ description: 'Только разработчик системы' })
 	@ApiConflictResponse({ description: 'Ключ существует или зарезервирован архивом' })
-	@ApiUnprocessableEntityResponse({ description: 'Некорректные поля' })
+	@ApiUnprocessableEntityResponse({
+		description: 'Некорректные поля или плановый срок раньше времени сервера',
+	})
 	create(
 		@Authorized('id') userId: string,
 		@Body(new FeatureFlagValidationPipe(CreateFeatureFlagDto)) dto: CreateFeatureFlag,
@@ -112,7 +125,9 @@ export class FeatureFlagsController {
 	@ApiForbiddenResponse({ description: 'Только разработчик системы' })
 	@ApiConflictResponse({ description: 'Устаревшая версия или флаг архивирован' })
 	@ApiNotFoundResponse({ description: 'Флаг не найден' })
-	@ApiUnprocessableEntityResponse({ description: 'Некорректные поля' })
+	@ApiUnprocessableEntityResponse({
+		description: 'Некорректные поля или плановый срок раньше времени сервера',
+	})
 	update(
 		@Authorized('id') userId: string,
 		@Param('id') id: string,
