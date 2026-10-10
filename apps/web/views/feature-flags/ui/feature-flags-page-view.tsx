@@ -14,6 +14,11 @@ import {
 	DialogTitle,
 	Input,
 	Label,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from '@repo/ui'
 
 import {
@@ -26,6 +31,7 @@ import { useFeatureFlags } from '@/shared/lib/feature-flags/context'
 import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-service'
 
 import { FeatureFlagForm } from './feature-flag-form'
+import { FeatureFlagStatus } from './feature-flag-status'
 import { FeatureFlagsAccessDenied } from './feature-flags-access-denied'
 
 type Editor = { flag: FeatureFlag | null; version: number }
@@ -143,18 +149,18 @@ export function FeatureFlagsPageView() {
 				</div>
 				<div className='grid gap-2'>
 					<Label htmlFor='flags-filter'>Состояние</Label>
-					<select
-						id='flags-filter'
-						value={filter}
-						onChange={(event) => setFilter(event.target.value)}
-						className='h-9 rounded-md border bg-background px-3 text-sm'
-					>
-						<option value='active'>Активные</option>
-						<option value='enabled'>Включённые</option>
-						<option value='disabled'>Отключённые</option>
-						<option value='archived'>Архивные</option>
-						<option value='all'>Все</option>
-					</select>
+					<Select value={filter} onValueChange={setFilter}>
+						<SelectTrigger id='flags-filter' className='w-44 data-[size=default]:h-9'>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent position='popper' align='start'>
+							<SelectItem value='active'>Активные</SelectItem>
+							<SelectItem value='enabled'>Включённые</SelectItem>
+							<SelectItem value='disabled'>Отключённые</SelectItem>
+							<SelectItem value='archived'>Архивные</SelectItem>
+							<SelectItem value='all'>Все</SelectItem>
+						</SelectContent>
+					</Select>
 				</div>
 				<Button
 					variant='outline'
@@ -184,13 +190,7 @@ export function FeatureFlagsPageView() {
 									<h2 className='font-semibold'>{flag.title}</h2>
 									<code className='text-sm text-muted-foreground'>{flag.key}</code>
 								</div>
-								<span className='text-sm'>
-									{flag.archivedAt
-										? 'Архивирован'
-										: flag.enabled
-											? 'Включён'
-											: 'Отключён'}
-								</span>
+								<FeatureFlagStatus flag={flag} />
 							</div>
 							{flag.description && (
 								<p className='whitespace-pre-wrap text-sm'>{flag.description}</p>
