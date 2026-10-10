@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
+	act,
 	cleanup,
 	fireEvent,
 	render,
@@ -12,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FeatureFlag } from '@repo/types'
 
 import { FeatureFlagsPageView } from '@/views/feature-flags'
+import { featureFlagsKeys } from '@/shared/api/use-feature-flags'
 import { FeatureFlagsContext } from '@/shared/lib/feature-flags/context'
 import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-service'
 
@@ -41,7 +43,7 @@ function mount(canManage = true) {
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 	})
-	return render(
+	const view = render(
 		<QueryClientProvider client={client}>
 			<FeatureFlagsContext.Provider
 				value={{
@@ -56,6 +58,7 @@ function mount(canManage = true) {
 			</FeatureFlagsContext.Provider>
 		</QueryClientProvider>,
 	)
+	return { ...view, client }
 }
 describe('Developer flag panel', () => {
 	beforeEach(() => {
@@ -165,6 +168,30 @@ describe('Developer flag panel', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'История ' + flag.title }))
 		await screen.findByText(/Создан · Автор: developer/)
 		expect(featureFlagsService.audit).toHaveBeenCalledWith(flag.id)
+	})
+	it('keeps the confirmation revision and shows conflicts inside the dialog', async () => {
+		vi.mocked(featureFlagsService.archive).mockRejectedValue({
+			message: 'Conflict',
+			statusCode: 409,
+		})
+		const { client } = mount()
+		fireEvent.click(
+			await screen.findByRole('button', { name: 'Архивировать ' + flag.title }),
+		)
+		act(() =>
+			client.setQueryData(featureFlagsKeys.list, {
+				version: 6,
+				flags: [{ ...flag, title: 'Изменено другим клиентом' }],
+			}),
+		)
+		fireEvent.click(
+			within(screen.getByRole('dialog')).getByRole('button', { name: 'Архивировать' }),
+		)
+		await waitFor(() =>
+			expect(featureFlagsService.archive).toHaveBeenCalledWith(flag.id, 5),
+		)
+		await within(screen.getByRole('dialog')).findByRole('alert')
+		expect(screen.getByRole('dialog')).toBeDefined()
 	})
 	it('prevents archiving flags still required by application code', async () => {
 		vi.mocked(featureFlagsService.list).mockResolvedValue({
