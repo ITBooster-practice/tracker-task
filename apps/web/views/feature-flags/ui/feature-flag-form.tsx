@@ -42,7 +42,7 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 	const [validation, setValidation] = useState('')
 	const clock = useServerClock()
 	const unchangedDeadline = expiresAt === localDate(flag?.expiresAt ?? null)
-	const section = sections[key]
+	const section = Object.hasOwn(sections, key) ? sections[key] : undefined
 	return (
 		<form
 			className='grid gap-4'
