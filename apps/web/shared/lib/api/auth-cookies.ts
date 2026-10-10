@@ -8,7 +8,7 @@ const isClientSide = () => typeof window !== 'undefined'
 const setCookieHeader = async (request: InternalAxiosRequestConfig) => {
 	const { cookies } = await import('next/headers')
 	const cookieStore = await cookies()
-	// Used only by server-side interceptors; browser requests keep the public API URL.
+	// Серверные запросы идут по внутреннему адресу API; браузер использует публичный адрес.
 	if (process.env.API_INTERNAL_URL) request.baseURL = process.env.API_INTERNAL_URL
 	const cookieHeader = cookieStore.toString()
 

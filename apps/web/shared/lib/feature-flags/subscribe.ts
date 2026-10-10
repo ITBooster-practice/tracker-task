@@ -25,7 +25,7 @@ export function subscribeToFeatureFlags(options: Options): () => void {
 		source?.close()
 		options.onConnection(source ? 'reconnecting' : 'connecting')
 		try {
-			// Uses the existing Axios/JWT refresh flow before opening the cookie-authenticated stream.
+			// Перед открытием SSE обновляем cookie-сессию через существующий Axios/JWT-клиент.
 			await options.refresh()
 			if (stopped) return
 			source = new EventSource(featureFlagsService.eventsUrl(), { withCredentials: true })
@@ -40,7 +40,7 @@ export function subscribeToFeatureFlags(options: Options): () => void {
 					}
 					if (Number.isSafeInteger(version) && version >= 0) options.onChange(version)
 				} catch {
-					/* Invalid notifications never modify the snapshot. */
+					// Некорректное уведомление не изменяет снимок флагов.
 				}
 			})
 			source.addEventListener('session-expired', () => {

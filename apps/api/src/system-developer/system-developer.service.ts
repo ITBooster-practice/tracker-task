@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
-/** SYSTEM_DEVELOPER is an installation permission, independent of team roles. */
+// Права разработчика системы не зависят от ролей в командах.
 @Injectable()
 export class SystemDeveloperService {
 	constructor(private readonly config: ConfigService) {}

@@ -13,7 +13,7 @@ export function hasFeature(
 	return true
 }
 
-/** Explicit local development fallback; never available in stage/production. */
+// Явное включение локального режима разрешено только при разработке.
 export function getDevelopmentSnapshot(): FeatureFlagsSnapshot | undefined {
 	if (
 		process.env.NODE_ENV !== 'development' ||

@@ -32,7 +32,7 @@ export class FeatureFlagsEventsService implements OnModuleInit, OnModuleDestroy 
 		private readonly jwt: JwtService,
 		private readonly prisma: PrismaService,
 	) {
-		// A Pub/Sub connection cannot serve normal Redis commands.
+		// Для подписки Pub/Sub требуется отдельное соединение Redis.
 		this.subscriber = publisher.duplicate({
 			lazyConnect: true,
 			enableOfflineQueue: false,
@@ -118,14 +118,14 @@ export class FeatureFlagsEventsService implements OnModuleInit, OnModuleDestroy 
 						else observer.next({ type: 'heartbeat', data: {} })
 					})
 					.catch(() => {
-						// A failed authorization check must not keep a stream open indefinitely.
+						// При ошибке проверки авторизации закрываем поток.
 						if (!observer.closed) expired()
 					})
 					.finally(() => {
 						checking = false
 					})
 			}, 15000)
-			// Subscribed before reading the version: changes during handshake are not lost.
+			// Подписываемся до чтения версии, чтобы не потерять изменения при подключении.
 			void this.flags
 				.version()
 				.then((version) => {
