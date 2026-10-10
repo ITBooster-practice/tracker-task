@@ -107,9 +107,8 @@ describe('EditProjectDialog', () => {
 			{ wrapper: createWrapper() },
 		)
 
-		const inputs = screen.getAllByRole('textbox') as HTMLInputElement[]
-		expect(inputs[0].value).toBe('My Project')
-		expect(inputs[1].value).toBe('Описание')
+		expect(screen.getByDisplayValue('My Project')).toBeDefined()
+		expect(screen.getByDisplayValue('Описание')).toBeDefined()
 	})
 
 	it('submit вызывает mutate с teamId, projectId и данными', () => {
