@@ -31,7 +31,7 @@ export function CalendarMonthYear({
 					<SelectTrigger size='sm' className='w-[106px] gap-1 px-2' aria-label='Месяц'>
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent position='popper'>
+					<SelectContent position='popper' className='h-60'>
 						{Array.from({ length: 12 }, (_, index) => (
 							<SelectItem
 								key={index}
@@ -53,7 +53,7 @@ export function CalendarMonthYear({
 					<SelectTrigger size='sm' className='w-[80px] gap-1 px-2' aria-label='Год'>
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent position='popper'>
+					<SelectContent position='popper' className='h-60'>
 						{years.map((year) => (
 							<SelectItem key={year} value={String(year)}>
 								{year}
