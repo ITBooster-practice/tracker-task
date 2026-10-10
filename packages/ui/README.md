@@ -449,6 +449,43 @@ return (
 )
 ```
 
+### Checkbox, Calendar и Popover
+
+Компоненты добавлены из реестра shadcn/ui. `Calendar` использует `react-day-picker` и по умолчанию русскую локаль; другую можно передать через `locale`. Кнопки календаря и `Checkbox` имеют курсор pointer.
+
+```tsx
+import {
+	Checkbox,
+	Label,
+	Calendar,
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+	Button,
+} from '@repo/ui'
+
+return (
+	<>
+		<Checkbox
+			id='enabled'
+			checked={enabled}
+			onCheckedChange={(value) => setEnabled(value === true)}
+		/>
+		<Label htmlFor='enabled'>Включено</Label>
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button type='button' variant='outline'>
+					Выбрать дату
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className='w-auto p-0' align='start'>
+				<Calendar mode='single' selected={date} onSelect={setDate} autoFocus />
+			</PopoverContent>
+		</Popover>
+	</>
+)
+```
+
 ## Layout
 
 ### Stack / HStack / VStack

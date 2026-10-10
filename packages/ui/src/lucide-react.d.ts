@@ -11,4 +11,5 @@ declare module 'lucide-react' {
 	export const XIcon: LucideIcon
 	export const CircleIcon: LucideIcon
 	export const ChevronRightIcon: LucideIcon
+	export const ChevronLeftIcon: LucideIcon
 }
