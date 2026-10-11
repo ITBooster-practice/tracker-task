@@ -12,7 +12,7 @@
 
 ---
 
-Runtime-флаги меняются разработчиком на `/admin/feature-flags`, без пересборки. Задайте SYSTEM_DEVELOPER_USER_ID в окружении API и примените миграции. [Порядок работы](./feature-flags.md). Для серверных запросов web Compose задаёт API_INTERNAL_URL=http://api:3000; браузер использует NEXT_PUBLIC_API_URL=http://localhost/api через Caddy.
+Состояния флагов меняются через `/admin/feature-flags` без пересборки. Для доступа задайте `SYSTEM_DEVELOPER_USER_ID` в окружении API; [настройка разработчика](../backend/system-developer.md), [создание и подключение флагов](./feature-flags.md). Для серверных запросов web Compose задаёт `API_INTERNAL_URL=http://api:3000`; браузер использует `NEXT_PUBLIC_API_URL=http://localhost/api` через Caddy.
 
 ## Что запускается
 

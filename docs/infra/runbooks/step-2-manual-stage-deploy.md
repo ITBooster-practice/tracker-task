@@ -65,9 +65,9 @@ cp .env.stage.example .env.stage
 - `JWT_SECRET`, `JWT_ACCESS_TOKEN_TTL`, `JWT_REFRESH_TOKEN_TTL`
 - `COOKIE_DOMAIN`, `COOKIES_TTL`, `WEB_APP_URL`, `NEXT_PUBLIC_API_URL`
 - почтовые переменные: `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`, `MAIL_FROM_NAME`
-- в `.env.stage` оставьте только `NEXT_PUBLIC_API_URL`
+- из публичных web-переменных задайте `NEXT_PUBLIC_API_URL`
 
-Runtime-флаги хранятся в БД; загрузка env-файла с флагами не нужна. Задайте SYSTEM_DEVELOPER_USER_ID в .env.stage после регистрации аккаунта разработчика. Начальные четыре флага создаются включёнными: перенесите прежние выключенные состояния до открытия приложения пользователям. [Runbook флагов](../../work/feature-flags.md).
+Состояния флагов хранятся в БД и меняются через панель, а не через env-файл. Задайте `SYSTEM_DEVELOPER_USER_ID` в `.env.stage` равным ID зарегистрированного аккаунта разработчика и пересоздайте API после изменения настройки. Все экземпляры API должны использовать одно значение. Проверьте нужные состояния флагов перед открытием приложения пользователям. [Настройка доступа](../../backend/system-developer.md), [работа с флагами](../../work/feature-flags.md).
 
 NEXT_PUBLIC_API_URL берётся из .env.stage и должен совпадать с URL, вшитым при сборке web-образа. Файл .env.web содержит публичный URL API, без флагов. Серверные запросы web идут на API_INTERNAL_URL=http://api:3000 из Compose с cookie-сессией; они не проходят внешнюю Basic Auth. Это не отменяет JWT-проверку и guards.
 
