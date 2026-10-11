@@ -45,6 +45,7 @@ const flag: FeatureFlag = {
 	expiresAt: null,
 	archivedAt: null,
 	createdById: 'developer',
+	createdByName: 'Макс',
 	createdAt: '2026-10-10T00:00:00.000Z',
 	updatedAt: '2026-10-10T00:00:00.000Z',
 	required: false,
@@ -125,6 +126,7 @@ describe('Developer flag panel', () => {
 				id: 'audit-1',
 				flagId: flag.id,
 				actorId: 'developer',
+				actorName: 'Макс',
 				action: 'CREATE',
 				before: null,
 				after: flag,
@@ -300,8 +302,58 @@ describe('Developer flag panel', () => {
 		)
 		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 		fireEvent.click(screen.getByRole('button', { name: 'История ' + flag.title }))
-		await screen.findByText(/Создан · Автор: developer/)
+		await screen.findByText(/Создан · Автор:/)
+		expect(
+			within(
+				screen.getByRole('region', { name: 'История флага ' + flag.title }),
+			).getByText('Макс (developer)'),
+		).toBeDefined()
 		expect(featureFlagsService.audit).toHaveBeenCalledWith(flag.id)
+	})
+	it('открывает историю под нужной карточкой и переносит её при выборе другого флага', async () => {
+		const other = { ...flag, id: 'flag-2', key: 'other-flag', title: 'Другой флаг' }
+		vi.mocked(featureFlagsService.list).mockResolvedValue({
+			version: 5,
+			flags: [flag, other],
+		})
+		mount()
+		fireEvent.click(await screen.findByRole('button', { name: 'История ' + flag.title }))
+		const history = await screen.findByRole('region', {
+			name: 'История флага ' + flag.title,
+		})
+		const card = screen
+			.getByRole('button', { name: 'История ' + flag.title })
+			.closest('li')!
+		expect(card.lastElementChild).toBe(history)
+		await waitFor(() =>
+			expect(within(card).getAllByText('Макс (developer)')).toHaveLength(2),
+		)
+		fireEvent.click(screen.getByRole('button', { name: 'История ' + other.title }))
+		expect(
+			screen.queryByRole('region', { name: 'История флага ' + flag.title }),
+		).toBeNull()
+		const otherHistory = await screen.findByRole('region', {
+			name: 'История флага ' + other.title,
+		})
+		expect(
+			screen.getByRole('button', { name: 'История ' + other.title }).closest('li')
+				?.lastElementChild,
+		).toBe(otherHistory)
+		fireEvent.click(within(otherHistory).getByRole('button', { name: 'Закрыть историю' }))
+		expect(
+			screen.queryByRole('region', { name: 'История флага ' + other.title }),
+		).toBeNull()
+	})
+	it('не оставляет историю внизу при скрытии карточки поиском', async () => {
+		mount()
+		fireEvent.click(await screen.findByRole('button', { name: 'История ' + flag.title }))
+		await screen.findByRole('region', { name: 'История флага ' + flag.title })
+		fireEvent.change(screen.getByLabelText('Поиск по названию или ключу'), {
+			target: { value: 'missing-flag' },
+		})
+		expect(
+			screen.queryByRole('region', { name: 'История флага ' + flag.title }),
+		).toBeNull()
 	})
 	it('keeps the confirmation revision and shows conflicts inside the dialog', async () => {
 		vi.mocked(featureFlagsService.archive).mockRejectedValue({

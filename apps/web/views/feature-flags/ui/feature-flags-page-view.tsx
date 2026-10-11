@@ -21,16 +21,14 @@ import {
 	SelectValue,
 } from '@repo/ui'
 
-import {
-	featureFlagsKeys,
-	useFeatureFlagAudit,
-	useFeatureFlagsList,
-} from '@/shared/api/use-feature-flags'
+import { featureFlagsKeys, useFeatureFlagsList } from '@/shared/api/use-feature-flags'
 import { isApiError } from '@/shared/lib/api/utils'
 import { useFeatureFlags } from '@/shared/lib/feature-flags/context'
 import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-service'
 
+import { FeatureFlagAuthor } from './feature-flag-author'
 import { FeatureFlagForm } from './feature-flag-form'
+import { FeatureFlagHistory } from './feature-flag-history'
 import { FeatureFlagStatus } from './feature-flag-status'
 import { FeatureFlagsAccessDenied } from './feature-flags-access-denied'
 
@@ -45,14 +43,6 @@ type Action =
 	  }
 	| { type: 'archive'; id: string; version: number }
 const date = (value: string) => new Date(value).toLocaleString('ru-RU')
-const actionNames: Record<string, string> = {
-	created: 'Создан',
-	updated: 'Изменён',
-	archived: 'Архивирован',
-	CREATE: 'Создан',
-	UPDATE: 'Изменён',
-	ARCHIVE: 'Архивирован',
-}
 
 export function FeatureFlagsPageView() {
 	const { canManage } = useFeatureFlags()
@@ -65,7 +55,6 @@ export function FeatureFlagsPageView() {
 	const [archiveVersion, setArchiveVersion] = useState(0)
 	const [auditId, setAuditId] = useState('')
 	const [error, setError] = useState('')
-	const audit = useFeatureFlagAudit(canManage ? auditId : '')
 	const mutation = useMutation({
 		mutationFn: (action: Action) => {
 			if (action.type === 'create') return featureFlagsService.create(action.value)
@@ -189,108 +178,123 @@ export function FeatureFlagsPageView() {
 			) : (
 				<ul className='grid gap-3'>
 					{flags.map((flag) => (
-						<li key={flag.id} className='grid gap-3 rounded-lg border bg-card p-4'>
-							<div className='flex flex-wrap items-start justify-between gap-3'>
-								<div>
-									<h2 className='font-semibold'>{flag.title}</h2>
-									<code className='text-sm text-muted-foreground'>{flag.key}</code>
+						<li key={flag.id} className='grid min-w-0 gap-3'>
+							<div className='grid min-w-0 gap-3 rounded-lg border bg-card p-4'>
+								<div className='flex flex-wrap items-start justify-between gap-3'>
+									<div>
+										<h2 className='font-semibold'>{flag.title}</h2>
+										<code className='text-sm text-muted-foreground'>{flag.key}</code>
+									</div>
+									<FeatureFlagStatus flag={flag} />
 								</div>
-								<FeatureFlagStatus flag={flag} />
-							</div>
-							<p
-								className={
-									flag.connectedFeature
-										? 'text-sm text-sky-700 dark:text-sky-300'
-										: 'text-sm text-muted-foreground'
-								}
-							>
-								{flag.connectedFeature
-									? 'Подключён: ' + flag.connectedFeature
-									: 'Не подключён к приложению'}
-							</p>
-							{!flag.connectedFeature && !flag.archivedAt && (
-								<p className='text-xs text-muted-foreground'>
-									Включение станет доступно после подключения и выпуска обновления.
-								</p>
-							)}
-							{flag.description && (
-								<p className='whitespace-pre-wrap text-sm'>{flag.description}</p>
-							)}
-							<p className='text-xs text-muted-foreground'>
-								Автор: {flag.createdById} · Обновлён: {date(flag.updatedAt)}
-								{flag.expiresAt ? ' · План завершения: ' + date(flag.expiresAt) : ''}
-							</p>
-							<div className='flex flex-wrap gap-2'>
-								{!flag.archivedAt && (
-									<>
-										<Button
-											size='sm'
-											variant='outline'
-											disabled={
-												mutation.isPending ||
-												list.isError ||
-												(!flag.enabled && !flag.connectedFeature)
-											}
-											aria-label={
-												(flag.enabled ? 'Выключить ' : 'Включить ') + flag.title
-											}
-											onClick={() =>
-												void run({
-													type: 'update',
-													id: flag.id,
-													value: { enabled: !flag.enabled },
-													version: list.data?.version ?? 0,
-												})
-											}
-										>
-											{flag.enabled ? 'Выключить' : 'Включить'}
-										</Button>
-										<Button
-											size='sm'
-											variant='outline'
-											disabled={mutation.isPending}
-											aria-label={'Редактировать ' + flag.title}
-											onClick={() => {
-												setError('')
-												setEditor({ flag, version: list.data?.version ?? 0 })
-											}}
-										>
-											Редактировать
-										</Button>
-										<Button
-											size='sm'
-											variant='outline'
-											disabled={mutation.isPending || flag.required}
-											aria-label={'Архивировать ' + flag.title}
-											title={
-												flag.required
-													? 'Сначала удалите проверки из всех поддерживаемых версий и реестра REQUIRED_FEATURE_KEYS.'
-													: undefined
-											}
-											onClick={() => {
-												setError('')
-												setArchiveVersion(list.data?.version ?? 0)
-												setArchive(flag)
-											}}
-										>
-											Архивировать
-										</Button>
-									</>
-								)}
-								<Button
-									size='sm'
-									variant='ghost'
-									aria-label={'История ' + flag.title}
-									onClick={() => setAuditId(flag.id)}
+								<p
+									className={
+										flag.connectedFeature
+											? 'text-sm text-sky-700 dark:text-sky-300'
+											: 'text-sm text-muted-foreground'
+									}
 								>
-									История
-								</Button>
-							</div>
-							{flag.required && (
-								<p className='text-xs text-muted-foreground'>
-									Флаг используется приложением; архивация заблокирована до удаления
-									проверок.
+									{flag.connectedFeature
+										? 'Подключён: ' + flag.connectedFeature
+										: 'Не подключён к приложению'}
 								</p>
+								{!flag.connectedFeature && !flag.archivedAt && (
+									<p className='text-xs text-muted-foreground'>
+										Включение станет доступно после подключения и выпуска обновления.
+									</p>
+								)}
+								{flag.description && (
+									<p className='whitespace-pre-wrap text-sm'>{flag.description}</p>
+								)}
+								<p className='text-xs text-muted-foreground'>
+									Автор:{' '}
+									<FeatureFlagAuthor id={flag.createdById} name={flag.createdByName} /> ·
+									Обновлён: {date(flag.updatedAt)}
+									{flag.expiresAt ? ' · План завершения: ' + date(flag.expiresAt) : ''}
+								</p>
+								<div className='flex flex-wrap gap-2'>
+									{!flag.archivedAt && (
+										<>
+											<Button
+												size='sm'
+												variant='outline'
+												disabled={
+													mutation.isPending ||
+													list.isError ||
+													(!flag.enabled && !flag.connectedFeature)
+												}
+												aria-label={
+													(flag.enabled ? 'Выключить ' : 'Включить ') + flag.title
+												}
+												onClick={() =>
+													void run({
+														type: 'update',
+														id: flag.id,
+														value: { enabled: !flag.enabled },
+														version: list.data?.version ?? 0,
+													})
+												}
+											>
+												{flag.enabled ? 'Выключить' : 'Включить'}
+											</Button>
+											<Button
+												size='sm'
+												variant='outline'
+												disabled={mutation.isPending}
+												aria-label={'Редактировать ' + flag.title}
+												onClick={() => {
+													setError('')
+													setEditor({ flag, version: list.data?.version ?? 0 })
+												}}
+											>
+												Редактировать
+											</Button>
+											<Button
+												size='sm'
+												variant='outline'
+												disabled={mutation.isPending || flag.required}
+												aria-label={'Архивировать ' + flag.title}
+												title={
+													flag.required
+														? 'Сначала удалите проверки из всех поддерживаемых версий и реестра REQUIRED_FEATURE_KEYS.'
+														: undefined
+												}
+												onClick={() => {
+													setError('')
+													setArchiveVersion(list.data?.version ?? 0)
+													setArchive(flag)
+												}}
+											>
+												Архивировать
+											</Button>
+										</>
+									)}
+									<Button
+										size='sm'
+										variant='ghost'
+										aria-label={'История ' + flag.title}
+										aria-expanded={auditId === flag.id}
+										aria-controls={'flag-history-' + flag.id}
+										onClick={() =>
+											setAuditId((current) => (current === flag.id ? '' : flag.id))
+										}
+									>
+										История
+									</Button>
+								</div>
+								{flag.required && (
+									<p className='text-xs text-muted-foreground'>
+										Флаг используется приложением; архивация заблокирована до удаления
+										проверок.
+									</p>
+								)}
+							</div>
+							{auditId === flag.id && (
+								<FeatureFlagHistory
+									flagId={flag.id}
+									title={flag.title}
+									onClose={() => setAuditId('')}
+								/>
 							)}
 						</li>
 					))}
@@ -373,51 +377,6 @@ export function FeatureFlagsPageView() {
 					</p>
 				)}
 			</ConfirmDialog>
-			{auditId && (
-				<section className='grid gap-3 rounded-lg border p-4' aria-label='История флага'>
-					<div className='flex items-center justify-between'>
-						<h2 className='font-semibold'>
-							История: {list.data?.flags.find((flag) => flag.id === auditId)?.title}
-						</h2>
-						<Button variant='ghost' size='sm' onClick={() => setAuditId('')}>
-							Закрыть историю
-						</Button>
-					</div>
-					{audit.isPending ? (
-						<p>Загрузка истории…</p>
-					) : audit.isError ? (
-						<p role='alert'>
-							Не удалось загрузить историю.{' '}
-							<Button variant='outline' onClick={() => void audit.refetch()}>
-								Повторить
-							</Button>
-						</p>
-					) : audit.data?.length === 0 ? (
-						<p>История пуста.</p>
-					) : (
-						<ol className='grid gap-3'>
-							{audit.data?.map((entry) => (
-								<li key={entry.id} className='text-sm'>
-									<p>
-										{date(entry.createdAt)} · {actionNames[entry.action] ?? entry.action}{' '}
-										· Автор: {entry.actorId} · Версия {entry.version}
-									</p>
-									<details>
-										<summary className='cursor-pointer'>Изменения</summary>
-										<pre className='overflow-x-auto rounded bg-muted p-2 text-xs'>
-											{JSON.stringify(
-												{ before: entry.before, after: entry.after },
-												null,
-												2,
-											)}
-										</pre>
-									</details>
-								</li>
-							))}
-						</ol>
-					)}
-				</section>
-			)}
 		</section>
 	)
 }
