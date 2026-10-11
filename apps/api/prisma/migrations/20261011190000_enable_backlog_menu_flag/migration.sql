@@ -10,23 +10,21 @@ BEGIN
  END IF;
 END $$;
 
--- Существующий пункт меню остаётся видимым после подключения флага.
-WITH previous AS (
- SELECT * FROM "FeatureFlag" WHERE "key" = 'backlog'
+-- Создаём выключенный флаг, сохраняя состояние существующей записи.
+WITH flag AS (
+ INSERT INTO "FeatureFlag" ("id", "key", "title", "enabled", "createdById", "updatedAt")
+ VALUES (gen_random_uuid()::text, 'backlog', 'Бэклог', false, 'bootstrap', CURRENT_TIMESTAMP)
+ ON CONFLICT ("key") DO NOTHING
+ RETURNING *
 ),
 revision AS (
- UPDATE "FeatureFlagsRevision" SET "version" = "version" + 1 WHERE "id" = 'global' RETURNING "version"
-),
-flag AS (
- INSERT INTO "FeatureFlag" ("id", "key", "title", "enabled", "createdById", "updatedAt")
- VALUES (gen_random_uuid()::text, 'backlog', 'Бэклог', true, 'bootstrap', CURRENT_TIMESTAMP)
- ON CONFLICT ("key") DO UPDATE SET "enabled" = true, "updatedAt" = CURRENT_TIMESTAMP
- RETURNING *
+ UPDATE "FeatureFlagsRevision" SET "version" = "version" + 1
+ WHERE "id" = 'global' AND EXISTS (SELECT 1 FROM flag)
+ RETURNING "version"
 )
 INSERT INTO "FeatureFlagAudit" ("id", "flagId", "actorId", "action", "before", "after", "version")
-SELECT gen_random_uuid()::text, flag."id", 'bootstrap',
- CASE WHEN EXISTS (SELECT 1 FROM previous) THEN 'UPDATE' ELSE 'CREATE' END,
- (SELECT to_jsonb(previous) FROM previous), to_jsonb(flag), revision."version"
+SELECT gen_random_uuid()::text, flag."id", 'bootstrap', 'CREATE',
+ NULL, to_jsonb(flag), revision."version"
 FROM flag CROSS JOIN revision;
 
 COMMIT;
