@@ -36,7 +36,7 @@ describe('Runtime sidebar navigation', () => {
 		expect(find('Обзор проекта', snapshot, false, 'team-1', null)).toBeUndefined()
 	})
 	it('hides flagged sections before loading', () => {
-		for (const title of ['Проекты', 'Задачи', 'Доска', 'Настройки команды'])
+		for (const title of ['Проекты', 'Задачи', 'Доска', 'Бэклог', 'Настройки команды'])
 			expect(find(title, null)).toBeUndefined()
 		expect(find('Команды', null)).toBeDefined()
 	})
@@ -51,6 +51,23 @@ describe('Runtime sidebar navigation', () => {
 		for (const title of ['Проекты', 'Обзор проекта', 'Задачи', 'Доска'])
 			expect(find(title, disabled)).toBeUndefined()
 		expect(find('Настройки команды', disabled)).toBeDefined()
+	})
+	it('показывает пункт Бэклог только при включённом флаге', () => {
+		expect(find('Бэклог')?.href).toBe('#')
+		const disabled = {
+			...snapshot,
+			flags: snapshot.flags.map((flag) => ({
+				...flag,
+				enabled: flag.key !== FEATURE_KEYS.BACKLOG,
+			})),
+		}
+		expect(find('Бэклог', disabled)).toBeUndefined()
+		expect(find('Доска', disabled)).toBeDefined()
+		const missing = {
+			...snapshot,
+			flags: snapshot.flags.filter((flag) => flag.key !== FEATURE_KEYS.BACKLOG),
+		}
+		expect(find('Бэклог', missing)).toBeUndefined()
 	})
 	it('shows the management link only to the system developer', () => {
 		expect(find('Флаги функций')).toBeUndefined()

@@ -2,6 +2,7 @@ export const FEATURE_KEYS = {
 	PROJECTS: 'projects',
 	TASKS: 'tasks',
 	BOARDS: 'boards',
+	BACKLOG: 'backlog',
 	TEAM_SETTINGS: 'team-settings',
 } as const
 
@@ -10,6 +11,7 @@ export const FEATURE_REGISTRY: Readonly<Record<string, string>> = {
 	[FEATURE_KEYS.PROJECTS]: 'Проекты',
 	[FEATURE_KEYS.TASKS]: 'Задачи',
 	[FEATURE_KEYS.BOARDS]: 'Доски',
+	[FEATURE_KEYS.BACKLOG]: 'Бэклог',
 	[FEATURE_KEYS.TEAM_SETTINGS]: 'Настройки команды',
 }
 
