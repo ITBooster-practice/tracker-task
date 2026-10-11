@@ -1,14 +1,14 @@
 # Локальный стек для проверки production-образов.
 #
 # Запуск (одной командой — сборка образов + поднятие):
-#   pnpm local
+#   pnpm local --build
 # либо вручную:
 #   docker compose -f docker-compose.local.yml up -d --build
 #
-# После первого запуска применить миграции:
+# После первого запуска или добавления миграций:
 #   pnpm local:migrate
 # либо вручную:
-#   docker compose -f docker-compose.local.yml exec api node node_modules/.bin/prisma migrate deploy
+#   docker compose -f docker-compose.local.yml exec api sh -c "node_modules/.bin/prisma migrate deploy --config prisma.config.mjs"
 #
 # Адреса после запуска:
 #   http://localhost       -- веб-приложение (через Caddy)

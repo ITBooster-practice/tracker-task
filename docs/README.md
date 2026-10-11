@@ -80,7 +80,7 @@ Self-hosted трекер, который можно развернуть на с
 
 - **`pnpm dev`** одной командой: автоматически поднимает `redis` и `mailpit`
   в Docker, запускает api+web с hot-reload
-- **`pnpm stage`** — локальный production-стек (Caddy + Postgres + Redis +
+- **`pnpm local --build`** — локальный production-стек (Caddy + Postgres + Redis +
   Mailpit + api + web), полностью имитирует VPS-развёртывание.
   Подробно — [work/local-stage.md](./work/local-stage.md)
 - Dev и stage стеки полностью изолированы (разные имена проектов, разные
@@ -175,7 +175,7 @@ Self-hosted трекер, который можно развернуть на с
 ### Быстрый старт
 
 - [Начало работы](./work/start.md) — установка, .env, первый запуск
-- [Локальный stage-стек](./work/local-stage.md) — `pnpm stage` и production-like локально
+- [Локальный stage-стек](./work/local-stage.md) — `pnpm local --build` и production-like локально
 - [Общие практики](./work/common.md), [Git](./work/git.md), [Git Hooks](./work/git-hooks.md)
 - [Feature Flags](./work/feature-flags.md)
 - [Vitest coverage](./work/vitest-coverage.md)
