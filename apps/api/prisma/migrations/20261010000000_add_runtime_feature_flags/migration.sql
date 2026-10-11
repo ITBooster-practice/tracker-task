@@ -1,4 +1,4 @@
--- Additive migration: existing users, teams, projects and tasks are preserved.
+-- Добавляем таблицы флагов, сохраняя существующие данные приложения.
 CREATE TABLE "FeatureFlag" (
  "id" TEXT NOT NULL,
  "key" TEXT NOT NULL,
@@ -32,9 +32,9 @@ CREATE TABLE "FeatureFlagAudit" (
 CREATE INDEX "FeatureFlagAudit_flagId_createdAt_idx" ON "FeatureFlagAudit"("flagId", "createdAt");
 ALTER TABLE "FeatureFlagAudit" ADD CONSTRAINT "FeatureFlagAudit_flagId_fkey" FOREIGN KEY ("flagId") REFERENCES "FeatureFlag"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 INSERT INTO "FeatureFlagsRevision" ("id", "version") VALUES ('global', 0);
--- Initial state matches the existing Docker/stage build defaults. No seed/reset.
+-- Начальные флаги выключены; состояние меняет разработчик через панель.
 INSERT INTO "FeatureFlag" ("id", "key", "title", "enabled", "createdById", "updatedAt") VALUES
- (gen_random_uuid()::text, 'projects', 'Проекты', true, 'bootstrap', CURRENT_TIMESTAMP),
- (gen_random_uuid()::text, 'tasks', 'Задачи', true, 'bootstrap', CURRENT_TIMESTAMP),
- (gen_random_uuid()::text, 'boards', 'Доски', true, 'bootstrap', CURRENT_TIMESTAMP),
- (gen_random_uuid()::text, 'team-settings', 'Настройки команды', true, 'bootstrap', CURRENT_TIMESTAMP);
+ (gen_random_uuid()::text, 'projects', 'Проекты', false, 'bootstrap', CURRENT_TIMESTAMP),
+ (gen_random_uuid()::text, 'tasks', 'Задачи', false, 'bootstrap', CURRENT_TIMESTAMP),
+ (gen_random_uuid()::text, 'boards', 'Доски', false, 'bootstrap', CURRENT_TIMESTAMP),
+ (gen_random_uuid()::text, 'team-settings', 'Настройки команды', false, 'bootstrap', CURRENT_TIMESTAMP);
