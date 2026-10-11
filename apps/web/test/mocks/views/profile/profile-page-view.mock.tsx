@@ -143,6 +143,7 @@ vi.mock('@repo/ui', () => ({
 }))
 
 vi.mock('@repo/ui/icons', () => ({
+	Copy: () => <span />,
 	Check: () => <span />,
 	ChevronRight: () => <span />,
 	Mail: () => <span />,
