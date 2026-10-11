@@ -97,6 +97,15 @@ describe('Developer flag panel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		vi.stubGlobal(
+			'matchMedia',
+			vi.fn().mockImplementation((query: string) => ({
+				matches: true,
+				media: query,
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			})),
+		)
+		vi.stubGlobal(
 			'ResizeObserver',
 			class {
 				observe = vi.fn()
@@ -171,6 +180,42 @@ describe('Developer flag panel', () => {
 				expectedVersion: 5,
 			}),
 		)
+	})
+	it('на мобильном открывает форму в Drawer и закрывает по отмене', async () => {
+		vi.stubGlobal(
+			'matchMedia',
+			vi.fn().mockImplementation((query: string) => ({
+				matches: false,
+				media: query,
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			})),
+		)
+		mount()
+		await screen.findByText(flag.title)
+		fireEvent.click(screen.getByRole('button', { name: 'Создать флаг' }))
+		const dialog = await screen.findByRole('dialog')
+		expect(dialog.getAttribute('data-slot')).toBe('drawer-content')
+		expect(within(dialog).queryByText(/Новый флаг будет выключен/)).toBeNull()
+		fireEvent.change(screen.getByLabelText('Технический ключ'), {
+			target: { value: 'drawer-test' },
+		})
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+		// В jsdom анимация Vaul не завершается; проверяем закрытие и очистку формы.
+		await waitFor(() => expect(dialog.getAttribute('data-state')).toBe('closed'))
+		expect(screen.queryByLabelText('Технический ключ')).toBeNull()
+		expect(featureFlagsService.create).not.toHaveBeenCalled()
+	})
+	it('на компьютере открывает модалку без пояснения состояния', async () => {
+		mount()
+		fireEvent.click(
+			await screen.findByRole('button', { name: 'Редактировать ' + flag.title }),
+		)
+		const dialog = await screen.findByRole('dialog')
+		expect(dialog.getAttribute('data-slot')).toBe('dialog-content')
+		expect(within(dialog).queryByText(/Состояние флага меняется кнопкой/)).toBeNull()
+		fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 	})
 	it('creates a disabled flag with a permanent technical key', async () => {
 		mount()
