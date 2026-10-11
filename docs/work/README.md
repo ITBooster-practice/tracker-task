@@ -10,7 +10,7 @@
 | [common.md](./common.md)                   | Общие правила и best practices команды                                  |
 | [git.md](./git.md)                         | Работа с ветками, TBD-методология                                       |
 | [git-hooks.md](./git-hooks.md)             | Что делают husky-хуки на commit / push                                  |
-| [feature-flags.md](./feature-flags.md)     | Управление runtime-флагами и завершение выпуска                         |
+| [feature-flags.md](./feature-flags.md)     | Создание, подключение, переключение и архивация флагов                  |
 | [vitest-coverage.md](./vitest-coverage.md) | Запуск и интерпретация coverage-отчётов                                 |
 | [local-stage.md](./local-stage.md)         | Локальный production-стек: Caddy + Postgres + Redis + Mailpit + api/web |
 
