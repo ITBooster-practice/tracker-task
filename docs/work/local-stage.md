@@ -2,11 +2,11 @@
 
 Это **второе из трёх окружений** проекта:
 
-| #   | Окружение        | Где живёт    | Как запускается                                          |
-| --- | ---------------- | ------------ | -------------------------------------------------------- |
-| 1   | **dev**          | Твой ноутбук | `pnpm dev` — горячая перезагрузка, без Docker            |
-| 2   | **local-stage**  | Твой ноутбук | `pnpm stage` — production-образы в Docker одной командой |
-| 3   | **stage / prod** | VPS          | CI/CD или ручной деплой на сервер                        |
+| #   | Окружение        | Где живёт    | Как запускается                                           |
+| --- | ---------------- | ------------ | --------------------------------------------------------- |
+| 1   | **dev**          | Твой ноутбук | `pnpm dev` — API/web с горячей перезагрузкой              |
+| 2   | **local-stage**  | Твой ноутбук | `pnpm local --build` — сборка и запуск production-образов |
+| 3   | **stage / prod** | VPS          | CI/CD или ручной деплой на сервер                         |
 
 Цель local-stage — **убедиться, что Docker-образы собираются и работают правильно** прежде чем отправлять их на VPS.
 
@@ -41,71 +41,93 @@ http://localhost:8026           ← Mailpit (перехватчик писем, 
 
 ---
 
-## Первый запуск — одной командой
+## Первый запуск
 
-Из **корня монорепо**:
+Из **корня монорепо** выполните по порядку:
 
 ```bash
-pnpm stage
+pnpm local --build
+pnpm local:migrate
 ```
 
-Под капотом это `docker compose -f docker-compose.local.yml up -d --build`:
-собирает образы api и web из их Dockerfile и поднимает весь стек
-(Caddy + Postgres + Redis + Mailpit + api + web).
+Первая команда собирает образы API и web и поднимает стек (Caddy, Postgres, Redis, Mailpit, API и web). После запуска API вторая команда применяет миграции БД. Это два отдельных действия: сборка и запуск контейнеров миграции не применяют.
 
-Первая сборка занимает 5–10 минут (скачиваются зависимости).
-Повторные запуски используют кэш слоёв и проходят за секунды,
-если код не менялся.
+`pnpm local --build` передаёт аргумент `--build` существующему скрипту `local` и выполняет `docker compose -f docker-compose.local.yml up -d --build`. Обычный `pnpm local` запускает стек без пересборки; используйте его, когда образы уже соответствуют текущему коду.
+
+Первая сборка скачивает зависимости. Следующие сборки используют кэш неизменившихся слоёв.
 
 > **Почему контекст сборки — корень монорепо?**
-> Оба Dockerfile копируют файлы из корня: `pnpm-workspace.yaml`,
-> `pnpm-lock.yaml`, `packages/`, и т.д. Compose-файл это уже знает
-> и проставляет `context: .` автоматически.
+> Оба Dockerfile копируют `pnpm-workspace.yaml`, `pnpm-lock.yaml` и `packages/` из корня. Compose задаёт `context: .` автоматически.
 
 ### Применить миграции БД
 
-Нужно **только при первом запуске** или после изменения схемы Prisma:
+Применяйте миграции при первом запуске и после добавления новых файлов миграций, включая изменения данных без изменения схемы Prisma:
 
 ```bash
-pnpm stage:migrate
+pnpm local:migrate
 ```
 
-Под капотом: `docker compose -f docker-compose.local.yml exec api node node_modules/.bin/prisma migrate deploy`.
+Скрипт запускает Prisma **внутри работающего контейнера API**:
 
-### Шаг 4. Открой в браузере
+```bash
+docker compose -f docker-compose.local.yml exec api sh -c "node_modules/.bin/prisma migrate deploy --config prisma.config.mjs"
+```
+
+Миграции копируются в образ при сборке. Если они добавлены в репозиторий, сначала пересоберите API, иначе Prisma увидит старый набор файлов. Повторный запуск `migrate deploy` применяет только ещё не выполненные миграции.
+
+### Адреса стенда
 
 - **Приложение**: http://localhost
-- **API** (например, health-check): http://localhost/api/health
+- **API** (корневой endpoint): http://localhost/api/
 - **Входящие письма** (подтверждение email, сброс пароля): http://localhost:8026
 
-### Шаг 5. Smoke-проверка
+### Проверка после запуска
 
 Минимальный сценарий, чтобы убедиться, что стек живой:
 
 1. Открыть http://localhost — должна загрузиться страница `/login`.
-2. Войти как тестовый пользователь:
-   - email: `admin@example.com`
-   - пароль: `password123`
-     (Учётка создаётся seed-ом — см. `apps/api/prisma/seed.ts`. Все три тестовых пользователя — `admin@`, `developer@`, `manager@` — имеют один пароль `password123`.)
-3. Зарегистрировать нового пользователя — после регистрации в http://localhost:8026 должно появиться приветственное письмо.
+2. Зарегистрировать аккаунт или войти под существующим пользователем. Миграции не запускают seed автоматически и не создают тестовые аккаунты.
+3. После регистрации проверить приветственное письмо в http://localhost:8026.
 
-Если письмо не появилось — значит API ушёл слать через Resend вместо Mailpit. Проверь переменную `MAIL_TRANSPORT` в `docker-compose.local.yml` (должна быть `smtp`).
+Если письмо не появилось, проверьте логи API и почтовые настройки в `apps/api/.env.local`: `MAIL_TRANSPORT=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025`.
 
 ---
 
 ## Пересборка после изменений
 
-Если изменил код в `apps/api/src/` или `apps/web/` — повторно запусти `pnpm stage`,
-флаг `--build` внутри пересоберёт только изменившиеся слои образов и перезапустит
-соответствующие контейнеры.
-
-Если нужно пересобрать вручную и поднять только один сервис:
+После обновления кода или добавления миграций выполните:
 
 ```bash
-docker compose -f docker-compose.local.yml up -d --build api
-# или
-docker compose -f docker-compose.local.yml up -d --build web
+pnpm local --build
+pnpm local:migrate
 ```
+
+Порядок: **пересобрать образы → обновить контейнеры → применить миграции**. Команда `pnpm local` без `--build` не обновляет код и файлы миграций в уже собранном образе.
+
+Если изменился только API:
+
+```bash
+pnpm local --build api
+pnpm local:migrate
+```
+
+Если изменился только web:
+
+```bash
+pnpm local --build web
+```
+
+При изменении общих пакетов, которые используют API и web, пересоберите оба сервиса через `pnpm local --build`.
+
+Если Prisma сообщает `No pending migrations to apply`, хотя в репозитории появились новые миграции, проверьте файлы внутри контейнера:
+
+```bash
+docker compose -f docker-compose.local.yml exec api ls -1 prisma/migrations
+```
+
+Если новых каталогов нет, контейнер использует старый образ: пересоберите API и повторите `pnpm local:migrate`.
+
+Пересборка и замена контейнеров сохраняют БД в Docker volume. Уже применённые миграции не повторяются; выбранные состояния флагов сохраняются, новые записи создаются выключенными. [Работа с флагами при развёртывании](./feature-flags.md#миграции-и-развёртывание).
 
 ---
 
@@ -116,16 +138,16 @@ docker compose -f docker-compose.local.yml up -d --build web
 docker compose -f docker-compose.local.yml logs -f api
 
 # Логи всех сервисов сразу
-pnpm stage:logs
+pnpm local:logs
 
 # Зайти в контейнер API (как SSH на сервер)
 docker compose -f docker-compose.local.yml exec api sh
 
 # Остановить стек (данные БД сохранятся)
-pnpm stage:down
+pnpm local:down
 
 # Остановить стек И удалить данные БД (полный сброс)
-pnpm stage:reset
+pnpm local:reset
 ```
 
 ---
@@ -165,7 +187,7 @@ pnpm stage:reset
 
 ## Как работают письма через Mailpit
 
-В `docker-compose.local.yml` API получает переменные:
+API получает почтовые настройки из `apps/api/.env.local` через `env_file` в Compose:
 
 ```yaml
 MAIL_TRANSPORT: smtp
@@ -323,7 +345,7 @@ if (transport === 'smtp') {
 
 |               | dev                 | local-stage                | stage/prod (VPS)           |
 | ------------- | ------------------- | -------------------------- | -------------------------- |
-| Запуск        | `pnpm dev`          | `pnpm stage`               | CI/CD или вручную          |
+| Запуск        | `pnpm dev`          | `pnpm local --build`       | CI/CD или вручную          |
 | API           | ts-node, hot reload | production-сборка в Docker | production-сборка в Docker |
 | Web           | Next.js dev server  | Next.js standalone         | Next.js standalone         |
 | БД            | локальная / Docker  | Docker (postgres:16)       | Managed DB или Docker      |
