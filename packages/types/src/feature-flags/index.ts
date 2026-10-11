@@ -62,6 +62,7 @@ const flagSchema = snapshotItemSchema.extend({
 	archivedAt: z.iso.datetime().nullable(),
 	expiresAt: z.iso.datetime().nullable(),
 	createdById: z.string(),
+	createdByName: z.string().nullable().optional(),
 	required: z.boolean(),
 	connectedFeature: z.string().nullable(),
 })
@@ -79,6 +80,7 @@ export const featureFlagAuditSchema = z.object({
 	id: z.string(),
 	flagId: z.string(),
 	actorId: z.string(),
+	actorName: z.string().nullable().optional(),
 	action: z.string(),
 	before: z.unknown(),
 	after: z.unknown(),
@@ -103,6 +105,7 @@ export interface FeatureFlag extends FeatureFlagSnapshotItem {
 	archivedAt: string | null
 	expiresAt: string | null
 	createdById: string
+	createdByName?: string | null
 	required: boolean
 	connectedFeature: string | null
 }
@@ -117,6 +120,7 @@ export interface FeatureFlagAudit {
 	id: string
 	flagId: string
 	actorId: string
+	actorName?: string | null
 	action: string
 	before: unknown
 	after: unknown

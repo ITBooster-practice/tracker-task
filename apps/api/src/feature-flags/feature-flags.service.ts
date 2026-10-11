@@ -20,7 +20,8 @@ import { Prisma, type FeatureFlag } from '../../generated/prisma/client'
 type Change = { flag: FeatureFlag; before: FeatureFlag | null; action: string }
 const toJson = (value: FeatureFlag): Prisma.InputJsonValue =>
 	JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
-const toFlag = (flag: FeatureFlag) => ({
+const toFlag = (flag: FeatureFlag, createdByName: string | null) => ({
+	createdByName,
 	...flag,
 	createdAt: flag.createdAt.toISOString(),
 	updatedAt: flag.updatedAt.toISOString(),
@@ -80,7 +81,14 @@ export class FeatureFlagsService {
 					where: { id: 'global' },
 				})
 				const flags = await tx.featureFlag.findMany({ orderBy: { key: 'asc' } })
-				return { version: revision.version, flags: flags.map(toFlag) }
+				const names = await this.authorNames(
+					tx,
+					flags.map((flag) => flag.createdById),
+				)
+				return {
+					version: revision.version,
+					flags: flags.map((flag) => toFlag(flag, names.get(flag.createdById) ?? null)),
+				}
 			},
 			{ isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
 		)
@@ -156,11 +164,34 @@ export class FeatureFlagsService {
 			!(await this.prisma.featureFlag.findUnique({ where: { id }, select: { id: true } }))
 		)
 			throw new NotFoundException('Флаг не найден')
-		return this.prisma.featureFlagAudit.findMany({
+		const entries = await this.prisma.featureFlagAudit.findMany({
 			where: { flagId: id },
 			orderBy: { version: 'desc' },
 			take: 100,
 		})
+		const names = await this.authorNames(
+			this.prisma,
+			entries.map((entry) => entry.actorId),
+		)
+		return entries.map((entry) => ({
+			...entry,
+			actorName: names.get(entry.actorId) ?? null,
+		}))
+	}
+	private async authorNames(
+		client: Pick<Prisma.TransactionClient, 'user'>,
+		ids: string[],
+	) {
+		const names = new Map<string, string | null>([['bootstrap', 'Система']])
+		const userIds = [...new Set(ids)].filter((id) => id !== 'bootstrap')
+		if (userIds.length) {
+			const users = await client.user.findMany({
+				where: { id: { in: userIds } },
+				select: { id: true, name: true },
+			})
+			for (const user of users) names.set(user.id, user.name?.trim() || null)
+		}
+		return names
 	}
 	private validateDeadline(value: string | null | undefined) {
 		const milliseconds = value ? new Date(value).getTime() : null
@@ -206,7 +237,11 @@ export class FeatureFlagsService {
 						version: revision.version,
 					},
 				})
-				return { version: revision.version, flag: toFlag(change.flag) }
+				const names = await this.authorNames(tx, [change.flag.createdById])
+				return {
+					version: revision.version,
+					flag: toFlag(change.flag, names.get(change.flag.createdById) ?? null),
+				}
 			})
 			this.changes.next(result.version)
 			return result

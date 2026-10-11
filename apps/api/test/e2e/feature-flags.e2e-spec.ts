@@ -252,6 +252,42 @@ describe('Runtime feature flags (e2e)', () => {
 			.send({ description: 'План подключения', expectedVersion: 1 })
 			.expect(200)
 	})
+	it('возвращает имя создателя и автора истории из текущего профиля без изменения аудита', async () => {
+		const created = await create()
+		expect(created.body.flag).toMatchObject({
+			createdById: developerId,
+			createdByName: 'Test User',
+		})
+		await prisma.user.update({ where: { id: developerId }, data: { name: 'Макс' } })
+		const list = await request(server)
+			.get('/feature-flags')
+			.set('Cookie', developerCookies)
+			.expect(200)
+		expect(
+			list.body.flags.find((flag: { id: string }) => flag.id === created.body.flag.id),
+		).toMatchObject({ createdByName: 'Макс' })
+		expect(
+			list.body.flags.find((flag: { key: string }) => flag.key === 'backlog'),
+		).toMatchObject({ createdById: 'bootstrap', createdByName: 'Система' })
+		const history = await request(server)
+			.get('/feature-flags/' + created.body.flag.id + '/audit')
+			.set('Cookie', developerCookies)
+			.expect(200)
+		expect(history.body[0]).toMatchObject({
+			actorId: developerId,
+			actorName: 'Макс',
+			after: { createdById: developerId },
+		})
+		expect(history.body[0].after).not.toHaveProperty('createdByName')
+		const snapshot = await request(server)
+			.get('/feature-flags/snapshot')
+			.set('Cookie', userCookies)
+			.expect(200)
+		for (const flag of snapshot.body.flags) {
+			expect(flag).not.toHaveProperty('createdByName')
+			expect(flag).not.toHaveProperty('createdById')
+		}
+	})
 	it('возвращает подключение из реестра и разрешает переключать подключённый флаг', async () => {
 		const list = await request(server)
 			.get('/feature-flags')
