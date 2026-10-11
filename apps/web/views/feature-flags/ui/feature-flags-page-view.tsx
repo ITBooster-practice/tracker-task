@@ -323,7 +323,7 @@ export function FeatureFlagsPageView() {
 						isDesktop ? 'max-h-[90dvh] overflow-y-auto pt-4' : 'overflow-hidden'
 					}
 				>
-					<DialogDrawerHeader className='gap-2 md:pt-0 md:pr-8'>
+					<DialogDrawerHeader className='gap-2 md:p-0 md:pr-8'>
 						<DialogDrawerTitle>
 							{editor?.flag ? 'Редактировать флаг' : 'Создать флаг'}
 						</DialogDrawerTitle>
