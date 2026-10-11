@@ -6,6 +6,7 @@ import { useState } from 'react'
 import type { CreateFeatureFlag, FeatureFlag, UpdateFeatureFlag } from '@repo/types'
 import {
 	Button,
+	cn,
 	ConfirmDialog,
 	DialogDrawer,
 	DialogDrawerContent,
@@ -179,7 +180,18 @@ export function FeatureFlagsPageView() {
 				<ul className='grid gap-3'>
 					{flags.map((flag) => (
 						<li key={flag.id} className='grid min-w-0 gap-3'>
-							<div className='grid min-w-0 gap-3 rounded-lg border bg-card p-4'>
+							<div
+								className={cn(
+									'grid min-w-0 gap-3 rounded-lg border bg-card p-4',
+									flag.archivedAt
+										? 'border-amber-500/20'
+										: !flag.connectedFeature
+											? 'border-violet-500/40'
+											: flag.enabled
+												? 'border-emerald-500/20'
+												: undefined,
+								)}
+							>
 								<div className='flex flex-wrap items-start justify-between gap-3'>
 									<div>
 										<h2 className='font-semibold'>{flag.title}</h2>
