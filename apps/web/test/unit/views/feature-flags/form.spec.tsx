@@ -44,7 +44,7 @@ describe('Feature flag form', () => {
 			/>,
 		)
 		expect(screen.queryByRole('checkbox')).toBeNull()
-		expect(screen.getByText(/Новый флаг будет выключен/)).toBeDefined()
+		expect(screen.queryByText(/Новый флаг будет выключен/)).toBeNull()
 	})
 	it('blocks newly expired deadlines at submit and date selection without server time', () => {
 		const onSubmit = vi.fn()

@@ -125,11 +125,6 @@ export function FeatureFlagForm({ flag, pending, error, onSubmit, onCancel }: Pr
 				isError={clock.isError}
 				retry={clock.retry}
 			/>
-			<p className='text-sm text-muted-foreground'>
-				{flag
-					? 'Состояние флага меняется кнопкой на карточке. Сохранение этой формы изменит только название, описание и срок.'
-					: 'Новый флаг будет выключен. Включить его можно на карточке после подключения к приложению.'}
-			</p>
 			{(validation || error) && (
 				<p role='alert' className='text-sm text-destructive'>
 					{validation || error}

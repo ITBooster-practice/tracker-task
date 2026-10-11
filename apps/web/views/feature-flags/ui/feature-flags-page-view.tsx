@@ -7,11 +7,11 @@ import type { CreateFeatureFlag, FeatureFlag, UpdateFeatureFlag } from '@repo/ty
 import {
 	Button,
 	ConfirmDialog,
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+	DialogDrawer,
+	DialogDrawerContent,
+	DialogDrawerDescription,
+	DialogDrawerHeader,
+	DialogDrawerTitle,
 	Input,
 	Label,
 	Select,
@@ -296,49 +296,55 @@ export function FeatureFlagsPageView() {
 					))}
 				</ul>
 			)}
-			<Dialog
+			<DialogDrawer
 				open={Boolean(editor)}
 				onOpenChange={(open) => {
 					if (!open && !mutation.isPending) setEditor(null)
 				}}
 			>
-				<DialogContent className='max-h-[90vh] overflow-y-auto'>
-					<DialogHeader>
-						<DialogTitle>
+				<DialogDrawerContent
+					className={(isDesktop) =>
+						isDesktop ? 'max-h-[90dvh] overflow-y-auto pt-4' : 'overflow-hidden'
+					}
+				>
+					<DialogDrawerHeader className='gap-2 md:pt-0 md:pr-8'>
+						<DialogDrawerTitle>
 							{editor?.flag ? 'Редактировать флаг' : 'Создать флаг'}
-						</DialogTitle>
-						<DialogDescription>
+						</DialogDrawerTitle>
+						<DialogDrawerDescription>
 							Технический ключ сохраняется навсегда. Название можно изменить.
-						</DialogDescription>
-					</DialogHeader>
-					{editor && (
-						<FeatureFlagForm
-							key={editor.flag?.id ?? 'new'}
-							flag={editor.flag}
-							pending={mutation.isPending}
-							error={error}
-							onCancel={() => setEditor(null)}
-							onSubmit={async (value) => {
-								const saved = await run(
-									editor.flag
-										? {
-												type: 'update',
-												id: editor.flag.id,
-												value: {
-													title: value.title,
-													description: value.description,
-													expiresAt: value.expiresAt,
-												},
-												version: editor.version,
-											}
-										: { type: 'create', value },
-								)
-								if (saved) setEditor(null)
-							}}
-						/>
-					)}
-				</DialogContent>
-			</Dialog>
+						</DialogDrawerDescription>
+					</DialogDrawerHeader>
+					<div className='min-h-0 overflow-y-auto px-4 pb-4 md:p-0'>
+						{editor && (
+							<FeatureFlagForm
+								key={editor.flag?.id ?? 'new'}
+								flag={editor.flag}
+								pending={mutation.isPending}
+								error={error}
+								onCancel={() => setEditor(null)}
+								onSubmit={async (value) => {
+									const saved = await run(
+										editor.flag
+											? {
+													type: 'update',
+													id: editor.flag.id,
+													value: {
+														title: value.title,
+														description: value.description,
+														expiresAt: value.expiresAt,
+													},
+													version: editor.version,
+												}
+											: { type: 'create', value },
+									)
+									if (saved) setEditor(null)
+								}}
+							/>
+						)}
+					</div>
+				</DialogDrawerContent>
+			</DialogDrawer>
 			<ConfirmDialog
 				open={Boolean(archive)}
 				onOpenChange={(open) => {
