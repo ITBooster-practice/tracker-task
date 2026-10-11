@@ -44,6 +44,7 @@ describe('Feature flag contracts', () => {
 	})
 	it('разрешает подключение только для собственных ключей реестра', () => {
 		expect(getConnectedFeature('boards')).toBe('Доски')
+		expect(getConnectedFeature('backlog')).toBe('Бэклог')
 		for (const key of ['search-v1', 'constructor', 'toString', '__proto__'])
 			expect(getConnectedFeature(key)).toBeNull()
 		expect(REQUIRED_FEATURE_KEYS).toEqual(Object.keys(FEATURE_REGISTRY))

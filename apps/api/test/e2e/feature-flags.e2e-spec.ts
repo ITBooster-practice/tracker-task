@@ -259,6 +259,9 @@ describe('Runtime feature flags (e2e)', () => {
 			.expect(200)
 		const boards = list.body.flags.find((flag: { key: string }) => flag.key === 'boards')
 		expect(boards).toMatchObject({ connectedFeature: 'Доски', required: true })
+		expect(
+			list.body.flags.find((flag: { key: string }) => flag.key === 'backlog'),
+		).toMatchObject({ enabled: true, connectedFeature: 'Бэклог', required: true })
 		for (const [version, enabled] of [
 			[0, false],
 			[1, true],
@@ -358,7 +361,7 @@ describe('Runtime feature flags (e2e)', () => {
 			.set('Cookie', userCookies)
 			.expect(200)
 		expect(snapshot.body.version).toBe(0)
-		expect(snapshot.body.flags).toHaveLength(4)
+		expect(snapshot.body.flags).toHaveLength(5)
 		expect(snapshot.body.flags[0]).not.toHaveProperty('createdById')
 		await request(server)
 			.get('/feature-flags/snapshot')

@@ -67,7 +67,9 @@ export function getSidebarSections(
 							},
 						]
 					: []),
-				{ title: 'Бэклог', href: '#', icon: Layers3 },
+				...(enabled(FEATURE_KEYS.BACKLOG)
+					? [{ title: 'Бэклог', href: '#', icon: Layers3 }]
+					: []),
 			],
 		},
 		{

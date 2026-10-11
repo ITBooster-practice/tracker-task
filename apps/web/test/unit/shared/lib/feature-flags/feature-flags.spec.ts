@@ -59,6 +59,6 @@ describe('Runtime flags', () => {
 		vi.stubEnv('NEXT_PUBLIC_FEATURE_FLAGS_DEV_FALLBACK', '')
 		expect(getDevelopmentSnapshot()).toBeUndefined()
 		vi.stubEnv('NEXT_PUBLIC_FEATURE_FLAGS_DEV_FALLBACK', 'true')
-		expect(getDevelopmentSnapshot()?.flags).toHaveLength(4)
+		expect(getDevelopmentSnapshot()?.flags).toHaveLength(5)
 	})
 })
