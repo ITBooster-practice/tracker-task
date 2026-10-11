@@ -367,7 +367,7 @@ export function FeatureFlagsPageView() {
 					if (!open) setArchive(null)
 				}}
 				title={'Архивировать «' + (archive?.title ?? '') + '»?'}
-				description='Флаг больше не разрешит работу функции. История сохранится, а технический ключ останется занят навсегда. Убедитесь, что проверки удалены из выпущенного кода.'
+				description='Флаг будет выключен. Восстановить его из архива нельзя. История сохранится, а технический ключ останется занят навсегда. Убедитесь, что проверки удалены из выпущенного кода.'
 				confirmLabel='Архивировать'
 				isPending={mutation.isPending}
 				confirmDisabled={Boolean(archive?.required)}
