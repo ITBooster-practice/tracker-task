@@ -159,6 +159,7 @@ const ProfilePageView = () => {
 
 			<div className={profileSectionGridClassName}>
 				<ProfileSummaryCard
+					userId={profileQuery.data.id}
 					displayName={displayName}
 					email={profileQuery.data.email}
 					formName={formName}

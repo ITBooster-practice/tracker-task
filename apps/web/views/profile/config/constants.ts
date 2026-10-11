@@ -10,6 +10,12 @@ const profileCopy = {
 	subtitle: 'Управление профилем и приглашениями',
 	saveUnavailable: 'Сохранение профиля подключим после backend-части',
 	retryAction: 'Повторить',
+	userId: {
+		label: 'ID пользователя',
+		copyAction: 'Скопировать ID пользователя',
+		copySuccess: 'ID пользователя скопирован',
+		copyError: 'Не удалось скопировать ID. Выделите и скопируйте его вручную.',
+	},
 	fields: {
 		name: 'Имя',
 		email: 'Email',

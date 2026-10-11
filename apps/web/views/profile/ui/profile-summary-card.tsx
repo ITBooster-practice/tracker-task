@@ -10,7 +10,9 @@ import {
 	cn,
 	Input,
 	Label,
+	toast,
 } from '@repo/ui'
+import { Copy } from '@repo/ui/icons'
 
 import {
 	profileCopy,
@@ -37,6 +39,7 @@ import {
 } from '../lib/styles'
 
 type ProfileSummaryCardProps = {
+	userId: string
 	displayName: string
 	email: string
 	formName: string
@@ -50,6 +53,7 @@ type ProfileSummaryCardProps = {
 }
 
 const ProfileSummaryCard = ({
+	userId,
 	displayName,
 	email,
 	formName,
@@ -61,6 +65,15 @@ const ProfileSummaryCard = ({
 	onNameChange,
 	onEmailChange,
 }: ProfileSummaryCardProps) => {
+	const handleCopyUserId = async () => {
+		try {
+			await navigator.clipboard.writeText(userId)
+			toast.success(profileCopy.userId.copySuccess)
+		} catch {
+			toast.error(profileCopy.userId.copyError)
+		}
+	}
+
 	return (
 		<Card className={profileSectionCardClassName}>
 			<CardContent className='px-0'>
@@ -88,6 +101,26 @@ const ProfileSummaryCard = ({
 								</div>
 							</div>
 						</div>
+					</div>
+
+					<div className='flex items-center gap-3 border-b border-border/90 px-4 py-2 sm:px-5'>
+						<div className='min-w-0 flex-1 space-y-1'>
+							<p className={profileSummaryLabelClassName}>{profileCopy.userId.label}</p>
+							<code className='block select-all break-all text-xs text-muted-foreground'>
+								{userId}
+							</code>
+						</div>
+						<Button
+							type='button'
+							variant='ghost'
+							size='icon'
+							className='shrink-0'
+							aria-label={profileCopy.userId.copyAction}
+							title={profileCopy.userId.copyAction}
+							onClick={() => void handleCopyUserId()}
+						>
+							<Copy className='size-4' />
+						</Button>
 					</div>
 
 					<div className={profileSummaryFormGridClassName}>
