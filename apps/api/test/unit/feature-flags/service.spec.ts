@@ -28,6 +28,7 @@ function setup() {
 			create: vi.fn().mockResolvedValue(base),
 			update: vi.fn().mockResolvedValue(base),
 		},
+		user: { findMany: vi.fn().mockResolvedValue([{ id: 'developer', name: 'Макс' }]) },
 		featureFlagsRevision: {
 			findUniqueOrThrow: vi.fn().mockResolvedValue({ version: 4 }),
 			update: vi.fn().mockResolvedValue({ version: 5 }),
@@ -155,6 +156,59 @@ describe('Feature flag transactions', () => {
 		})
 		expect(await service.version()).toBe(4)
 	})
+	it('получает имена авторов одним запросом и сохраняет записи без профиля', async () => {
+		const { service, prisma } = setup()
+		prisma.featureFlag.findMany.mockResolvedValue([
+			base,
+			{ ...base, id: 'second' },
+			{ ...base, id: 'system', createdById: 'bootstrap' },
+			{ ...base, id: 'deleted', createdById: 'deleted-user' },
+			{ ...base, id: 'unnamed', createdById: 'unnamed-user' },
+		])
+		prisma.user.findMany.mockResolvedValue([
+			{ id: 'developer', name: ' Макс ' },
+			{ id: 'unnamed-user', name: '' },
+		])
+		const list = await service.list()
+		expect(list.flags.map((flag) => flag.createdByName)).toEqual([
+			'Макс',
+			'Макс',
+			'Система',
+			null,
+			null,
+		])
+		expect(prisma.user.findMany).toHaveBeenCalledOnce()
+		expect(prisma.user.findMany).toHaveBeenCalledWith({
+			where: { id: { in: ['developer', 'deleted-user', 'unnamed-user'] } },
+			select: { id: true, name: true },
+		})
+	})
+	it('показывает имя автора действия, сохраняя исходные данные истории', async () => {
+		const { service, prisma } = setup()
+		const entries = [
+			{ actorId: 'developer', before: null, after: { createdById: 'other-author' } },
+			{ actorId: 'bootstrap', before: null, after: null },
+			{ actorId: 'deleted-user', before: null, after: null },
+		]
+		prisma.featureFlagAudit.findMany.mockResolvedValue(entries)
+		expect(await service.audit(base.id)).toEqual(
+			entries.map((entry, index) => ({
+				...entry,
+				actorName: ['Макс', 'Система', null][index],
+			})),
+		)
+		expect(entries[0]).not.toHaveProperty('actorName')
+		expect(prisma.user.findMany).toHaveBeenCalledOnce()
+	})
+	it('не запрашивает профили для системных записей и пустого списка', async () => {
+		const { service, prisma } = setup()
+		prisma.featureFlag.findMany.mockResolvedValue([{ ...base, createdById: 'bootstrap' }])
+		expect((await service.list()).flags[0]?.createdByName).toBe('Система')
+		prisma.featureFlag.findMany.mockResolvedValue([])
+		expect((await service.list()).flags).toEqual([])
+		await service.audit(base.id)
+		expect(prisma.user.findMany).not.toHaveBeenCalled()
+	})
 	it('creates a flag, revision and audit before emitting a notification', async () => {
 		const { service, prisma, event } = setup()
 		const result = await service.create('developer', {
@@ -163,6 +217,7 @@ describe('Feature flag transactions', () => {
 			expiresAt: base.createdAt.toISOString(),
 		})
 		expect(result.version).toBe(5)
+		expect(result.flag.createdByName).toBe('Макс')
 		expect(prisma.featureFlag.create).toHaveBeenCalledWith({
 			data: {
 				key: base.key,
