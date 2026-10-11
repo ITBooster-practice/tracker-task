@@ -184,11 +184,11 @@ export function FeatureFlagsPageView() {
 								className={cn(
 									'grid min-w-0 gap-3 rounded-lg border bg-card p-4',
 									flag.archivedAt
-										? 'border-amber-500/20'
+										? 'border-amber-700 dark:border-amber-300'
 										: !flag.connectedFeature
-											? 'border-violet-500/40'
+											? 'border-violet-600 dark:border-violet-400'
 											: flag.enabled
-												? 'border-emerald-500/20'
+												? 'border-emerald-700 dark:border-emerald-300'
 												: undefined,
 								)}
 							>
