@@ -12,7 +12,7 @@
 - [Swagger](./swagger/README.md) — API документация
 - [Teams](./teams/README.md) — Команды, участники, приглашения, роли
 - [Tasks](./tasks.md) — Задачи, канбан-доска, логика position
-- [Runtime feature flags](./feature-flags.md) — Хранение, guard, аудит и SSE
+- [Runtime feature flags](./feature-flags.md) — Миграции, переключение, guard и SSE
 - [Разработчик системы](./system-developer.md) — Исключительное право управления флагами
 
 ### База данных
