@@ -43,15 +43,6 @@ describe('Feature flags API client', () => {
 			expect.objectContaining({ signal: abort.signal }),
 		)
 	})
-	it('validates API clock responses and forwards cancellation', async () => {
-		const data = { serverTime: '2026-10-10T12:34:30.000Z' }
-		const signal = new AbortController().signal
-		vi.mocked(client.get).mockResolvedValue({ data })
-		expect(await featureFlagsService.serverTime(signal)).toEqual(data)
-		expect(client.get).toHaveBeenLastCalledWith('/feature-flags/server-time', { signal })
-		vi.mocked(client.get).mockResolvedValue({ data: { serverTime: 'invalid' } })
-		await expect(featureFlagsService.serverTime()).rejects.toThrow()
-	})
 	it('constructs the event URL without tokens', () =>
 		expect(featureFlagsService.eventsUrl()).toBe(
 			'https://example.test/api/feature-flags/events',

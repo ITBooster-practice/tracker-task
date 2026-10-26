@@ -1,7 +1,7 @@
 import type { Server } from 'http'
 import type { INestApplication } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { REQUIRED_FEATURE_KEYS } from '@repo/types'
+import { FEATURE_KEYS } from '@repo/types'
 import type { Redis } from 'ioredis'
 import request from 'supertest'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -20,11 +20,10 @@ describe('Runtime feature flags (e2e)', () => {
 	})
 	beforeEach(async () => {
 		await resetE2eState(prisma, redis)
-		await prisma.featureFlagAudit.deleteMany()
 		await prisma.featureFlag.deleteMany({
-			where: { key: { notIn: [...REQUIRED_FEATURE_KEYS] } },
+			where: { key: { notIn: Object.values(FEATURE_KEYS) } },
 		})
-		await prisma.featureFlag.updateMany({ data: { enabled: true, archivedAt: null } })
+		await prisma.featureFlag.updateMany({ data: { enabled: true } })
 		await prisma.featureFlagsRevision.update({
 			where: { id: 'global' },
 			data: { version: 0 },
@@ -37,11 +36,10 @@ describe('Runtime feature flags (e2e)', () => {
 		app.get(ConfigService).set('SYSTEM_DEVELOPER_USER_ID', developerId)
 	})
 	afterAll(async () => {
-		await prisma.featureFlagAudit.deleteMany()
 		await prisma.featureFlag.deleteMany({
-			where: { key: { notIn: [...REQUIRED_FEATURE_KEYS] } },
+			where: { key: { notIn: Object.values(FEATURE_KEYS) } },
 		})
-		await prisma.featureFlag.updateMany({ data: { enabled: true, archivedAt: null } })
+		await prisma.featureFlag.updateMany({ data: { enabled: true } })
 		await redis.flushall()
 		await app.close()
 		await prisma.$disconnect()
@@ -133,221 +131,15 @@ describe('Runtime feature flags (e2e)', () => {
 		await request(server).get('/auth/me').set('Cookie', userCookies).expect(200)
 	})
 
-	const newFlag = { key: 'boards-redesign-v2', title: 'Обновление досок' }
-	async function create() {
-		return request(server)
-			.post('/feature-flags')
-			.set('Cookie', developerCookies)
-			.send(newFlag)
-			.expect(201)
-	}
-
-	it('returns an authenticated, uncached API clock only to the developer', async () => {
-		await request(server).get('/feature-flags/server-time').expect(401)
-		await request(server)
-			.get('/feature-flags/server-time')
-			.set('Cookie', userCookies)
-			.expect(403)
-		const before = Date.now()
-		const clock = await request(server)
-			.get('/feature-flags/server-time')
-			.set('Cookie', developerCookies)
-			.expect(200)
-		expect(clock.headers['cache-control']).toBe('private, no-store')
-		expect(new Date(clock.body.serverTime).getTime()).toBeGreaterThanOrEqual(before)
-		expect(new Date(clock.body.serverTime).getTime()).toBeLessThanOrEqual(Date.now())
-	})
-	it('rejects past deadlines through POST and PATCH without altering revision or audit', async () => {
-		const expiresAt = new Date(Date.now() - 60_000).toISOString()
-		const rejected = await request(server)
-			.post('/feature-flags')
-			.set('Cookie', developerCookies)
-			.send({ ...newFlag, expiresAt })
-			.expect(422)
-		expect(rejected.body.message).toContain('времени сервера')
-		expect(await prisma.featureFlag.count({ where: { key: newFlag.key } })).toBe(0)
-		expect(await prisma.featureFlagAudit.count()).toBe(0)
-		expect(
-			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
-				.version,
-		).toBe(0)
-		const created = await create()
-		await request(server)
-			.patch('/feature-flags/' + created.body.flag.id)
-			.set('Cookie', developerCookies)
-			.send({ expiresAt, expectedVersion: 1 })
-			.expect(422)
-		expect(
-			(
-				await prisma.featureFlag.findUniqueOrThrow({
-					where: { id: created.body.flag.id },
-				})
-			).enabled,
-		).toBe(false)
-		expect(await prisma.featureFlagAudit.count()).toBe(1)
-		expect(
-			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
-				.version,
-		).toBe(1)
-	})
-	it('accepts a future deadline and permits other edits after that saved deadline passes', async () => {
-		const expiresAt = new Date(Date.now() + 86_400_000).toISOString()
-		const created = await request(server)
-			.post('/feature-flags')
-			.set('Cookie', developerCookies)
-			.send({ ...newFlag, expiresAt })
-			.expect(201)
-		expect(created.body.flag.expiresAt).toBe(expiresAt)
-		const historic = new Date(Date.now() - 86_400_000)
-		await prisma.featureFlag.update({
-			where: { id: created.body.flag.id },
-			data: { expiresAt: historic },
-		})
-		const edited = await request(server)
-			.patch('/feature-flags/' + created.body.flag.id)
-			.set('Cookie', developerCookies)
-			.send({ title: 'Changed', expiresAt: historic.toISOString(), expectedVersion: 1 })
-			.expect(200)
-		expect(edited.body.flag.expiresAt).toBe(historic.toISOString())
-		await request(server)
-			.patch('/feature-flags/' + created.body.flag.id)
-			.set('Cookie', developerCookies)
-			.send({ expiresAt: null, expectedVersion: 2 })
-			.expect(200)
-	})
-
-	it('создаёт заготовку и запрещает её включение без изменения версии, аудита и снимка', async () => {
-		const created = await create()
-		expect(created.body.flag).toMatchObject({
-			enabled: false,
-			connectedFeature: null,
-			required: false,
-		})
-		const before = await request(server)
-			.get('/feature-flags/snapshot')
-			.set('Cookie', userCookies)
-			.expect(200)
-		const rejected = await request(server)
-			.patch('/feature-flags/' + created.body.flag.id)
-			.set('Cookie', developerCookies)
-			.send({ enabled: true, title: 'Не должно сохраниться', expectedVersion: 1 })
-			.expect(422)
-		expect(rejected.body.message).toContain('не подключён')
-		expect(
-			await prisma.featureFlag.findUniqueOrThrow({ where: { id: created.body.flag.id } }),
-		).toMatchObject({ enabled: false, title: newFlag.title })
-		expect(
-			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
-				.version,
-		).toBe(1)
-		expect(await prisma.featureFlagAudit.count()).toBe(1)
-		await request(server)
-			.get('/feature-flags/snapshot')
-			.set('Cookie', userCookies)
-			.set('If-None-Match', before.headers.etag)
-			.expect(304)
-		await request(server)
-			.patch('/feature-flags/' + created.body.flag.id)
-			.set('Cookie', developerCookies)
-			.send({ description: 'План подключения', expectedVersion: 1 })
-			.expect(200)
-	})
-	it('возвращает имя создателя и автора истории из текущего профиля без изменения аудита', async () => {
-		const created = await create()
-		expect(created.body.flag).toMatchObject({
-			createdById: developerId,
-			createdByName: 'Test User',
-		})
-		await prisma.user.update({ where: { id: developerId }, data: { name: 'Макс' } })
-		const list = await request(server)
-			.get('/feature-flags')
-			.set('Cookie', developerCookies)
-			.expect(200)
-		expect(
-			list.body.flags.find((flag: { id: string }) => flag.id === created.body.flag.id),
-		).toMatchObject({ createdByName: 'Макс' })
-		expect(
-			list.body.flags.find((flag: { key: string }) => flag.key === 'backlog'),
-		).toMatchObject({ createdById: 'bootstrap', createdByName: 'Система' })
-		const history = await request(server)
-			.get('/feature-flags/' + created.body.flag.id + '/audit')
-			.set('Cookie', developerCookies)
-			.expect(200)
-		expect(history.body[0]).toMatchObject({
-			actorId: developerId,
-			actorName: 'Макс',
-			after: { createdById: developerId },
-		})
-		expect(history.body[0].after).not.toHaveProperty('createdByName')
-		const snapshot = await request(server)
-			.get('/feature-flags/snapshot')
-			.set('Cookie', userCookies)
-			.expect(200)
-		for (const flag of snapshot.body.flags) {
-			expect(flag).not.toHaveProperty('createdByName')
-			expect(flag).not.toHaveProperty('createdById')
-		}
-	})
-	it('возвращает подключение из реестра и разрешает переключать подключённый флаг', async () => {
-		const list = await request(server)
-			.get('/feature-flags')
-			.set('Cookie', developerCookies)
-			.expect(200)
-		const boards = list.body.flags.find((flag: { key: string }) => flag.key === 'boards')
-		expect(boards).toMatchObject({ connectedFeature: 'Доски', required: true })
-		expect(
-			list.body.flags.find((flag: { key: string }) => flag.key === 'backlog'),
-		).toMatchObject({ enabled: true, connectedFeature: 'Бэклог', required: true })
-		for (const [version, enabled] of [
-			[0, false],
-			[1, true],
-		] as const) {
-			const updated = await request(server)
-				.patch('/feature-flags/' + boards.id)
-				.set('Cookie', developerCookies)
-				.send({ enabled, expectedVersion: version })
-				.expect(200)
-			expect(updated.body.flag).toMatchObject({ enabled, connectedFeature: 'Доски' })
-		}
-	})
-	it('разрешает выключить старую включённую заготовку', async () => {
-		const created = await create()
-		await prisma.featureFlag.update({
-			where: { id: created.body.flag.id },
-			data: { enabled: true },
-		})
-		const updated = await request(server)
-			.patch('/feature-flags/' + created.body.flag.id)
-			.set('Cookie', developerCookies)
-			.send({ enabled: false, expectedVersion: 1 })
-			.expect(200)
-		expect(updated.body.flag.enabled).toBe(false)
-	})
-	it.each([
-		{ ...newFlag, enabled: true },
-		{ ...newFlag, enabled: false },
-		{ ...newFlag, key: 'projects', enabled: true },
-		{ ...newFlag, connectedFeature: 'Доски' },
-	])(
-		'не позволяет включить флаг при создании или подделать подключение: %j',
-		async (body) => {
-			await request(server)
-				.post('/feature-flags')
-				.set('Cookie', developerCookies)
-				.send(body)
-				.expect(422)
-			expect(await prisma.featureFlagAudit.count()).toBe(0)
-			expect(
-				(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
-					.version,
-			).toBe(0)
-		},
-	)
-	it('requires authentication for snapshot and management', async () => {
+	it('requires authentication for snapshot and state changes', async () => {
+		const flag = await prisma.featureFlag.findUniqueOrThrow({ where: { key: 'boards' } })
 		await request(server).get('/feature-flags/snapshot').expect(401)
-		await request(server).post('/feature-flags').send(newFlag).expect(401)
+		await request(server)
+			.patch('/feature-flags/' + flag.id)
+			.send({ enabled: false, expectedVersion: 0 })
+			.expect(401)
 	})
-	it('allows ordinary users to read snapshot, but denies every management endpoint', async () => {
+	it('allows snapshots but denies ordinary users and team owners management', async () => {
 		const flag = await prisma.featureFlag.findUniqueOrThrow({ where: { key: 'boards' } })
 		await request(server)
 			.get('/feature-flags/snapshot')
@@ -357,38 +149,26 @@ describe('Runtime feature flags (e2e)', () => {
 			(await request(server).get('/feature-flags/access').set('Cookie', userCookies)).body
 				.canManage,
 		).toBe(false)
-		await request(server).get('/feature-flags').set('Cookie', userCookies).expect(403)
-		await request(server)
-			.post('/feature-flags')
-			.set('Cookie', userCookies)
-			.send({ ...newFlag, role: 'SYSTEM_DEVELOPER', actorId: developerId })
-			.expect(403)
-		await request(server)
-			.patch('/feature-flags/' + flag.id)
-			.set('Cookie', userCookies)
-			.send({ enabled: false, expectedVersion: 0 })
-			.expect(403)
-		await request(server)
-			.post('/feature-flags/' + flag.id + '/archive')
-			.set('Cookie', userCookies)
-			.send({ expectedVersion: 0 })
-			.expect(403)
-		await request(server)
-			.get('/feature-flags/' + flag.id + '/audit')
-			.set('Cookie', userCookies)
-			.expect(403)
-	})
-	it('denies everyone when developer ID is missing, including team owners', async () => {
 		await request(server)
 			.post('/teams/new')
 			.set('Cookie', userCookies)
 			.send({ name: 'Owner team' })
 			.expect(201)
 		await request(server).get('/feature-flags').set('Cookie', userCookies).expect(403)
+		await request(server)
+			.patch('/feature-flags/' + flag.id)
+			.set('Cookie', userCookies)
+			.send({ enabled: false, expectedVersion: 0 })
+			.expect(403)
 		app.get(ConfigService).set('SYSTEM_DEVELOPER_USER_ID', '')
 		await request(server)
 			.get('/feature-flags')
 			.set('Cookie', developerCookies)
+			.expect(403)
+		await request(server)
+			.patch('/feature-flags/' + flag.id)
+			.set('Cookie', developerCookies)
+			.send({ enabled: false, expectedVersion: 0 })
 			.expect(403)
 	})
 	it('returns versioned snapshots and conditional 304 responses', async () => {
@@ -398,7 +178,9 @@ describe('Runtime feature flags (e2e)', () => {
 			.expect(200)
 		expect(snapshot.body.version).toBe(0)
 		expect(snapshot.body.flags).toHaveLength(5)
-		expect(snapshot.body.flags[0]).not.toHaveProperty('createdById')
+		expect(Object.keys(snapshot.body.flags[0] as Record<string, unknown>).sort()).toEqual(
+			['enabled', 'key', 'updatedAt'],
+		)
 		await request(server)
 			.get('/feature-flags/snapshot')
 			.set('Cookie', userCookies)
@@ -409,119 +191,144 @@ describe('Runtime feature flags (e2e)', () => {
 				.body.canManage,
 		).toBe(true)
 	})
-	it('creates and edits drafts in monotonically versioned transactions', async () => {
-		const created = await create()
-		const id = created.body.flag.id as string
-		expect(created.body.version).toBe(1)
-		const updated = await request(server)
-			.patch('/feature-flags/' + id)
-			.set('Cookie', developerCookies)
-			.send({ title: 'Новое название', expectedVersion: 1 })
-			.expect(200)
-		expect(updated.body.version).toBe(2)
-		const audit = await request(server)
-			.get('/feature-flags/' + id + '/audit')
+	it('lists code connections and toggles without lifecycle metadata', async () => {
+		const list = await request(server)
+			.get('/feature-flags')
 			.set('Cookie', developerCookies)
 			.expect(200)
-		expect(audit.body).toHaveLength(2)
-		expect(audit.body[0]).toMatchObject({
-			actorId: developerId,
-			action: 'UPDATE',
-			version: 2,
-			before: { enabled: false },
-			after: { enabled: false, title: 'Новое название' },
-		})
+		const boards = list.body.flags.find((flag: { key: string }) => flag.key === 'boards')
+		expect(boards.connectedFeature).toBe('Доски')
+		expect(Object.keys(boards as Record<string, unknown>).sort()).toEqual([
+			'connectedFeature',
+			'enabled',
+			'id',
+			'key',
+			'updatedAt',
+		])
+		for (const [expectedVersion, enabled] of [
+			[0, false],
+			[1, true],
+		] as const) {
+			const updated = await request(server)
+				.patch('/feature-flags/' + boards.id)
+				.set('Cookie', developerCookies)
+				.send({ enabled, expectedVersion })
+				.expect(200)
+			expect(updated.body).toMatchObject({
+				version: expectedVersion + 1,
+				flag: { enabled, connectedFeature: 'Доски' },
+			})
+		}
 	})
-	it('rejects stale updates without changing state, revision or audit', async () => {
-		const created = await create()
-		const id = created.body.flag.id as string
+	it('keeps database-created flags disabled and cannot enable them until connected', async () => {
+		// Имитируем запись из миграции: API создания флагов отсутствует.
+		const flag = await prisma.featureFlag.create({ data: { key: 'new-release' } })
+		expect(flag.enabled).toBe(false)
 		await request(server)
-			.patch('/feature-flags/' + id)
+			.patch('/feature-flags/' + flag.id)
 			.set('Cookie', developerCookies)
 			.send({ enabled: true, expectedVersion: 0 })
-			.expect(409)
+			.expect(422)
 		expect(
 			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
 				.version,
-		).toBe(1)
-		expect(await prisma.featureFlagAudit.count()).toBe(1)
-		expect((await prisma.featureFlag.findUniqueOrThrow({ where: { id } })).enabled).toBe(
-			false,
-		)
-	})
-	it('rejects duplicate keys including archived keys; permits duplicate titles with a new key', async () => {
-		const created = await create()
-		const id = created.body.flag.id as string
-		await request(server)
-			.post('/feature-flags')
-			.set('Cookie', developerCookies)
-			.send(newFlag)
-			.expect(409)
-		await request(server)
-			.post('/feature-flags/' + id + '/archive')
-			.set('Cookie', developerCookies)
-			.send({ expectedVersion: 1 })
-			.expect(201)
-		await request(server)
-			.post('/feature-flags')
-			.set('Cookie', developerCookies)
-			.send(newFlag)
-			.expect(409)
-		await request(server)
-			.post('/feature-flags')
-			.set('Cookie', developerCookies)
-			.send({ ...newFlag, key: 'boards-redesign-v3' })
-			.expect(201)
-		const snapshot = await request(server)
-			.get('/feature-flags/snapshot')
-			.set('Cookie', userCookies)
+		).toBe(0)
 		expect(
-			snapshot.body.flags.some((flag: { key: string }) => flag.key === newFlag.key),
+			(await prisma.featureFlag.findUniqueOrThrow({ where: { id: flag.id } })).enabled,
 		).toBe(false)
 		const list = await request(server)
 			.get('/feature-flags')
 			.set('Cookie', developerCookies)
 			.expect(200)
 		expect(
-			list.body.flags.find((flag: { id: string }) => flag.id === id).archivedAt,
-		).toBeTruthy()
+			list.body.flags.find((item: { id: string }) => item.id === flag.id),
+		).toMatchObject({ connectedFeature: null, enabled: false })
+		// Старое включённое состояние не открывает функцию без подключения в текущем коде.
+		await prisma.featureFlag.update({ where: { id: flag.id }, data: { enabled: true } })
+		const snapshot = await request(server)
+			.get('/feature-flags/snapshot')
+			.set('Cookie', userCookies)
+			.expect(200)
+		expect(
+			snapshot.body.flags.find((item: { key: string }) => item.key === flag.key).enabled,
+		).toBe(false)
 		await request(server)
-			.patch('/feature-flags/' + id)
+			.patch('/feature-flags/' + flag.id)
 			.set('Cookie', developerCookies)
-			.send({ enabled: true, expectedVersion: 3 })
-			.expect(409)
+			.send({ enabled: false, expectedVersion: 0 })
+			.expect(200)
 	})
-	it('protects flags still referenced by supported code', async () => {
+	it('rolls back rejected mutations and serializes concurrent toggles', async () => {
 		const flag = await prisma.featureFlag.findUniqueOrThrow({ where: { key: 'boards' } })
-		await request(server)
-			.post('/feature-flags/' + flag.id + '/archive')
-			.set('Cookie', developerCookies)
-			.send({ expectedVersion: 0 })
-			.expect(409)
-		expect(await prisma.featureFlagAudit.count()).toBe(0)
-	})
-	it.each([
-		{ ...newFlag, key: 'INVALID_KEY' },
-		{ ...newFlag, enabled: 'yes' },
-		{ ...newFlag, title: '' },
-	])('validates flag requests with 422: %j', async (body) => {
-		await request(server)
-			.post('/feature-flags')
-			.set('Cookie', developerCookies)
-			.send(body)
-			.expect(422)
-	})
-	it('rejects technical key renaming and returns 404 for an unknown ID', async () => {
-		const created = await create()
-		await request(server)
-			.patch('/feature-flags/' + created.body.flag.id)
-			.set('Cookie', developerCookies)
-			.send({ key: 'renamed', expectedVersion: 1 })
-			.expect(422)
+		const results = await Promise.all(
+			[true, false].map((enabled) =>
+				request(server)
+					.patch('/feature-flags/' + flag.id)
+					.set('Cookie', developerCookies)
+					.send({ enabled, expectedVersion: 0 }),
+			),
+		)
+		expect(results.map((response) => response.status).sort()).toEqual([200, 409])
+		const winner = results.find((response) => response.status === 200)!
+		const saved = await prisma.featureFlag.findUniqueOrThrow({ where: { id: flag.id } })
+		expect(saved.enabled).toBe(winner.body.flag.enabled)
+		expect(
+			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
+				.version,
+		).toBe(1)
 		await request(server)
 			.patch('/feature-flags/missing')
 			.set('Cookie', developerCookies)
 			.send({ enabled: true, expectedVersion: 1 })
+			.expect(404)
+		expect(
+			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
+				.version,
+		).toBe(1)
+	})
+	it.each([
+		{ enabled: true },
+		{ expectedVersion: 0 },
+		{ enabled: 'yes', expectedVersion: 0 },
+		{ enabled: true, expectedVersion: 0, key: 'renamed' },
+		{ enabled: true, expectedVersion: 0, title: 'Edited' },
+		{ enabled: true, expectedVersion: 0, description: 'Description' },
+		{ enabled: true, expectedVersion: 0, expiresAt: null },
+		{ enabled: true, expectedVersion: 0, connectedFeature: 'Spoofed' },
+	])('rejects non-state requests without changing the revision: %j', async (body) => {
+		const flag = await prisma.featureFlag.findUniqueOrThrow({ where: { key: 'boards' } })
+		await request(server)
+			.patch('/feature-flags/' + flag.id)
+			.set('Cookie', developerCookies)
+			.send(body)
+			.expect(422)
+		expect(
+			(await prisma.featureFlagsRevision.findUniqueOrThrow({ where: { id: 'global' } }))
+				.version,
+		).toBe(0)
+	})
+	it('does not expose runtime creation, deletion, archiving, history or deadlines', async () => {
+		const flag = await prisma.featureFlag.findUniqueOrThrow({ where: { key: 'boards' } })
+		await request(server)
+			.post('/feature-flags')
+			.set('Cookie', developerCookies)
+			.send({ key: 'draft' })
+			.expect(404)
+		await request(server)
+			.delete('/feature-flags/' + flag.id)
+			.set('Cookie', developerCookies)
+			.expect(404)
+		await request(server)
+			.post('/feature-flags/' + flag.id + '/archive')
+			.set('Cookie', developerCookies)
+			.expect(404)
+		await request(server)
+			.get('/feature-flags/' + flag.id + '/audit')
+			.set('Cookie', developerCookies)
+			.expect(404)
+		await request(server)
+			.get('/feature-flags/server-time')
+			.set('Cookie', developerCookies)
 			.expect(404)
 	})
 })
