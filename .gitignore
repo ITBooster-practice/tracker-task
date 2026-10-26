@@ -67,6 +67,7 @@ pnpm-debug.log*
 *.pem
 
 # AI agents
+/AGENTS.md
 .agents/
 .claude/
 .codex/
