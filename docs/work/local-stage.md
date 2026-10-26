@@ -2,17 +2,17 @@
 
 Это **второе из трёх окружений** проекта:
 
-| #   | Окружение        | Где живёт    | Как запускается                                           |
-| --- | ---------------- | ------------ | --------------------------------------------------------- |
-| 1   | **dev**          | Твой ноутбук | `pnpm dev` — API/web с горячей перезагрузкой              |
-| 2   | **local-stage**  | Твой ноутбук | `pnpm local --build` — сборка и запуск production-образов |
-| 3   | **stage / prod** | VPS          | CI/CD или ручной деплой на сервер                         |
+| #   | Окружение        | Где живёт    | Как запускается                                         |
+| --- | ---------------- | ------------ | ------------------------------------------------------- |
+| 1   | **dev**          | Твой ноутбук | `pnpm dev` — API/web с горячей перезагрузкой            |
+| 2   | **local-stage**  | Твой ноутбук | `pnpm local:build` — сборка и запуск production-образов |
+| 3   | **stage / prod** | VPS          | CI/CD или ручной деплой на сервер                       |
 
 Цель local-stage — **убедиться, что Docker-образы собираются и работают правильно** прежде чем отправлять их на VPS.
 
 ---
 
-Состояния флагов меняются через `/admin/feature-flags` без пересборки. Создание и подключение выполняются кодом и миграциями. Для доступа задайте `SYSTEM_DEVELOPER_USER_ID` в окружении API; [настройка разработчика](../backend/system-developer.md), [работа с флагами](./feature-flags.md). Разовый переход на упрощённую схему требует [остановки старого API перед миграцией](./feature-flags.md#переход-с-прежней-модели). Для серверных запросов web Compose задаёт `API_INTERNAL_URL=http://api:3000`; браузер использует `NEXT_PUBLIC_API_URL=http://localhost/api` через Caddy.
+Состояния флагов меняются через `/admin/feature-flags` без пересборки. Создание и подключение выполняются кодом и миграциями. Для доступа задайте `SYSTEM_DEVELOPER_USER_ID` в окружении API; [настройка разработчика](../backend/system-developer.md), [работа с флагами](./feature-flags.md). [Порядок перехода на упрощённую схему](./feature-flags.md#переход-с-прежней-модели). Для серверных запросов web Compose задаёт `API_INTERNAL_URL=http://api:3000`; браузер использует `NEXT_PUBLIC_API_URL=http://localhost/api` через Caddy.
 
 ## Что запускается
 
@@ -46,13 +46,13 @@ http://localhost:8026           ← Mailpit (перехватчик писем, 
 Из **корня монорепо** выполните по порядку:
 
 ```bash
-pnpm local --build
+pnpm local:build
 pnpm local:migrate
 ```
 
 Первая команда собирает образы API и web и поднимает стек (Caddy, Postgres, Redis, Mailpit, API и web). После запуска API вторая команда применяет миграции БД. Это два отдельных действия: сборка и запуск контейнеров миграции не применяют.
 
-`pnpm local --build` передаёт аргумент `--build` существующему скрипту `local` и выполняет `docker compose -f docker-compose.local.yml up -d --build`. Обычный `pnpm local` запускает стек без пересборки; используйте его, когда образы уже соответствуют текущему коду.
+`pnpm local:build` выполняет `docker compose -f docker-compose.local.yml up -d --build`. Прежняя запись `pnpm local --build` также работает. Обычный `pnpm local` запускает стек без пересборки; используйте его, когда образы уже соответствуют текущему коду.
 
 Первая сборка скачивает зависимости. Следующие сборки используют кэш неизменившихся слоёв.
 
@@ -98,7 +98,7 @@ docker compose -f docker-compose.local.yml exec api sh -c "node_modules/.bin/pri
 После обновления кода или добавления миграций выполните:
 
 ```bash
-pnpm local --build
+pnpm local:build
 pnpm local:migrate
 ```
 
@@ -107,17 +107,17 @@ pnpm local:migrate
 Если изменился только API:
 
 ```bash
-pnpm local --build api
+pnpm local:build api
 pnpm local:migrate
 ```
 
 Если изменился только web:
 
 ```bash
-pnpm local --build web
+pnpm local:build web
 ```
 
-При изменении общих пакетов, которые используют API и web, пересоберите оба сервиса через `pnpm local --build`.
+При изменении общих пакетов, которые используют API и web, пересоберите оба сервиса через `pnpm local:build`.
 
 Если Prisma сообщает `No pending migrations to apply`, хотя в репозитории появились новые миграции, проверьте файлы внутри контейнера:
 
@@ -345,7 +345,7 @@ if (transport === 'smtp') {
 
 |               | dev                 | local-stage                | stage/prod (VPS)           |
 | ------------- | ------------------- | -------------------------- | -------------------------- |
-| Запуск        | `pnpm dev`          | `pnpm local --build`       | CI/CD или вручную          |
+| Запуск        | `pnpm dev`          | `pnpm local:build`         | CI/CD или вручную          |
 | API           | ts-node, hot reload | production-сборка в Docker | production-сборка в Docker |
 | Web           | Next.js dev server  | Next.js standalone         | Next.js standalone         |
 | БД            | локальная / Docker  | Docker (postgres:16)       | Managed DB или Docker      |

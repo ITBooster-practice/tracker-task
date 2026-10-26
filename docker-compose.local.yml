@@ -1,7 +1,7 @@
 # Локальный стек для проверки production-образов.
 #
 # Запуск (одной командой — сборка образов + поднятие):
-#   pnpm local --build
+#   pnpm local:build
 # либо вручную:
 #   docker compose -f docker-compose.local.yml up -d --build
 #
