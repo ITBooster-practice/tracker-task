@@ -14,36 +14,15 @@ datasource db {
 }
 
 model FeatureFlag {
-  id          String             @id @default(uuid())
-  key         String             @unique
-  title       String
-  enabled     Boolean            @default(false)
-  description String?
-  createdById String
-  expiresAt   DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  archivedAt  DateTime?
-  audit       FeatureFlagAudit[]
+  id        String   @id @default(uuid())
+  key       String   @unique
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
 }
 
 model FeatureFlagsRevision {
   id      String @id @default("global")
   version Int    @default(0)
-}
-
-model FeatureFlagAudit {
-  id        String      @id @default(uuid())
-  flagId    String
-  flag      FeatureFlag @relation(fields: [flagId], references: [id], onDelete: Restrict)
-  actorId   String
-  action    String
-  before    Json?
-  after     Json?
-  version   Int
-  createdAt DateTime    @default(now())
-
-  @@index([flagId, createdAt])
 }
 
 enum TaskStatus {

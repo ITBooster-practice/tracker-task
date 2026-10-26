@@ -4,22 +4,28 @@ import { PrismaService } from '../../../prisma/prisma.service'
 import { FeatureFlagsService } from '../../../src/feature-flags/feature-flags.service'
 
 describe('Feature availability', () => {
-	it.each([
-		null,
-		{ enabled: false, archivedAt: null },
-		{ enabled: true, archivedAt: new Date() },
-	])('denies missing, disabled or archived flags: %j', async (flag) => {
-		const prisma = { featureFlag: { findUnique: vi.fn().mockResolvedValue(flag) } }
+	it.each([null, { enabled: false }])(
+		'denies missing or disabled flags: %j',
+		async (flag) => {
+			const prisma = { featureFlag: { findUnique: vi.fn().mockResolvedValue(flag) } }
+			const service = new FeatureFlagsService(prisma as unknown as PrismaService)
+			await expect(service.requireEnabled('boards')).rejects.toThrow(ForbiddenException)
+			expect(prisma.featureFlag.findUnique).toHaveBeenCalled()
+		},
+	)
+	it('denies unconnected keys even when a database record is enabled', async () => {
+		const prisma = {
+			featureFlag: { findUnique: vi.fn().mockResolvedValue({ enabled: true }) },
+		}
 		const service = new FeatureFlagsService(prisma as unknown as PrismaService)
 		await expect(service.requireEnabled('unknown-key')).rejects.toThrow(
 			ForbiddenException,
 		)
+		expect(prisma.featureFlag.findUnique).not.toHaveBeenCalled()
 	})
-	it('allows only an active enabled flag', async () => {
+	it('allows an existing enabled and connected flag', async () => {
 		const prisma = {
-			featureFlag: {
-				findUnique: vi.fn().mockResolvedValue({ enabled: true, archivedAt: null }),
-			},
+			featureFlag: { findUnique: vi.fn().mockResolvedValue({ enabled: true }) },
 		}
 		expect(
 			await new FeatureFlagsService(prisma as unknown as PrismaService).isEnabled(
@@ -27,7 +33,7 @@ describe('Feature availability', () => {
 			),
 		).toBe(true)
 	})
-	it('does not execute guarded operations using stale state when the DB fails', async () => {
+	it('does not execute guarded operations when the DB fails', async () => {
 		const prisma = {
 			featureFlag: { findUnique: vi.fn().mockRejectedValue(new Error('DB unavailable')) },
 		}

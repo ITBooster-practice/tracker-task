@@ -29,8 +29,6 @@ describe('Feature flag SSE across API instances (e2e)', () => {
 	})
 	beforeEach(async () => {
 		await resetE2eState(prisma, redis)
-		await prisma.featureFlagAudit.deleteMany()
-		await prisma.featureFlag.deleteMany({ where: { key: { startsWith: 'sse-' } } })
 		cookies = (await registerAndLogin(first, 'sse-developer@example.com')).cookies
 		userId = (
 			await prisma.user.findUniqueOrThrow({
@@ -41,8 +39,6 @@ describe('Feature flag SSE across API instances (e2e)', () => {
 		await second.get(FeatureFlagsEventsService).reconcile()
 	})
 	afterAll(async () => {
-		await prisma.featureFlagAudit.deleteMany()
-		await prisma.featureFlag.deleteMany({ where: { key: { startsWith: 'sse-' } } })
 		await first.close()
 		await second.close()
 		await prisma.$disconnect()
@@ -85,16 +81,19 @@ describe('Feature flag SSE across API instances (e2e)', () => {
 		const stream = await connect()
 		try {
 			await stream.waitForVersion(current.version)
-			const created = await request(first.getHttpServer() as Server)
-				.post('/feature-flags')
+			const flag = await prisma.featureFlag.findUniqueOrThrow({
+				where: { key: 'boards' },
+			})
+			const updated = await request(first.getHttpServer() as Server)
+				.patch('/feature-flags/' + flag.id)
 				.set('Cookie', cookies)
-				.send({ key: 'sse-cross-instance', title: 'SSE test' })
-				.expect(201)
-			await stream.waitForVersion(created.body.version as number)
+				.send({ enabled: !flag.enabled, expectedVersion: current.version })
+				.expect(200)
+			await stream.waitForVersion(updated.body.version as number)
 			stream.abort.abort()
 			const reconnect = await connect()
 			try {
-				await reconnect.waitForVersion(created.body.version as number)
+				await reconnect.waitForVersion(updated.body.version as number)
 			} finally {
 				reconnect.abort.abort()
 			}
@@ -112,13 +111,16 @@ describe('Feature flag SSE across API instances (e2e)', () => {
 			.mockRejectedValue(new Error('Transport unavailable'))
 		try {
 			await stream.waitForVersion(current.version)
-			const created = await request(first.getHttpServer() as Server)
-				.post('/feature-flags')
+			const flag = await prisma.featureFlag.findUniqueOrThrow({
+				where: { key: 'boards' },
+			})
+			const updated = await request(first.getHttpServer() as Server)
+				.patch('/feature-flags/' + flag.id)
 				.set('Cookie', cookies)
-				.send({ key: 'sse-lost-message', title: 'SSE retry' })
-				.expect(201)
+				.send({ enabled: !flag.enabled, expectedVersion: current.version })
+				.expect(200)
 			await second.get(FeatureFlagsEventsService).reconcile()
-			await stream.waitForVersion(created.body.version as number)
+			await stream.waitForVersion(updated.body.version as number)
 		} finally {
 			publish.mockRestore()
 			stream.abort.abort()

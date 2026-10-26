@@ -18,6 +18,3 @@ export const FEATURE_REGISTRY: Readonly<Record<string, string>> = {
 export function getConnectedFeature(key: string): string | null {
 	return Object.hasOwn(FEATURE_REGISTRY, key) ? (FEATURE_REGISTRY[key] ?? null) : null
 }
-
-// Удалять ключ можно только после удаления его проверок из всех поддерживаемых версий приложения.
-export const REQUIRED_FEATURE_KEYS: readonly string[] = Object.keys(FEATURE_REGISTRY)
