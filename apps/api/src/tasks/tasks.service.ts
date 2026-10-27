@@ -11,6 +11,10 @@ import { MoveTaskDto } from './dto/move-task.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 
+// The board relation stays internal until the board API contract is introduced.
+const taskApiOmit = { boardColumnId: true } as const
+type ApiTask = Omit<Task, 'boardColumnId'>
+
 @Injectable()
 export class TasksService {
 	constructor(private readonly prisma: PrismaService) {}
@@ -56,6 +60,7 @@ export class TasksService {
 		const position = maxPosition === null ? 1 : maxPosition + 1
 
 		return this.prisma.task.create({
+			omit: taskApiOmit,
 			data: {
 				title: dto.title,
 				description: dto.description,
@@ -91,6 +96,7 @@ export class TasksService {
 
 		const [tasks, total] = await Promise.all([
 			this.prisma.task.findMany({
+				omit: taskApiOmit,
 				where,
 				orderBy: [{ status: 'asc' }, { position: 'asc' }],
 				skip,
@@ -108,7 +114,10 @@ export class TasksService {
 	}
 
 	private async findTaskOrThrow(projectId: string, taskId: string) {
-		const task = await this.prisma.task.findUnique({ where: { id: taskId } })
+		const task = await this.prisma.task.findUnique({
+			where: { id: taskId },
+			omit: taskApiOmit,
+		})
 
 		if (!task || task.projectId !== projectId) {
 			throw new NotFoundException('Задача не найдена в этом проекте')
@@ -136,6 +145,7 @@ export class TasksService {
 		}
 
 		return this.prisma.task.update({
+			omit: taskApiOmit,
 			where: { id: taskId },
 			data: {
 				...(dto.title !== undefined && { title: dto.title }),
@@ -152,16 +162,17 @@ export class TasksService {
 		teamId: string,
 		projectId: string,
 		userId: string,
-	): Promise<Array<{ status: TaskStatus; tasks: Task[] }>> {
+	): Promise<Array<{ status: TaskStatus; tasks: ApiTask[] }>> {
 		await this.assertTeamMember(teamId, userId)
 		await this.findProjectOrThrow(teamId, projectId)
 
 		const tasks = await this.prisma.task.findMany({
+			omit: taskApiOmit,
 			where: { projectId },
 			orderBy: { position: 'asc' },
 		})
 
-		const grouped = new Map<TaskStatus, Task[]>(
+		const grouped = new Map<TaskStatus, ApiTask[]>(
 			Object.values(TaskStatus).map((s) => [s, []]),
 		)
 
@@ -184,6 +195,7 @@ export class TasksService {
 		await this.findTaskOrThrow(projectId, taskId)
 
 		return this.prisma.task.update({
+			omit: taskApiOmit,
 			where: { id: taskId },
 			data: {
 				status: dto.status as never,

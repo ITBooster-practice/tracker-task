@@ -117,28 +117,64 @@ model Project {
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
   tasks       Task[]
+  boards      Board[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([teamId])
 }
 
+model Board {
+  id        String        @id @default(uuid())
+  projectId String
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  isDefault Boolean       @default(false)
+  columns   BoardColumn[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([projectId, name])
+  @@unique([id, projectId])
+}
+
+model BoardColumn {
+  id        String   @id @default(uuid())
+  boardId   String
+  projectId String
+  board     Board    @relation(fields: [boardId, projectId], references: [id, projectId], onDelete: Cascade)
+  key       String
+  title     String
+  position  Int
+  isSystem  Boolean  @default(false)
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, key])
+  @@unique([boardId, position])
+  @@unique([id, projectId])
+}
+
 model Task {
-  id          String     @id @default(uuid())
-  title       String
-  description String?
-  status      TaskStatus @default(TODO)
-  priority    Priority   @default(MEDIUM)
-  position    Int        @default(0)
-  dueDate     DateTime?
-  projectId   String
-  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assigneeId  String?
-  assignee    User?      @relation(fields: [assigneeId], references: [id])
-  createdById String
-  createdBy   User       @relation("CreatedTasks", fields: [createdById], references: [id])
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id            String       @id @default(uuid())
+  title         String
+  description   String?
+  status        TaskStatus   @default(TODO)
+  priority      Priority     @default(MEDIUM)
+  position      Int          @default(0)
+  dueDate       DateTime?
+  projectId     String
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  boardColumnId String?
+  boardColumn   BoardColumn? @relation(fields: [boardColumnId, projectId], references: [id, projectId], onDelete: NoAction)
+  assigneeId    String?
+  assignee      User?        @relation(fields: [assigneeId], references: [id])
+  createdById   String
+  createdBy     User         @relation("CreatedTasks", fields: [createdById], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([projectId, status, position])
+  @@index([boardColumnId, position])
 }

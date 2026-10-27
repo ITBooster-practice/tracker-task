@@ -91,6 +91,8 @@ describe('Tasks (e2e)', () => {
 			.send({ title: 'Fix login bug', ...overrides })
 			.expect(201)
 
+		expect(res.body).not.toHaveProperty('boardColumnId')
+
 		return res.body as {
 			id: string
 			title: string
@@ -122,6 +124,7 @@ describe('Tasks (e2e)', () => {
 			...overrides,
 		})
 		expect(task).toHaveProperty('description')
+		expect(task).not.toHaveProperty('boardColumnId')
 	}
 
 	describe('POST /teams/:teamId/projects/:projectId/tasks', () => {
