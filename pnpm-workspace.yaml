@@ -1,3 +1,8 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
+
+# Use the project's Node.js types and a Vite release supported by the test toolchain.
+overrides:
+  '@types/node': '24.10.13'
+  vite: '7.3.7'
