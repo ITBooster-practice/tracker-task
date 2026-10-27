@@ -18,6 +18,7 @@
 - `Task.position` — целое число, индексируется вместе с `projectId` и `status`: `@@index([projectId, status, position])`
 - `Task.status` по умолчанию `TODO`; `Task.priority` по умолчанию `MEDIUM`
 - `Task.assigneeId` и `Task.dueDate` — необязательные поля
+- `Task.boardColumnId` — необязательная внутренняя связь с [колонкой доски](./boards.md); текущий Tasks API не включает её в ответ
 
 ---
 
