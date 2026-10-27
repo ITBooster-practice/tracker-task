@@ -121,7 +121,7 @@
 
 `position` вычисляется автоматически — явно передавать его не нужно.
 
-```
+```text
 position = MAX(position WHERE projectId = ? AND status = ?) + 1
 ```
 
@@ -143,7 +143,7 @@ position = MAX(position WHERE projectId = ? AND status = ?) + 1
 
 Обновление атомарно — один `prisma.task.update`:
 
-```
+```sql
 UPDATE tasks SET status = ?, position = ? WHERE id = ?
 ```
 

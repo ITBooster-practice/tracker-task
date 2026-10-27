@@ -112,7 +112,7 @@ pnpm docker:redis-up
 pnpm docker:redis-status
 ```
 
-Mailpit-UI (входящие письма в dev): http://localhost:8025
+Mailpit-UI (входящие письма в dev): <http://localhost:8025>
 
 ### 6. Настройка Prisma
 
@@ -148,8 +148,8 @@ pnpm dev
 
 Приложение будет доступно:
 
-- Frontend (Web): http://localhost:3001
-- Backend (API): http://localhost:3000
+- Frontend (Web): <http://localhost:3001>
+- Backend (API): <http://localhost:3000>
 
 ## Полезные команды
 
@@ -188,7 +188,7 @@ pnpm docker:redis-down     # Остановка Redis
 
 ## Структура проекта
 
-```
+```text
 tracker-task/
 ├── apps/
 │   ├── api/          # Backend API (NestJS + Prisma)
@@ -211,6 +211,7 @@ tracker-task/
 1. Проверьте `DATABASE_URL` в `apps/api/.env`
 2. Убедитесь, что PostgreSQL запущен
 3. Попробуйте пересоздать миграции:
+
    ```bash
    pnpm prisma:migrate
    ```
@@ -218,10 +219,13 @@ tracker-task/
 Если при `pnpm prisma:db:update` появляется ошибка `P3009` (есть failed migration):
 
 1. Пометить упавшую миграцию как откатанную:
+
    ```bash
    pnpm --filter api exec prisma migrate resolve --rolled-back <migration_id>
    ```
+
 2. Повторно применить миграции:
+
    ```bash
    pnpm prisma:db:update
    ```

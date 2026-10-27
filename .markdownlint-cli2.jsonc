@@ -1,0 +1,33 @@
+{
+	"gitignore": true,
+	"ignores": [
+		"**/node_modules/**",
+		"**/.next/**",
+		"**/dist/**",
+		"**/build/**",
+		"**/out/**",
+		"**/coverage/**",
+		"**/generated/**",
+		"**/storybook-static/**",
+		"**/playwright-report/**",
+		"**/test-results/**",
+	],
+	"config": {
+		"default": true,
+		"MD003": { "style": "atx" },
+		"MD004": { "style": "dash" },
+		"MD007": { "indent": 2 },
+		// Code samples keep the indentation of their language.
+		"MD010": { "code_blocks": false },
+		// URLs, tables and command examples can exceed the prose width.
+		"MD013": false,
+		"MD024": { "siblings_only": true },
+		"MD029": { "style": "ordered" },
+		"MD033": { "allowed_elements": ["a", "br", "details", "img", "kbd", "p", "summary"] },
+		"MD035": { "style": "---" },
+		"MD048": { "style": "backtick" },
+		// Prettier chooses emphasis markers for nested bold/italic combinations.
+		"MD049": false,
+		"MD050": { "style": "asterisk" },
+	},
+}

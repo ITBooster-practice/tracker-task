@@ -24,6 +24,9 @@ module.exports = {
 	// ESLint и Prettier будут применяться только к staged файлам
 	'{apps,packages}/*/**/*.{ts,tsx,js,jsx}': ['prettier --write', 'eslint --fix'],
 
-	// Форматирование остальных JSON, MD и YML файлов
-	'*.{json,md,yml}': ['prettier --write'],
+	// Единый Markdown: форматирование и исправляемые правила структуры.
+	'**/*.md': ['prettier --write --ignore-path .gitignore', 'markdownlint-cli2 --fix'],
+
+	// Форматирование остальных JSON и YML файлов.
+	'*.{json,yml}': ['prettier --write'],
 }

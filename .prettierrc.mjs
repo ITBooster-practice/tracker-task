@@ -21,9 +21,6 @@ const config = {
 	importOrderParserPlugins: ['typescript', 'jsx'],
 	importOrderTypeScriptVersion: '5.0.0',
 	importOrderCaseSensitive: false,
-	importOrderMergeDuplicateImports: true,
-	importOrderCombineTypeAndValueImports: true,
-	importOrderSortSpecifiers: true,
 }
 
 /** @type {import("prettier").Config} */

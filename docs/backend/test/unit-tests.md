@@ -10,7 +10,7 @@
 - [TeamMembersService](#teammembersservice)
 - [TeamInvitationsService](#teaminvitationsservice)
 - [parseTTLToMs](#parsettltoms)
-- [RolesGuard](#rolesgard)
+- [RolesGuard](#rolesguard)
 
 ## Соглашения
 

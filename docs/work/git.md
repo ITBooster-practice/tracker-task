@@ -13,7 +13,7 @@
 
 Формат названия ветки:
 
-```
+```text
 <тип>/<название-задачи>-<номер>
 ```
 
@@ -36,7 +36,7 @@ git checkout -b refactor/api-structure-8
 
 ### Формат сообщения
 
-```
+```text
 <тип>: <краткое_описание>
 ```
 
@@ -102,7 +102,7 @@ git push origin feature/my-task-123
 
 ### 6. Работа с доской задач
 
-Доска проекта: https://github.com/orgs/ITBooster-practice/projects/1
+Доска проекта: <https://github.com/orgs/ITBooster-practice/projects/1>
 
 После создания PR:
 
@@ -113,10 +113,11 @@ git push origin feature/my-task-123
 
 **Пример сообщения в Telegram:**
 
-```
+```markdown
 https://github.com/org/repo/pull/123
 
 Реализовал аутентификацию пользователя:
+
 - JWT токены
 - Защита роутов
 - Тесты покрытия

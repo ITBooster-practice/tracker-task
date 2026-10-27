@@ -10,7 +10,7 @@ pnpm add @prisma/client @prisma/adapter-pg pg dotenv
 
 ## Структура файлов
 
-```
+```text
 apps/api/
 ├── prisma/
 │   ├── schema.prisma         # Схема БД

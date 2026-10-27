@@ -1,6 +1,6 @@
 # Tracker Task
 
-**Открытая система управления IT-проектами**
+Открытая система управления IT-проектами
 
 ## 📋 О проекте
 
@@ -36,7 +36,7 @@ pnpm build
 
 ## 📦 Структура монорепозитория
 
-```
+```text
 tracker-task/
 ├── apps/
 │   ├── api/        # NestJS API сервер
@@ -51,11 +51,11 @@ tracker-task/
 
 ---
 
-# Полезные ссылки:
+## Полезные ссылки
 
-## [**Frontend**](https://itbooster.ru/roadmap/2/)
+### [**Frontend**](https://itbooster.ru/roadmap/2/)
 
-### **Стек**
+#### **Стек**
 
 - [Next.js](https://nextjs.org/docs) - для создания серверного рендеринга и статической генерации страниц
   - [Next.js с Нуля - полный курс для начинающих (2025)](https://www.youtube.com/watch?v=KZb53sf-PEg)
@@ -71,12 +71,12 @@ tracker-task/
 - [Turborepo](https://turborepo.dev/docs/getting-started/installation) - для монорепозитория
 - [axios](https://axios-http.com/docs/intro) - для HTTP запросов
 
-### **Архитектурная методология**
+#### **Архитектурная методология**
 
 - [Feature sliced design](https://feature-sliced.design/docs/get-started) - для организации структуры проекта
 - [10 ОШИБОК НОВИЧКОВ В FSD](https://www.youtube.com/watch?v=8pcu9MwTzJo)
 
-### **Инструменты**
+#### **Инструменты**
 
 - [ESLint](https://eslint.org/docs/latest/user-guide/getting-started) - для статической проверки кода
 - [Prettier](https://prettier.io/docs/en/install.html) - для форматирования кода
@@ -88,7 +88,7 @@ tracker-task/
 - [Storybook](https://storybook.js.org/docs/get-started/frameworks/nextjs/?renderer=react) - для разработки и тестирования UI компонентов в изоляции
 - [pnpm](https://pnpm.io/installation)
 
-### **Качество кода**
+#### **Качество кода**
 
 - Обязательный линтинг + линтер на правила соблюдения FSD
 - Обязательное код ревью каждой задачи
@@ -96,9 +96,9 @@ tracker-task/
 - Обязателен CI пайплайн
   - [CI CD наглядные примеры](https://www.youtube.com/watch?v=ANj7qUgzNq4&pp=ygUNdWxiaSB0diBjaSBjZA%3D%3D)
 
-## [**Backend**](https://itbooster.ru/roadmap/4/)
+### [**Backend**](https://itbooster.ru/roadmap/4/)
 
-### **Стек**
+#### **Стек**
 
 - [NestJS](https://docs.nestjs.com/) - для создания серверного приложения
   - [Полный курс по Nest.js](https://teacoder.ru/lesson/53bb0ebf-34f1-4423-882f-117f18b97b07)
@@ -122,7 +122,7 @@ tracker-task/
 - [Passport.js](https://www.passportjs.org/) - для аутентификации
   - [Интеграция Passport.js с NestJS](https://docs.nestjs.com/recipes/passport) - интеграция Passport.js с NestJS
 
-### **Инструменты**
+#### **Инструменты**
 
 - [ESLint](https://eslint.org/docs/latest/user-guide/getting-started) - для статической проверки кода
 - [Prettier](https://prettier.io/docs/en/install.html) - для форматирования кода
@@ -131,7 +131,7 @@ tracker-task/
 - [Docker](https://docs.docker.com/get-started/) - для контейнеризации приложений
 - [pnpm](https://pnpm.io/installation)
 
-### **Продакшн**
+#### **Продакшн**
 
 - [Grafana Loki](https://grafana.com/docs/loki/latest/get-started/) - для логирования и мониторинга
 - [Prometheus](https://prometheus.io/docs/introduction/overview/) - для мониторинга и алертинга
@@ -141,14 +141,14 @@ tracker-task/
 - [cAdvisor](https://github.com/google/cadvisor) - для мониторинга контейнеров
 - Запуск в проде в нескольких инстансах для обеспечения отказоустойчивости
 
-### **Качество кода**
+#### **Качество кода**
 
 - Обязательный линтинг
 - Обязательное код ревью каждой задачи
 - Соблюдение модульной архитектуры + слоистой структуры проекта.
 - Обязателен CI пайплайн
 
-## **Общее**
+### **Общее**
 
 - **[CI_CD](https://itbooster.ru/roadmap/2/?nodeId=4318d274-56ee-4161-ab9f-4ed89f574870)** - для автоматизации сборки, тестирования и деплоя приложения
 - Обязательно на каждый пул реквест прогоняем линтеры, тесты, билд проекта, typecheck через ts.
@@ -167,7 +167,7 @@ tracker-task/
 - [Docker(ITBooster)](https://itbooster.ru/database/category/164/)
 - [Соглашение о коммитах](https://www.conventionalcommits.org/ru/v1.0.0/#%d0%b3%d0%bb%d0%b0%d0%b2%d0%bd%d0%be%d0%b5)
 
-## **Git config**
+### **Git config**
 
 Проверьте настройки гита, чтобы коммиты имели правильного автора.:
 

@@ -69,7 +69,7 @@ cp .env.stage.example .env.stage
 
 Состояния флагов хранятся в БД и меняются через панель, а не через env-файл. Задайте `SYSTEM_DEVELOPER_USER_ID` в `.env.stage` равным ID зарегистрированного аккаунта разработчика и пересоздайте API после изменения настройки. Все экземпляры API должны использовать одно значение. Проверьте нужные состояния флагов перед открытием приложения пользователям. [Настройка доступа](../../backend/system-developer.md), [работа с флагами](../../work/feature-flags.md).
 
-NEXT_PUBLIC_API_URL берётся из .env.stage и должен совпадать с URL, вшитым при сборке web-образа. Файл .env.web содержит публичный URL API, без флагов. Серверные запросы web идут на API_INTERNAL_URL=http://api:3000 из Compose с cookie-сессией; они не проходят внешнюю Basic Auth. Это не отменяет JWT-проверку и guards.
+NEXT_PUBLIC_API_URL берётся из .env.stage и должен совпадать с URL, вшитым при сборке web-образа. Файл .env.web содержит публичный URL API, без флагов. Серверные запросы web идут на API_INTERNAL_URL=<http://api:3000> из Compose с cookie-сессией; они не проходят внешнюю Basic Auth. Это не отменяет JWT-проверку и guards.
 
 ## 3. Подготовить доступ к GHCR
 
@@ -141,91 +141,91 @@ https://mail.stage.<IP_СЕРВЕРА>.sslip.io
 
 1. Подключить Caddy к stage-сети:
 
-```bash
-docker network connect tracker-stage_stage tracker-gateway-caddy-1 || true
-```
+   ```bash
+   docker network connect tracker-stage_stage tracker-gateway-caddy-1 || true
+   ```
 
 2. Подготовить хеш для Basic Auth:
 
-```bash
-docker run --rm caddy:2 caddy hash-password --plaintext '<ВАШ_СЛОЖНЫЙ_ПАРОЛЬ>'
-STAGE_BCRYPT_HASH='<ВСТАВЬТЕ_BCRYPT_ХЕШ_ИЗ_КОМАНДЫ_ВЫШЕ>'
-```
+   ```bash
+   docker run --rm caddy:2 caddy hash-password --plaintext '<ВАШ_СЛОЖНЫЙ_ПАРОЛЬ>'
+   STAGE_BCRYPT_HASH='<ВСТАВЬТЕ_BCRYPT_ХЕШ_ИЗ_КОМАНДЫ_ВЫШЕ>'
+   ```
 
 3. Обновить `Caddyfile`.
 
-Если есть домен:
+   Если есть домен:
 
-```bash
-cat >/opt/tracker/caddy/Caddyfile <<CADDY
-stage.<ВАШ_ДОМЕН> {
-	encode zstd gzip
+   ```bash
+   cat >/opt/tracker/caddy/Caddyfile <<CADDY
+   stage.<ВАШ_ДОМЕН> {
+     encode zstd gzip
 
-	basic_auth {
-		stage ${STAGE_BCRYPT_HASH}
-	}
+     basic_auth {
+       stage ${STAGE_BCRYPT_HASH}
+     }
 
-	handle_path /api/* {
-		reverse_proxy tracker-stage-api-1:3000
-	}
+     handle_path /api/* {
+       reverse_proxy tracker-stage-api-1:3000
+     }
 
-	handle {
-		reverse_proxy tracker-stage-web-1:3000
-	}
-}
+     handle {
+       reverse_proxy tracker-stage-web-1:3000
+     }
+   }
 
-mail.stage.<ВАШ_ДОМЕН> {
-	encode zstd gzip
+   mail.stage.<ВАШ_ДОМЕН> {
+     encode zstd gzip
 
-	basic_auth {
-		stage ${STAGE_BCRYPT_HASH}
-	}
+     basic_auth {
+       stage ${STAGE_BCRYPT_HASH}
+     }
 
-	reverse_proxy tracker-stage-mailpit-1:8025
-}
-CADDY
-```
+     reverse_proxy tracker-stage-mailpit-1:8025
+   }
+   CADDY
+   ```
 
-Если домена пока нет:
+   Если домена пока нет:
 
-```bash
-cat >/opt/tracker/caddy/Caddyfile <<CADDY
-stage.<IP_СЕРВЕРА>.sslip.io {
-	encode zstd gzip
+   ```bash
+   cat >/opt/tracker/caddy/Caddyfile <<CADDY
+   stage.<IP_СЕРВЕРА>.sslip.io {
+     encode zstd gzip
 
-	basic_auth {
-		stage ${STAGE_BCRYPT_HASH}
-	}
+     basic_auth {
+       stage ${STAGE_BCRYPT_HASH}
+     }
 
-	handle_path /api/* {
-		reverse_proxy tracker-stage-api-1:3000
-	}
+     handle_path /api/* {
+       reverse_proxy tracker-stage-api-1:3000
+     }
 
-	handle {
-		reverse_proxy tracker-stage-web-1:3000
-	}
-}
+     handle {
+       reverse_proxy tracker-stage-web-1:3000
+     }
+   }
 
-mail.stage.<IP_СЕРВЕРА>.sslip.io {
-	encode zstd gzip
+   mail.stage.<IP_СЕРВЕРА>.sslip.io {
+     encode zstd gzip
 
-	basic_auth {
-		stage ${STAGE_BCRYPT_HASH}
-	}
+     basic_auth {
+       stage ${STAGE_BCRYPT_HASH}
+     }
 
-	reverse_proxy tracker-stage-mailpit-1:8025
-}
-CADDY
-```
+     reverse_proxy tracker-stage-mailpit-1:8025
+   }
+   CADDY
+   ```
 
 4. Применить конфиг Caddy:
 
-```bash
-cd /opt/tracker/caddy
-docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-docker compose restart caddy
-docker compose logs --tail=80 caddy
-```
+   ```bash
+   cd /opt/tracker/caddy
+   docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+   docker compose restart caddy
+   docker compose logs --tail=80 caddy
+   ```
 
 ## 7. Проверка после Шага 2
 

@@ -16,7 +16,7 @@
 
 ## Что запускается
 
-```
+```text
 браузер
   └── http://localhost         ← Caddy (реверс-прокси, порт 80)
         ├── /api/*  →  api:3000   (NestJS)
@@ -77,17 +77,17 @@ docker compose -f docker-compose.local.yml exec api sh -c "node_modules/.bin/pri
 
 ### Адреса стенда
 
-- **Приложение**: http://localhost
-- **API** (корневой endpoint): http://localhost/api/
-- **Входящие письма** (подтверждение email, сброс пароля): http://localhost:8026
+- **Приложение**: <http://localhost>
+- **API** (корневой endpoint): <http://localhost/api/>
+- **Входящие письма** (подтверждение email, сброс пароля): <http://localhost:8026>
 
 ### Проверка после запуска
 
 Минимальный сценарий, чтобы убедиться, что стек живой:
 
-1. Открыть http://localhost — должна загрузиться страница `/login`.
+1. Открыть <http://localhost> — должна загрузиться страница `/login`.
 2. Зарегистрировать аккаунт или войти под существующим пользователем. Миграции не запускают seed автоматически и не создают тестовые аккаунты.
-3. После регистрации проверить приветственное письмо в http://localhost:8026.
+3. После регистрации проверить приветственное письмо в <http://localhost:8026>.
 
 Если письмо не появилось, проверьте логи API и почтовые настройки в `apps/api/.env.local`: `MAIL_TRANSPORT=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025`.
 
@@ -156,7 +156,7 @@ pnpm local:reset
 
 Файл `Caddyfile.local` в корне проекта:
 
-```
+```caddyfile
 :80 {
     handle /api/* {
         reverse_proxy api:3000
@@ -199,7 +199,7 @@ MAIL_PORT: 1025
 
 1. NestJS через Nodemailer подключается к `mailpit:1025`
 2. Mailpit принимает письмо, **не отправляет** его реальному получателю
-3. Письмо появляется в веб-интерфейсе: http://localhost:8026
+3. Письмо появляется в веб-интерфейсе: <http://localhost:8026>
 
 Это позволяет тестировать письма без реального SMTP-сервера и без риска случайно отправить что-то пользователям.
 
@@ -240,7 +240,7 @@ COPY packages  ./packages
 
 После сборки используется `pnpm --filter=api deploy --prod /app/deploy`:
 
-```
+```text
 /app/deploy/
   node_modules/  ← только production-зависимости (без devDeps)
   dist/          ← скомпилированный NestJS
