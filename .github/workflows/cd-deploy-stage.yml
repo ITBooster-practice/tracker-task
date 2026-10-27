@@ -1,10 +1,8 @@
 name: Deploy Stage
 
 on:
-  workflow_run:
-    workflows: ['Сборка и публикация stage-образов']
-    types: [completed]
-    branches: [main]
+  # Автодеплой приостановлен до восстановления stage-сервера.
+  # Для возобновления верните workflow_run после сборки stage-образов.
   workflow_dispatch:
     inputs:
       image_tag:
