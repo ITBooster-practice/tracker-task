@@ -8,7 +8,7 @@
 
 ## Структура
 
-```
+```text
 apps/api/test/
 ├── mocks/
 │   └── argon2.ts                        # vi.fn() заглушки для hash/verify

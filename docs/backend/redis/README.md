@@ -18,7 +18,7 @@ docker exec -it dev-tracker-task-redis redis-cli
 
 Команды внутри:
 
-```
+```redis
 KEYS *                  # все ключи
 GET refresh:<userId>    # значение по ключу
 TTL refresh:<userId>    # сколько секунд до удаления
@@ -54,12 +54,12 @@ docker exec dev-tracker-task-redis redis-cli FLUSHALL
 
 ## Переменные окружения
 
-```
+```dotenv
 REDIS_URL=redis://localhost:6379
 ```
 
 В продакшене с паролем:
 
-```
+```dotenv
 REDIS_URL=redis://:password@host:6379
 ```

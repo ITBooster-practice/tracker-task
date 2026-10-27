@@ -27,9 +27,8 @@
 1. Зелёный CI (`lint`, `type-check`, `test`, `build`).
 2. Сборка и push `api`/`web` образов в GHCR.
 3. Теги образов:
-
-- `sha-<short_sha>` (основной immutable тег)
-- `main-latest` (удобный alias)
+   - `sha-<short_sha>` (основной immutable тег)
+   - `main-latest` (удобный alias)
 
 4. SSH-деплой на stage VPS с этим `sha-*` тегом.
 5. Доступность stage-домена по HTTPS после обновления.
@@ -70,14 +69,12 @@
 Создать environments:
 
 1. `stage`:
-
-- без обязательных ревьюеров на старте;
-- можно добавить environment-specific secrets позже.
+   - без обязательных ревьюеров на старте;
+   - можно добавить environment-specific secrets позже.
 
 2. `production`:
-
-- включить `Required reviewers`;
-- запуск только вручную.
+   - включить `Required reviewers`;
+   - запуск только вручную.
 
 ### 3.3 Права workflow
 
@@ -125,14 +122,12 @@ permissions:
 Что добавить:
 
 1. Триггеры:
-
-- `push` в `main`;
-- `workflow_dispatch` (на будущее для ручного запуска).
+   - `push` в `main`;
+   - `workflow_dispatch` (на будущее для ручного запуска).
 
 2. `needs` на CI:
-
-- либо через `workflow_run` от CI,
-- либо отдельным процессом, где build запускается только после зелёного CI.
+   - либо через `workflow_run` от CI,
+   - либо отдельным процессом, где build запускается только после зелёного CI.
 
 3. Логин в GHCR.
 4. Сборка `apps/api/Dockerfile` и `apps/web/Dockerfile` из корня repo.
@@ -154,15 +149,14 @@ permissions:
 3. SSH-подключение к VPS.
 4. Запуск на сервере:
 
-```bash
-cd /opt/tracker/stage
-./deploy-stage.sh sha-<short_sha>
-```
+   ```bash
+   cd /opt/tracker/stage
+   ./deploy-stage.sh sha-<short_sha>
+   ```
 
 5. Пост-проверка:
-
-- `curl` на stage endpoint;
-- логирование версии/тега в job summary.
+   - `curl` на stage endpoint;
+   - логирование версии/тега в job summary.
 
 Что проверить после внедрения:
 

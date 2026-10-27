@@ -21,7 +21,7 @@
 
 ## Архитектура
 
-```
+```text
 packages/api/          ← Общие схемы Zod
   src/auth/dto/
     register.dto.ts    ← registerRequestSchema + тип

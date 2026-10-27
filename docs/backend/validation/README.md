@@ -10,7 +10,7 @@
 
 ## Архитектура
 
-```
+```text
 packages/types/src/auth/
   register.dto.ts          # Zod-схема (общая, используется везде)
   login.dto.ts

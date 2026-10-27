@@ -12,7 +12,7 @@ API будет доступен по адресу [localhost:3000](http://localh
 
 ## Архитектура приложения
 
-```
+```text
 main.ts → AppModule → LinksModule
              ↓           ↓
         AppController  LinksController
@@ -29,7 +29,7 @@ main.ts → AppModule → LinksModule
 
 ## Структура API
 
-```
+```text
 src/
 ├── main.ts              # Точка входа, запуск сервера на :3000
 ├── app.module.ts        # Корневой модуль приложения

@@ -142,7 +142,7 @@ export class AuthController {
 }
 ```
 
-## Готово!
+## Готово
 
 Теперь:
 

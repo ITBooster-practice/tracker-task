@@ -24,7 +24,7 @@
 
 ## 2. Архитектура окружений
 
-```
+```text
                 +-----------------------------+
                 |          VPS (Ubuntu)       |
                 |                             |
@@ -110,7 +110,7 @@ chmod 600 /home/deploy/.ssh/authorized_keys
 
 **Как.** Открыть `/etc/ssh/sshd_config` и выставить:
 
-```
+```ssh-config
 PermitRootLogin no
 PasswordAuthentication no
 PubkeyAuthentication yes
@@ -188,7 +188,7 @@ sudo chown -R deploy:deploy /opt/tracker
 
 Структура:
 
-```
+```text
 /opt/tracker/
   prod/
     docker-compose.yml
@@ -212,7 +212,7 @@ sudo chown -R deploy:deploy /opt/tracker
 
 A-записи у регистратора домена:
 
-```
+```text
 example.ru        A    <IP VPS>
 stage.example.ru  A    <IP VPS>
 ```
@@ -424,7 +424,7 @@ server {
 В проекте сейчас нет Dockerfile для `apps/api` и `apps/web` — их нужно добавить.
 
 1. `apps/api/Dockerfile`:
-   1. multi-stage: builder (`node:22-alpine` + pnpm) → runner (`node:22-alpine`);
+   1. multi-stage: builder (`node:24-alpine` + pnpm) → runner (`node:24-alpine`);
    2. устанавливает зависимости через pnpm, выполняет `pnpm build`, `prisma generate`;
    3. в runner копируется `dist/`, `node_modules` (prod-only), `package.json`, `prisma/`;
    4. ENTRYPOINT: `node dist/main.js`.
@@ -488,7 +488,7 @@ chown deploy:deploy /opt/tracker/prod/.env /opt/tracker/stage/.env
 
 ### 8.2. Минимальный список переменных
 
-```
+```text
 DATABASE_URL
 JWT_SECRET
 JWT_ACCESS_TOKEN_TTL
@@ -538,7 +538,7 @@ postgres:
 | Лимит pull для аутентифицированных | 200/6h (бесплатно)          | Очень высокий                                                  |
 | Интеграция с GH Actions            | Через `docker/login-action` | Через `GITHUB_TOKEN` (без отдельного PAT)                      |
 | Удаление старых тегов              | Через API + PAT             | Через REST API GH или Action `actions/delete-package-versions` |
-| Где смотреть UI                    | hub.docker.com              | github.com/<org>/<repo>/pkgs                                   |
+| Где смотреть UI                    | hub.docker.com              | `github.com/<org>/<repo>/pkgs`                                 |
 | Имя образа                         | `username/tracker-api:tag`  | `ghcr.io/<org>/tracker-api:tag`                                |
 
 **Рекомендация: GHCR.** Меньше токенов, нет лимитов pull, удобнее администрировать через те же права репозитория.
@@ -661,12 +661,14 @@ curl -s -H "Authorization: JWT $TOKEN" \
 
 1. SSH-логин на VPS (`appleboy/ssh-action`).
 2. На сервере:
+
    ```bash
    cd /opt/tracker/stage
    docker compose pull
    docker compose up -d
    docker compose exec -T api node dist/main.js migrate    # или pnpm prisma migrate deploy
    ```
+
 3. Smoke-проверки (см. раздел 13).
 4. Уведомление в чат.
 
@@ -683,12 +685,14 @@ GitHub Environment `production` с required reviewers = тимлид. Без о�
 
 1. Перетегировать в реестре: `:v<x>-<sha>` → `:prod-latest`.
 2. SSH на VPS:
+
    ```bash
    cd /opt/tracker/prod
    docker compose pull
    docker compose up -d
    docker compose exec -T api node dist/main.js migrate
    ```
+
 3. Дописать в `/opt/tracker/prod/.last-deploys` строку `2026-05-24T12:00 v1.2.3-a1b2c3d` (для rollback и аудита).
 4. Smoke prod (раздел 13).
 5. Уведомление.
@@ -741,7 +745,7 @@ docker image prune -f
 
 Crontab от `deploy`:
 
-```
+```cron
 0 3 * * * /opt/tracker/scripts/cleanup-images.sh >> /var/log/tracker-cleanup.log 2>&1
 ```
 
@@ -760,7 +764,7 @@ Smoke-тест — короткая проверка «всё ли вообще 
 3. `POST https://<domain>/api/auth/login` с заранее заведённым smoke-юзером → 200, в Set-Cookie есть access/refresh.
 4. `GET https://<domain>/api/auth/me` с куки из (3) → 200.
 5. `GET https://<domain>/api/teams` с теми же куки → 200, массив.
-6. Миграции Prisma применились: `docker compose exec api node -e "..." ` — отчёт `prisma migrate status` чистый.
+6. Миграции Prisma применились: `docker compose exec api node -e "..."` — отчёт `prisma migrate status` чистый.
 
 Если хотя бы один шаг падает — деплой считается неуспешным.
 
@@ -874,7 +878,7 @@ Caddy/Nginx требует клиентский сертификат при вх
 
 Не про доступ, но про защиту от XSS/clickjacking. На обоих окружениях нужно проставить через proxy:
 
-```
+```http
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 X-Frame-Options: DENY
 X-Content-Type-Options: nosniff
@@ -1012,7 +1016,7 @@ Grafana доступ — за Basic Auth/Cloudflare Access.
 
 Конфиг api:
 
-```
+```dotenv
 # stage .env
 MAIL_TRANSPORT=smtp
 MAIL_HOST=mailhog
@@ -1043,12 +1047,14 @@ Workflow `refresh-stage-db.yml`, триггер: `schedule: cron '0 4 1 * *'` (1
    4. `pg_dump` обезличенной БД в файл.
 3. SCP файла на VPS.
 4. На VPS:
+
    ```bash
    docker compose -f /opt/tracker/stage/docker-compose.yml stop api web
    docker compose exec -T postgres psql -U ... -c 'DROP DATABASE app; CREATE DATABASE app;'
    docker compose exec -T postgres psql ... < dump.sql
    docker compose -f /opt/tracker/stage/docker-compose.yml start api web
    ```
+
 5. Применить миграции: `prisma migrate deploy`.
 6. Прогнать `prisma db seed` (только идемпотентные seed: справочники, root-пользователь, демо-команды/проекты, если в дампе их нет).
 

@@ -6,7 +6,7 @@
 
 ## Расположение
 
-```
+```text
 apps/api/src/common/providers/zod-validation.provider.ts
 ```
 
@@ -85,7 +85,7 @@ if (error.response.status === 400) {
 
 Чтобы изменить формат ошибок, отредактируйте:
 
-```
+```text
 apps/api/src/common/providers/zod-validation.provider.ts
 ```
 

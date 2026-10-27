@@ -4,7 +4,7 @@
 
 ## Структура файлов
 
-```
+```text
 apps/web/
 ├── lib/api/
 │   ├── client.ts          # Axios instance с interceptors

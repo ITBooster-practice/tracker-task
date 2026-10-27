@@ -4,7 +4,7 @@
 
 ## Архитектура
 
-```
+```text
 AuthService
     └── MailService          # бизнес-методы отправки (sendWelcomeEmail и т.п.)
             └── MailProvider # абстракция провайдера (интерфейс)
@@ -16,7 +16,7 @@ AuthService
 
 ### Файлы модуля
 
-```
+```text
 src/mail/
   mail.module.ts                   # сборка DI: фабрика провайдера по MAIL_TRANSPORT
   mail.service.ts                  # бизнес-методы отправки писем

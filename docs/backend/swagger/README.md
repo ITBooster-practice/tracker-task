@@ -2,11 +2,11 @@
 
 ## Быстрый старт
 
-| URL                                | Описание     |
-| ---------------------------------- | ------------ |
-| http://localhost:3000/api/docs     | Swagger UI   |
-| http://localhost:3000/swagger.json | OpenAPI JSON |
-| http://localhost:3000/swagger.yaml | OpenAPI YAML |
+| URL                                  | Описание     |
+| ------------------------------------ | ------------ |
+| <http://localhost:3000/api/docs>     | Swagger UI   |
+| <http://localhost:3000/swagger.json> | OpenAPI JSON |
+| <http://localhost:3000/swagger.yaml> | OpenAPI YAML |
 
 ## Установка зависимостей
 
@@ -19,7 +19,7 @@ pnpm add @nestjs/swagger nestjs-zod
 
 Swagger разбит на два файла:
 
-```
+```text
 src/
 ├── utils/swagger.util.ts       # setupSwagger(app) + reusable helpers для Swagger response
 └── auth/config/swagger.config.ts  # getSwaggerConfig() — DocumentBuilder

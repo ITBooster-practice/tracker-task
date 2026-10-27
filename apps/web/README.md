@@ -21,7 +21,7 @@ pnpm dev
 
 ## Структура
 
-```
+```text
 app/
 ├── layout.tsx      # Корневой layout с шрифтами
 ├── page.tsx        # Главная страница
