@@ -31,7 +31,7 @@ export interface TaskFilterParams extends PaginationParams {
 	assigneeId?: string
 }
 
-export interface BoardColumn {
+export interface TaskBoardColumn {
 	status: TaskStatus
 	tasks: Task[]
 }
