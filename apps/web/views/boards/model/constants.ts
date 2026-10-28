@@ -1,3 +1,5 @@
+import type { TaskStatus } from '@repo/types'
+
 import type { BoardColumn, BoardColumnId, BoardTask, BoardTypeFilter } from './types'
 
 export const BOARD_FILTER_ALL = 'ALL' as const
@@ -12,7 +14,7 @@ export const BOARD_PRIORITY_LABELS: Record<BoardTask['priority'], string> = {
 	CRITICAL: 'Критичный',
 }
 
-export const BOARD_COLUMN_TITLES: Record<BoardColumnId, string> = {
+export const BOARD_COLUMN_TITLES: Record<TaskStatus, string> = {
 	BACKLOG: 'Бэклог',
 	TODO: 'К выполнению',
 	IN_PROGRESS: 'В работе',
@@ -20,7 +22,11 @@ export const BOARD_COLUMN_TITLES: Record<BoardColumnId, string> = {
 	DONE: 'Готово',
 }
 
-export const BOARD_COLUMNS: Array<Omit<BoardColumn, 'tasks'>> = [
+const BOARD_COLUMN_DEFINITIONS: Array<{
+	id: TaskStatus
+	title: string
+	description: string
+}> = [
 	{
 		id: 'BACKLOG',
 		title: BOARD_COLUMN_TITLES.BACKLOG,
@@ -48,17 +54,29 @@ export const BOARD_COLUMNS: Array<Omit<BoardColumn, 'tasks'>> = [
 	},
 ]
 
+export const BOARD_COLUMNS: Array<Omit<BoardColumn, 'tasks'> & { key: TaskStatus }> =
+	BOARD_COLUMN_DEFINITIONS.map((column, position) => ({
+		...column,
+		key: column.id,
+		position,
+		boardId: 'board-24',
+		projectId: 'project-demo',
+		isSystem: true,
+		createdAt: '2026-04-15T00:00:00.000Z',
+		updatedAt: '2026-04-15T00:00:00.000Z',
+	}))
+
 export const BOARD_TYPE_OPTIONS: Array<{
 	label: string
 	value: BoardTypeFilter
 }> = [
 	{ label: 'Все типы', value: BOARD_FILTER_ALL },
-	{ label: 'Эпики', value: 'Эпик' },
-	{ label: 'Стори', value: 'Стори' },
-	{ label: 'Задачи', value: 'Задача' },
-	{ label: 'Баги', value: 'Баг' },
-	{ label: 'Тех. долг', value: 'Тех. долг' },
+	{ label: 'Эпики', value: 'EPIC' },
+	{ label: 'Стори', value: 'STORY' },
+	{ label: 'Задачи', value: 'TASK' },
+	{ label: 'Баги', value: 'BUG' },
+	{ label: 'Тех. долг', value: 'TECH_DEBT' },
 ]
 
-export const getBoardColumnContainerId = (columnId: BoardColumnId) =>
-	`${BOARD_COLUMN_CONTAINER_PREFIX}:${columnId}`
+export const getBoardColumnContainerId = (boardColumnId: BoardColumnId) =>
+	`${BOARD_COLUMN_CONTAINER_PREFIX}:${boardColumnId}`

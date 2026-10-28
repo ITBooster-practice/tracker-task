@@ -3,7 +3,7 @@ import { vi } from 'vitest'
 interface UseSortableInput {
 	id: string
 	data: {
-		columnId: string
+		boardColumnId: string
 		taskId: string
 		type: string
 	}

@@ -27,10 +27,10 @@ type BoardTaskFormDialogMockProps = {
 	onSubmit: (values: {
 		title: string
 		description: string
-		columnId: string
+		boardColumnId: string
 		priority: string
 		assigneeId: string
-		deadline: string
+		dueDate: string
 		tags: string[]
 	}) => void
 }
@@ -176,10 +176,10 @@ vi.mock('@/views/boards/ui/board-task-form-dialog', () => ({
 						props.onSubmit({
 							title: 'Новая задача',
 							description: 'Описание',
-							columnId: 'TODO',
+							boardColumnId: 'TODO',
 							priority: 'HIGH',
 							assigneeId: 'anna',
-							deadline: '2026-05-10',
+							dueDate: '2026-05-10',
 							tags: ['ui'],
 						})
 					}

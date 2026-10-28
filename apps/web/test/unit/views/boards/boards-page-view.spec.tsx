@@ -67,6 +67,6 @@ describe('BoardsPageView', () => {
 			.find((task) => task.title === 'Новая задача')
 
 		expect(getBoardTaskFormDialogMockState().lastProps?.mode).toBe('create')
-		expect(createdTask?.columnId).toBe('TODO')
+		expect(createdTask?.boardColumnId).toBe('TODO')
 	})
 })

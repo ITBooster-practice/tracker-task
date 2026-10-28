@@ -38,7 +38,33 @@ const createHistoryEntry = (
 	createdAtLabel,
 })
 
-const createTask = (task: BoardTask): BoardTask => task
+type MockTaskInput = Omit<
+	BoardTask,
+	| 'status'
+	| 'position'
+	| 'version'
+	| 'projectId'
+	| 'assigneeId'
+	| 'createdById'
+	| 'createdAt'
+	| 'updatedAt'
+>
+
+const createTask = (task: MockTaskInput): BoardTask => {
+	const column = BOARD_COLUMNS.find((column) => column.id === task.boardColumnId)!
+	return {
+		...task,
+		status: column.key,
+		position: 0,
+		version: 0,
+		projectId: column.projectId,
+		assigneeId: task.assignee?.id ?? null,
+		createdById: boardCurrentUser.id,
+		dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
+		createdAt: column.createdAt,
+		updatedAt: column.updatedAt,
+	}
+}
 
 const boardTasks = {
 	BACKLOG: [
@@ -48,12 +74,12 @@ const boardTasks = {
 			title: 'Сверстать новый layout для страницы доски',
 			description:
 				'Собрать компактный layout: header со сводкой, toolbar с фильтрами и сам kanban с колонками без визуального шума.',
-			type: 'Стори',
+			type: 'STORY',
 			priority: 'HIGH',
-			columnId: 'BACKLOG',
+			boardColumnId: 'BACKLOG',
 			tags: ['ui', 'layout'],
 			assignee: boardAssignees.anna,
-			deadline: '2026-04-22',
+			dueDate: '2026-04-22',
 			checklist: { completed: 3, total: 6 },
 			comments: [
 				createComment(
@@ -79,12 +105,12 @@ const boardTasks = {
 			title: 'Подготовить моковый store под будущую интеграцию с backend',
 			description:
 				'Нужен Zustand store с простыми action-ами для move, фильтров, открытия карточки и добавления комментариев.',
-			type: 'Задача',
+			type: 'TASK',
 			priority: 'HIGH',
-			columnId: 'BACKLOG',
+			boardColumnId: 'BACKLOG',
 			tags: ['zustand', 'mock-api'],
 			assignee: boardAssignees.alexey,
-			deadline: '2026-04-23',
+			dueDate: '2026-04-23',
 			checklist: { completed: 1, total: 4 },
 			comments: [],
 			history: [
@@ -105,12 +131,12 @@ const boardTasks = {
 			title: 'Сделать фильтры по типу и исполнителю',
 			description:
 				'Фильтры должны мгновенно сужать доску, но не ломать порядок карточек. Пока drag & drop на отфильтрованной выборке отключаем.',
-			type: 'Стори',
+			type: 'STORY',
 			priority: 'MEDIUM',
-			columnId: 'TODO',
+			boardColumnId: 'TODO',
 			tags: ['filters', 'toolbar'],
 			assignee: boardAssignees.maria,
-			deadline: '2026-04-24',
+			dueDate: '2026-04-24',
 			checklist: { completed: 0, total: 3 },
 			comments: [],
 			history: [
@@ -129,12 +155,12 @@ const boardTasks = {
 			title: 'Покрыть reorder-логику unit тестами',
 			description:
 				'Протестировать перенос между колонками, перестановку внутри колонки и обновление комментариев в сторе.',
-			type: 'Тех. долг',
+			type: 'TECH_DEBT',
 			priority: 'MEDIUM',
-			columnId: 'TODO',
+			boardColumnId: 'TODO',
 			tags: ['tests', 'vitest'],
 			assignee: boardAssignees.denis,
-			deadline: '2026-04-25',
+			dueDate: '2026-04-25',
 			checklist: { completed: 0, total: 2 },
 			comments: [],
 			history: [],
@@ -148,12 +174,12 @@ const boardTasks = {
 			title: 'Сделать drag preview между колонками без дёрганий',
 			description:
 				'Во время перетаскивания карточки список должен плавно расходиться и показывать конечную позицию ещё до drop.',
-			type: 'Стори',
+			type: 'STORY',
 			priority: 'HIGH',
-			columnId: 'IN_PROGRESS',
+			boardColumnId: 'IN_PROGRESS',
 			tags: ['dnd', 'ux'],
 			assignee: boardAssignees.anna,
-			deadline: '2026-04-26',
+			dueDate: '2026-04-26',
 			checklist: { completed: 4, total: 5 },
 			comments: [
 				createComment(
@@ -185,12 +211,12 @@ const boardTasks = {
 			title: 'Собрать диалог деталей задачи',
 			description:
 				'Открытие задачи из карточки должно вести в подробный drawer с описанием, комментариями и историей изменений.',
-			type: 'Задача',
+			type: 'TASK',
 			priority: 'LOW',
-			columnId: 'IN_PROGRESS',
+			boardColumnId: 'IN_PROGRESS',
 			tags: ['dialog', 'details'],
 			assignee: boardAssignees.maria,
-			deadline: '2026-04-27',
+			dueDate: '2026-04-27',
 			checklist: { completed: 2, total: 4 },
 			comments: [
 				createComment(
@@ -218,12 +244,12 @@ const boardTasks = {
 			title: 'Привести badges статусов к единому виду',
 			description:
 				'Нужно выровнять стили статусов и приоритетов, чтобы карточки не выглядели разрозненно на доске.',
-			type: 'Баг',
+			type: 'BUG',
 			priority: 'MEDIUM',
-			columnId: 'IN_REVIEW',
+			boardColumnId: 'IN_REVIEW',
 			tags: ['ui-kit', 'badges'],
 			assignee: boardAssignees.denis,
-			deadline: '2026-04-21',
+			dueDate: '2026-04-21',
 			checklist: { completed: 2, total: 2 },
 			comments: [
 				createComment(
@@ -251,12 +277,12 @@ const boardTasks = {
 			title: 'Подготовить feature flag для страницы доски',
 			description:
 				'Страница доски скрыта за флагом до момента, пока вся связка mock-ui не станет устойчивой.',
-			type: 'Задача',
+			type: 'TASK',
 			priority: 'LOW',
-			columnId: 'DONE',
+			boardColumnId: 'DONE',
 			tags: ['feature-flag', 'config'],
 			assignee: boardAssignees.alexey,
-			deadline: '2026-04-18',
+			dueDate: '2026-04-18',
 			checklist: { completed: 2, total: 2 },
 			comments: [],
 			history: [
@@ -275,12 +301,12 @@ const boardTasks = {
 			title: 'Почистить sidebar routing для нового раздела',
 			description:
 				'Навигация на `/boards` должна работать через общий sidebar config без ручных breadcrumbs в странице.',
-			type: 'Тех. долг',
+			type: 'TECH_DEBT',
 			priority: 'LOW',
-			columnId: 'DONE',
+			boardColumnId: 'DONE',
 			tags: ['navigation', 'dashboard'],
 			assignee: boardAssignees.anna,
-			deadline: '2026-04-19',
+			dueDate: '2026-04-19',
 			checklist: { completed: 1, total: 1 },
 			comments: [],
 			history: [
@@ -300,6 +326,10 @@ export const boardMock = {
 	currentUser: boardCurrentUser,
 	board: {
 		id: 'board-24',
+		projectId: 'project-demo',
+		isDefault: true,
+		createdAt: '2026-04-15T00:00:00.000Z',
+		updatedAt: '2026-04-15T00:00:00.000Z',
 		name: 'Спринт 24',
 		projectName: 'Tracker Task',
 		periodLabel: '15 апреля - 28 апреля',
@@ -307,6 +337,6 @@ export const boardMock = {
 	},
 	columns: BOARD_COLUMNS.map((column) => ({
 		...column,
-		tasks: [...boardTasks[column.id]],
+		tasks: boardTasks[column.key].map((task, position) => ({ ...task, position })),
 	})),
 }

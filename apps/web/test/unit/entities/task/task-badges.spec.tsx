@@ -55,16 +55,19 @@ describe('TaskStatusBadge', () => {
 
 // ─── TaskTypeBadge ───────────────────────────────────────────────
 describe('TaskTypeBadge', () => {
-	it.each(['Эпик', 'Стори', 'Баг', 'Тех. долг', 'Задача'] as const)(
-		'тип "%s" → рендерит текст типа',
-		(type) => {
-			render(<TaskTypeBadge type={type} />)
+	it.each([
+		['EPIC', 'Эпик'],
+		['STORY', 'Стори'],
+		['BUG', 'Баг'],
+		['TECH_DEBT', 'Тех. долг'],
+		['TASK', 'Задача'],
+	] as const)('тип "%s" → рендерит текст типа', (type, label) => {
+		render(<TaskTypeBadge type={type} />)
 
-			expect(screen.getByText(type)).toBeDefined()
+		expect(screen.getByText(label)).toBeDefined()
 
-			cleanup()
-		},
-	)
+		cleanup()
+	})
 })
 
 // ─── TaskPriorityBadge ───────────────────────────────────────────

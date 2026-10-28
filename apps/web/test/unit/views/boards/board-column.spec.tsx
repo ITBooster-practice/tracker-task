@@ -48,7 +48,7 @@ describe('BoardColumn', () => {
 		expect(openedTaskId).toBe('task-a')
 		expect(state.droppableCalls.at(-1)).toMatchObject({
 			data: {
-				columnId: 'TODO',
+				boardColumnId: 'TODO',
 				type: 'column',
 			},
 			disabled: false,

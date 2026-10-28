@@ -215,6 +215,7 @@ function BoardsPageView() {
 				/>
 
 				<BoardTaskFormDialog
+					columns={columns}
 					open={isTaskFormOpen}
 					mode={taskFormMode}
 					task={taskFormMode === 'edit' ? editingTask : null}

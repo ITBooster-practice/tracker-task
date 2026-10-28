@@ -10,7 +10,7 @@ import type { BoardColumnId, BoardTask } from '../model/types'
 
 interface BoardCardProps {
 	task: BoardTask
-	columnId: BoardColumnId
+	boardColumnId: BoardColumnId
 	onOpenTask: (taskId: string) => void
 	disabled?: boolean
 	isActiveDragItem?: boolean
@@ -78,7 +78,7 @@ function BoardCardBody({
 
 					<Avatar className='size-6 shrink-0 border border-border/70'>
 						<AvatarFallback className='bg-primary/10 text-[9px] font-semibold text-primary'>
-							{task.assignee.initials}
+							{task.assignee?.initials ?? '—'}
 						</AvatarFallback>
 					</Avatar>
 				</div>
@@ -100,7 +100,7 @@ function BoardCardPlaceholder({ task }: Pick<BoardCardProps, 'task'>) {
 
 function BoardCard({
 	task,
-	columnId,
+	boardColumnId,
 	onOpenTask,
 	disabled = false,
 	isActiveDragItem = false,
@@ -112,7 +112,7 @@ function BoardCard({
 			data: {
 				type: 'task',
 				taskId: task.id,
-				columnId,
+				boardColumnId,
 			},
 			disabled: disabled || isDragOverlay,
 		})

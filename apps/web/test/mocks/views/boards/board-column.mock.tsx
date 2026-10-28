@@ -4,7 +4,7 @@ import type { BoardColumn, BoardTask } from '@/views/boards/model/types'
 
 interface UseDroppableInput {
 	data: {
-		columnId: string
+		boardColumnId: string
 		type: string
 	}
 	disabled?: boolean
@@ -12,7 +12,7 @@ interface UseDroppableInput {
 }
 
 interface BoardCardMockProps {
-	columnId: string
+	boardColumnId: string
 	disabled?: boolean
 	isActiveDragItem?: boolean
 	onOpenTask: (taskId: string) => void

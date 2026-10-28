@@ -64,6 +64,23 @@ describe('BoardTaskDetailsDialog', () => {
 
 	afterEach(cleanup)
 
+	it('показывает API-статус и пустые значения без привязки к ID колонки', () => {
+		renderDialog({
+			task: createBoardTaskFixture({
+				boardColumnId: 'custom:column-id',
+				status: 'IN_REVIEW',
+				assignee: null,
+				assigneeId: null,
+				description: null,
+				dueDate: null,
+			}),
+		})
+		expect(screen.getByText('На ревью')).toBeDefined()
+		expect(screen.getByText('Без исполнителя')).toBeDefined()
+		expect(screen.getByText('Не указан')).toBeDefined()
+		expect(screen.getByText('Описание не добавлено')).toBeDefined()
+	})
+
 	it('не рендерит содержимое без выбранной задачи', () => {
 		renderDialog({ task: null })
 

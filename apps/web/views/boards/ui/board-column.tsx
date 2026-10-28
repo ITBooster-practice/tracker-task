@@ -27,7 +27,7 @@ function BoardColumn({
 		id: getBoardColumnContainerId(column.id),
 		data: {
 			type: 'column',
-			columnId: column.id,
+			boardColumnId: column.id,
 		},
 		disabled,
 	})
@@ -75,7 +75,7 @@ function BoardColumn({
 								<BoardCard
 									key={task.id}
 									task={task}
-									columnId={column.id}
+									boardColumnId={column.id}
 									onOpenTask={onOpenTask}
 									disabled={disabled}
 									isActiveDragItem={activeDragTaskId === task.id}

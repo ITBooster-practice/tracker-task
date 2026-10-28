@@ -48,7 +48,7 @@ interface BoardColumnMockProps {
 }
 
 interface BoardCardMockProps {
-	columnId: string
+	boardColumnId: string
 	isDragOverlay?: boolean
 	onOpenTask: (taskId: string) => void
 	task: BoardTask
@@ -215,7 +215,7 @@ vi.mock('@/views/boards/ui/board-card', () => ({
 
 		return (
 			<div
-				data-column-id={props.columnId}
+				data-column-id={props.boardColumnId}
 				data-overlay={String(Boolean(props.isDragOverlay))}
 				data-testid={`overlay-card-${props.task.id}`}
 			>
