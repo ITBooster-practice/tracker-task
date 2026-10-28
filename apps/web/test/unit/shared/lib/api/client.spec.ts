@@ -101,6 +101,31 @@ describe('client', () => {
 	})
 
 	describe('response interceptor', () => {
+		it('сохраняет структурированный конфликт переноса через настоящий HTTP-клиент', async () => {
+			const conflict = {
+				statusCode: 409,
+				code: 'TASK_MOVE_CONFLICT',
+				taskId: 'task-1',
+				reason: 'VERSION_MISMATCH',
+				message: 'Task changed',
+			}
+			mockIsClientSide.mockReturnValue(true)
+			client.defaults.adapter = async (config) => {
+				throw new AxiosError('Conflict', 'ERR_BAD_REQUEST', config, undefined, {
+					status: 409,
+					data: conflict,
+					statusText: 'Conflict',
+					headers: {},
+					config,
+				})
+			}
+
+			await expect(
+				client.patch('/teams/team-1/projects/project-1/tasks/task-1/move', {}),
+			).rejects.toEqual(conflict)
+			expect(mockRefreshAuthSession).not.toHaveBeenCalled()
+		})
+
 		it('успешный ответ', () => {
 			const interceptor = getResponseInterceptor()
 			const response = { data: { ok: true }, status: 200 }
