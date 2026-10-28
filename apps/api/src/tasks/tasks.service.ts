@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { type Task, TaskStatus, TeamRole, type TeamMember } from 'generated/prisma/client'
+import { TaskStatus, TeamRole, type TeamMember } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import {
 	buildPaginatedResponse,
@@ -7,13 +7,11 @@ import {
 	type PaginationOptions,
 } from '../utils/pagination.util'
 import { CreateTaskDto } from './dto/create-task.dto'
-import { MoveTaskDto } from './dto/move-task.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 
-// The board relation stays internal until the board API contract is introduced.
+// Task CRUD responses omit the column ID; board payloads expose it.
 const taskApiOmit = { boardColumnId: true } as const
-type ApiTask = Omit<Task, 'boardColumnId'>
 
 @Injectable()
 export class TasksService {
@@ -170,54 +168,6 @@ export class TasksService {
 				...(dto.priority !== undefined && { priority: dto.priority as never }),
 				...(dto.assigneeId !== undefined && { assigneeId: dto.assigneeId }),
 				...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
-			},
-		})
-	}
-
-	async getBoard(
-		teamId: string,
-		projectId: string,
-		userId: string,
-	): Promise<Array<{ status: TaskStatus; tasks: ApiTask[] }>> {
-		await this.assertTeamMember(teamId, userId)
-		await this.findProjectOrThrow(teamId, projectId)
-
-		const tasks = await this.prisma.task.findMany({
-			omit: taskApiOmit,
-			where: { projectId },
-			orderBy: { position: 'asc' },
-		})
-
-		const grouped = new Map<TaskStatus, ApiTask[]>(
-			Object.values(TaskStatus).map((s) => [s, []]),
-		)
-
-		for (const task of tasks) {
-			grouped.get(task.status as TaskStatus)!.push(task)
-		}
-
-		return Array.from(grouped, ([status, tasks]) => ({ status, tasks }))
-	}
-
-	async moveTask(
-		teamId: string,
-		projectId: string,
-		taskId: string,
-		userId: string,
-		dto: MoveTaskDto,
-	) {
-		await this.assertTeamMember(teamId, userId)
-		await this.findProjectOrThrow(teamId, projectId)
-		await this.findTaskOrThrow(projectId, taskId)
-		const boardColumnId = await this.systemColumnId(projectId, dto.status)
-
-		return this.prisma.task.update({
-			omit: taskApiOmit,
-			where: { id: taskId },
-			data: {
-				status: dto.status as never,
-				boardColumnId,
-				position: dto.position,
 			},
 		})
 	}

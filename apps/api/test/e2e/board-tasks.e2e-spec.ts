@@ -1,0 +1,691 @@
+import type { INestApplication } from '@nestjs/common'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { FEATURE_KEYS, type BoardView } from '@repo/types'
+import type { Redis } from 'ioredis'
+import { cleanupOpenApiDoc } from 'nestjs-zod'
+import type { Server } from 'node:http'
+import { setTimeout } from 'node:timers/promises'
+import request from 'supertest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { Prisma } from '../../generated/prisma/client'
+import { PrismaService } from '../../prisma/prisma.service'
+import { boardData, defaultBoardData } from '../../src/boards/default-board'
+import { createTestApp, registerAndLogin, resetE2eState } from '../helpers/e2e.helpers'
+
+describe('Board task payload and moves (e2e)', () => {
+	let app: INestApplication
+	let server: Server
+	let prisma: PrismaService
+	let redis: Redis
+	let ownerCookies: string
+	let memberCookies: string
+	let outsiderCookies: string
+	let ownerId: string
+	let teamId: string
+	let otherTeamId: string
+	let projectId: string
+	let otherProjectId: string
+	let mainBoard: Awaited<ReturnType<typeof createBoard>>
+	let extraBoard: Awaited<ReturnType<typeof createBoard>>
+	const path = (team = teamId, project = projectId) =>
+		`/teams/${team}/projects/${project}/tasks`
+
+	beforeAll(async () => {
+		const testApp = await createTestApp()
+		app = testApp.app
+		server = app.getHttpServer() as Server
+		prisma = testApp.prisma
+		redis = testApp.redisClient
+		await resetE2eState(prisma, redis)
+		ownerCookies = (await registerAndLogin(app, 'board-tasks-owner@example.com')).cookies
+		memberCookies = (await registerAndLogin(app, 'board-tasks-member@example.com'))
+			.cookies
+		outsiderCookies = (await registerAndLogin(app, 'board-tasks-outsider@example.com'))
+			.cookies
+		ownerId = (
+			await prisma.user.findUniqueOrThrow({
+				where: { email: 'board-tasks-owner@example.com' },
+			})
+		).id
+		const memberId = (
+			await prisma.user.findUniqueOrThrow({
+				where: { email: 'board-tasks-member@example.com' },
+			})
+		).id
+		teamId = (
+			await prisma.team.create({
+				data: {
+					name: 'Board task team',
+					members: {
+						create: [
+							{ userId: ownerId, role: 'OWNER' },
+							{ userId: memberId, role: 'MEMBER' },
+						],
+					},
+				},
+			})
+		).id
+		otherTeamId = (
+			await prisma.team.create({
+				data: {
+					name: 'Other board task team',
+					members: { create: { userId: ownerId, role: 'OWNER' } },
+				},
+			})
+		).id
+		projectId = (
+			await prisma.project.create({
+				data: { name: 'Board tasks', teamId, createdById: ownerId },
+			})
+		).id
+		otherProjectId = (
+			await prisma.project.create({
+				data: { name: 'Other board tasks', teamId: otherTeamId, createdById: ownerId },
+			})
+		).id
+	})
+
+	async function createBoard(name = 'Other', project = projectId, isDefault = false) {
+		return prisma.board.create({
+			data: {
+				projectId: project,
+				...(isDefault ? defaultBoardData() : boardData(name)),
+			},
+			include: { columns: { orderBy: { position: 'asc' } } },
+		})
+	}
+
+	beforeEach(async () => {
+		await prisma.featureFlag.updateMany({
+			where: {
+				key: { in: [FEATURE_KEYS.PROJECTS, FEATURE_KEYS.TASKS, FEATURE_KEYS.BOARDS] },
+			},
+			data: { enabled: true },
+		})
+		await prisma.task.deleteMany({
+			where: { projectId: { in: [projectId, otherProjectId] } },
+		})
+		await prisma.board.deleteMany({
+			where: { projectId: { in: [projectId, otherProjectId] } },
+		})
+		mainBoard = await createBoard('Main', projectId, true)
+		extraBoard = await createBoard('Development')
+	})
+
+	afterAll(async () => {
+		try {
+			if (prisma && redis) await resetE2eState(prisma, redis)
+		} finally {
+			if (app) await app.close()
+			if (prisma) await prisma.$disconnect()
+		}
+	})
+
+	function task(columnId: string, title: string, position: number, project = projectId) {
+		return prisma.task.create({
+			data: {
+				projectId: project,
+				boardColumnId: columnId,
+				title,
+				position,
+				createdById: ownerId,
+				description: 'Keep description',
+				assigneeId: ownerId,
+				status: 'IN_REVIEW',
+				priority: 'HIGH',
+				dueDate: new Date('2026-12-01T12:00:00Z'),
+			},
+		})
+	}
+
+	const list = (columnId: string) =>
+		prisma.task.findMany({
+			where: { boardColumnId: columnId },
+			orderBy: [{ position: 'asc' }, { id: 'asc' }],
+		})
+	const move = (
+		taskId: string,
+		fromColumnId: string,
+		toColumnId: string,
+		position = 0,
+		status = 200,
+	) =>
+		request(server)
+			.patch(`${path()}/${taskId}/move`)
+			.set('Cookie', memberCookies)
+			.send({ fromColumnId, toColumnId, position })
+			.expect(status)
+	async function view(boardId: string, cookies = memberCookies) {
+		const response = await request(server)
+			.get(`${path()}/board`)
+			.query({ boardId })
+			.set('Cookie', cookies)
+			.expect(200)
+		return response.body as BoardView
+	}
+	async function expectOrder(columnId: string, taskIds: string[]) {
+		const tasks = await list(columnId)
+		expect(tasks.map((item) => item.id)).toEqual(taskIds)
+		expect(tasks.map((item) => item.position)).toEqual(
+			taskIds.map((_, position) => position),
+		)
+	}
+
+	it('returns only the selected board, including empty columns, with ordered tasks and serialized dates', async () => {
+		const [first, second] = extraBoard.columns
+		await prisma.boardColumn.update({ where: { id: first.id }, data: { position: -1 } })
+		const later = await task(first.id, 'Later', 9)
+		const tied = await Promise.all([
+			task(first.id, 'Tie A', 1),
+			task(first.id, 'Tie B', 1),
+		])
+		tied.sort((a, b) => a.id.localeCompare(b.id))
+		const otherColumn = await task(second.id, 'Another column', 0)
+		await task(mainBoard.columns[0].id, 'Another board', 0)
+		const result = await view(extraBoard.id)
+		expect(result.board).toEqual({
+			id: extraBoard.id,
+			projectId,
+			name: 'Development',
+			isDefault: false,
+			createdAt: extraBoard.createdAt.toISOString(),
+			updatedAt: extraBoard.updatedAt.toISOString(),
+		})
+		expect(result.columns.map((column) => column.id)).toEqual(
+			extraBoard.columns.map((column) => column.id),
+		)
+		expect(result.columns[0].tasks.map((item) => item.id)).toEqual([
+			...tied.map((item) => item.id),
+			later.id,
+		])
+		expect(result.columns[1].tasks.map((item) => item.id)).toEqual([otherColumn.id])
+		expect(result.columns.slice(2).every((column) => column.tasks.length === 0)).toBe(
+			true,
+		)
+		expect(result.columns[0].tasks[0]).toMatchObject({
+			boardColumnId: first.id,
+			projectId,
+			createdById: ownerId,
+			status: 'IN_REVIEW',
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+			dueDate: '2026-12-01T12:00:00.000Z',
+		})
+	})
+
+	it('requires boardId and rejects status-based moves without changing the task', async () => {
+		const created = await request(server)
+			.post(path())
+			.set('Cookie', ownerCookies)
+			.send({ title: 'Unchanged task' })
+			.expect(201)
+		const taskId = (created.body as { id: string }).id
+		const original = await prisma.task.findUniqueOrThrow({ where: { id: taskId } })
+		await request(server)
+			.patch(`${path()}/${taskId}/move`)
+			.set('Cookie', memberCookies)
+			.send({ status: 'IN_PROGRESS', position: 1 })
+			.expect(400)
+		await request(server).get(`${path()}/board`).set('Cookie', memberCookies).expect(400)
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).toEqual(
+			original,
+		)
+	})
+
+	it('validates project, board and team boundaries for reads and moves', async () => {
+		const foreign = await createBoard('Foreign', otherProjectId)
+		const moving = await task(extraBoard.columns[0].id, 'Keep', 1)
+		for (const boardId of ['missing', foreign.id]) {
+			await request(server)
+				.get(`${path()}/board`)
+				.query({ boardId })
+				.set('Cookie', ownerCookies)
+				.expect(404)
+		}
+		await request(server)
+			.get(`${path(teamId, otherProjectId)}/board`)
+			.query({ boardId: foreign.id })
+			.set('Cookie', ownerCookies)
+			.expect(404)
+		await request(server)
+			.patch(`${path(teamId, otherProjectId)}/${moving.id}/move`)
+			.set('Cookie', ownerCookies)
+			.send({
+				fromColumnId: extraBoard.columns[0].id,
+				toColumnId: extraBoard.columns[1].id,
+				position: 0,
+			})
+			.expect(404)
+		await move(moving.id, extraBoard.columns[0].id, foreign.columns[0].id, 0, 404)
+		const foreignTask = await task(
+			foreign.columns[0].id,
+			'Foreign task',
+			0,
+			otherProjectId,
+		)
+		await move(foreignTask.id, extraBoard.columns[0].id, extraBoard.columns[1].id, 0, 404)
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+			moving,
+		)
+	})
+
+	it.each(['outsider', 'unauthenticated'])(
+		'rejects board access and moves by %s',
+		async (role) => {
+			const cookies = role === 'outsider' ? outsiderCookies : ''
+			const status = cookies ? 403 : 401
+			const moving = await task(extraBoard.columns[0].id, 'Keep', 1)
+			await request(server)
+				.get(`${path()}/board`)
+				.query({ boardId: extraBoard.id })
+				.set('Cookie', cookies)
+				.expect(status)
+			await request(server)
+				.patch(`${path()}/${moving.id}/move`)
+				.set('Cookie', cookies)
+				.send({
+					fromColumnId: extraBoard.columns[0].id,
+					toColumnId: extraBoard.columns[1].id,
+					position: 0,
+				})
+				.expect(status)
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+		},
+	)
+
+	it.each([
+		'boardId=',
+		'boardId=%20',
+		'boardId=a&boardId=b',
+		'boardId[a]=b',
+		'unexpected=a',
+	])('rejects an invalid board query %s', async (query) => {
+		await request(server)
+			.get(`${path()}/board?${query}`)
+			.set('Cookie', memberCookies)
+			.expect(400)
+	})
+
+	it('reorders a sparse column in both directions and supports unchanged and last indexes', async () => {
+		const source = extraBoard.columns[0].id
+		const a = await task(source, 'A', 1)
+		const b = await task(source, 'B', 7)
+		const c = await task(source, 'C', 9)
+		await move(c.id, source, source, 1)
+		await expectOrder(source, [a.id, c.id, b.id])
+		await move(a.id, source, source, 2)
+		await expectOrder(source, [c.id, b.id, a.id])
+		await move(a.id, source, source, 0)
+		await move(a.id, source, source, 0)
+		await expectOrder(source, [a.id, c.id, b.id])
+	})
+
+	it('moves between columns, compacts the source and synchronizes a system target status', async () => {
+		const [source, target] = mainBoard.columns
+		const a = await task(source.id, 'A', 4)
+		const moving = await task(source.id, 'Moving', 9)
+		const b = await task(source.id, 'B', 10)
+		const x = await task(target.id, 'X', 2)
+		const y = await task(target.id, 'Y', 8)
+		const response = await move(moving.id, source.id, target.id, 1)
+		expect(response.body).toMatchObject({
+			...moving,
+			boardColumnId: target.id,
+			status: 'IN_PROGRESS',
+			position: 1,
+			dueDate: moving.dueDate!.toISOString(),
+			createdAt: moving.createdAt.toISOString(),
+			updatedAt: expect.any(String),
+		})
+		await expectOrder(source.id, [a.id, b.id])
+		await expectOrder(target.id, [x.id, moving.id, y.id])
+	})
+
+	it('populates another board from the default board and preserves status for custom columns', async () => {
+		const moving = await task(mainBoard.columns[0].id, 'Cross-board', 3)
+		await prisma.boardColumn.update({
+			where: { id: extraBoard.columns[0].id },
+			data: { key: 'CUSTOM' },
+		})
+		const result = await move(
+			moving.id,
+			mainBoard.columns[0].id,
+			extraBoard.columns[0].id,
+		)
+		expect(result.body).toMatchObject({
+			id: moving.id,
+			projectId,
+			boardColumnId: extraBoard.columns[0].id,
+			status: 'IN_REVIEW',
+			position: 0,
+		})
+		expect(
+			(await view(mainBoard.id)).columns.flatMap((column) => column.tasks),
+		).toHaveLength(0)
+		expect((await view(extraBoard.id)).columns[0].tasks.map((item) => item.id)).toEqual([
+			moving.id,
+		])
+		await move(moving.id, extraBoard.columns[0].id, mainBoard.columns[3].id)
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+		).toMatchObject({ status: 'DONE', boardColumnId: mainBoard.columns[3].id, projectId })
+	})
+
+	it('accepts insertion at the end of another column', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Moving', 2)
+		const existing = await task(target.id, 'Existing', 5)
+		await move(moving.id, source.id, target.id, 1)
+		await expectOrder(source.id, [])
+		await expectOrder(target.id, [existing.id, moving.id])
+	})
+
+	it('rejects missing tasks, columns, stale source and indexes outside the resulting list without writes', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Keep', 7)
+		await move('missing', source.id, target.id, 0, 404)
+		await move(moving.id, source.id, 'missing', 0, 404)
+		await move(moving.id, 'missing', target.id, 0, 404)
+		await move(moving.id, target.id, target.id, 0, 409)
+		await move(moving.id, extraBoard.columns[2].id, target.id, 0, 409)
+		await move(moving.id, source.id, source.id, 1, 400)
+		await move(moving.id, source.id, target.id, 1, 400)
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+			moving,
+		)
+	})
+
+	it.each([
+		{},
+		{ position: 0 },
+		{ fromColumnId: 'source', position: 0 },
+		{ toColumnId: 'target', position: 0 },
+		{ fromColumnId: 'source', toColumnId: 'target', position: -1 },
+		{ fromColumnId: 'source', toColumnId: 'target', position: 0.5 },
+		{ fromColumnId: 'source', toColumnId: 'target', position: '0' },
+		{ fromColumnId: 'source', toColumnId: 'target', position: 2147483648 },
+		{ fromColumnId: '', toColumnId: 'target', position: 0 },
+		{ fromColumnId: 'source', toColumnId: 'target', position: 0, status: 'TODO' },
+		{ targetColumnId: 'target', position: 0 },
+		{ status: 'TODO', position: 0, extra: true },
+	])('rejects a malformed or ambiguous move request %j', async (body) => {
+		await request(server)
+			.patch(`${path()}/missing/move`)
+			.set('Cookie', memberCookies)
+			.send(body)
+			.expect(400)
+	})
+
+	it('keeps positions and every task consistent after repeated moves', async () => {
+		const cols = extraBoard.columns.slice(0, 3)
+		const tasks = await Promise.all(
+			Array.from({ length: 7 }, (_, index) =>
+				task(cols[0].id, `Task ${index}`, index * 2 + 1),
+			),
+		)
+		const expected = [tasks.map((item) => item.id), [] as string[], [] as string[]]
+		for (let index = 0; index < 40; index++) {
+			const id = tasks[index % tasks.length].id
+			const from = expected.findIndex((items) => items.includes(id))
+			const to = (index * 7 + 1) % cols.length
+			expected[from].splice(expected[from].indexOf(id), 1)
+			const position = (index * 3) % (expected[to].length + 1)
+			expected[to].splice(position, 0, id)
+			await move(id, cols[from].id, cols[to].id, position)
+		}
+		for (const [index, column] of cols.entries())
+			await expectOrder(column.id, expected[index])
+		expect(await prisma.task.count({ where: { projectId } })).toBe(tasks.length)
+	})
+
+	it('normalizes positions across bulk update batches', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Moving', 3)
+		await prisma.task.createMany({
+			data: Array.from({ length: 501 }, (_, index) => ({
+				projectId,
+				boardColumnId: target.id,
+				title: `Bulk ${index}`,
+				position: 1000 + index * 2,
+				createdById: ownerId,
+			})),
+		})
+		await move(moving.id, source.id, target.id, 0)
+		const result = await list(target.id)
+		expect(result).toHaveLength(502)
+		expect(result.map((item) => item.position)).toEqual(
+			Array.from({ length: 502 }, (_, index) => index),
+		)
+		expect(result.map((item) => item.title)).toEqual([
+			'Moving',
+			...Array.from({ length: 501 }, (_, index) => `Bulk ${index}`),
+		])
+	})
+
+	it('rolls back the moving task and every reordered neighbour if a later database write fails', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Moving', 7)
+		const neighbour = await task(target.id, 'Reject reorder', 8)
+		await prisma.$executeRawUnsafe(`CREATE FUNCTION test_board_move_reject_position() RETURNS trigger LANGUAGE plpgsql AS $$
+			BEGIN IF NEW."title" = 'Reject reorder' AND NEW."position" IS DISTINCT FROM OLD."position" THEN
+				RAISE EXCEPTION 'Injected serialization failure' USING ERRCODE = '40001'; END IF; RETURN NEW; END $$`)
+		try {
+			await prisma.$executeRawUnsafe(
+				'CREATE TRIGGER test_board_move_reject_position BEFORE UPDATE ON "Task" FOR EACH ROW EXECUTE FUNCTION test_board_move_reject_position()',
+			)
+			await move(moving.id, source.id, target.id, 0, 409)
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+			expect(
+				await prisma.task.findUniqueOrThrow({ where: { id: neighbour.id } }),
+			).toEqual(neighbour)
+		} finally {
+			await prisma.$executeRawUnsafe(
+				'DROP TRIGGER IF EXISTS test_board_move_reject_position ON "Task"',
+			)
+			await prisma.$executeRawUnsafe('DROP FUNCTION test_board_move_reject_position()')
+		}
+	})
+
+	it('serializes concurrent reorders and exposes complete board snapshots during moves', async () => {
+		const [source, target] = extraBoard.columns
+		const tasks = await Promise.all(
+			Array.from({ length: 7 }, (_, index) => task(source.id, `Task ${index}`, index)),
+		)
+		const movement = (async () => {
+			for (let index = 0; index < 12; index++) {
+				const from = index % 2 === 0 ? source.id : target.id
+				const to = index % 2 === 0 ? target.id : source.id
+				await move(tasks[0].id, from, to)
+			}
+		})()
+		const reads = Promise.all(
+			Array.from({ length: 15 }, async () => {
+				const result = await view(extraBoard.id)
+				expect(
+					result.columns.flatMap((column) => column.tasks.map((item) => item.id)).sort(),
+				).toEqual(tasks.map((item) => item.id).sort())
+			}),
+		)
+		await Promise.all([movement, reads])
+		await Promise.all(tasks.map((item) => move(item.id, source.id, source.id, 2)))
+		const result = await list(source.id)
+		expect(result.map((item) => item.id).sort()).toEqual(
+			tasks.map((item) => item.id).sort(),
+		)
+		expect(result.map((item) => item.position)).toEqual([0, 1, 2, 3, 4, 5, 6])
+	})
+
+	it('accepts only one of two moves that declare the same old source', async () => {
+		const [source, target, other] = extraBoard.columns
+		const moving = await task(source.id, 'Moving', 1)
+		const responses = await Promise.all(
+			[target, other].map((column) =>
+				request(server)
+					.patch(`${path()}/${moving.id}/move`)
+					.set('Cookie', memberCookies)
+					.send({ fromColumnId: source.id, toColumnId: column.id, position: 0 }),
+			),
+		)
+		expect(responses.map((response) => response.status).sort()).toEqual([200, 409])
+		expect(await prisma.task.count({ where: { projectId } })).toBe(1)
+		expect(await list(source.id)).toHaveLength(0)
+	})
+
+	it('supports opposite transfers between two boards without losing tasks', async () => {
+		const a = await task(mainBoard.columns[0].id, 'A', 1)
+		const b = await task(extraBoard.columns[0].id, 'B', 1)
+		await Promise.all([
+			move(a.id, mainBoard.columns[0].id, extraBoard.columns[0].id),
+			move(b.id, extraBoard.columns[0].id, mainBoard.columns[0].id),
+		])
+		await expectOrder(mainBoard.columns[0].id, [b.id])
+		await expectOrder(extraBoard.columns[0].id, [a.id])
+	})
+
+	function deferred<T>() {
+		let resolve!: (value: T) => void
+		const promise = new Promise<T>((done) => {
+			resolve = done
+		})
+		return { promise, resolve }
+	}
+
+	async function waitForBlockedTask(blockerPid: number) {
+		const deadline = Date.now() + 4000
+		while (Date.now() < deadline) {
+			const [row] = await prisma.$queryRaw<{ blocked: boolean }[]>(Prisma.sql`
+				SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE ${blockerPid}::integer = ANY(pg_blocking_pids(pid)) AND query LIKE '%FROM "Task"%FOR UPDATE%') AS blocked
+			`)
+			if (row.blocked) return
+			await setTimeout(10)
+		}
+		throw new Error('Move did not wait for a task lock')
+	}
+
+	it('does not overwrite a concurrent column change while waiting for its lock', async () => {
+		const [source, target, escaped] = extraBoard.columns
+		const moving = await task(source.id, 'Moving', 1)
+		const ready = deferred<number>()
+		const release = deferred<void>()
+		const writer = prisma.$transaction(
+			async (tx) => {
+				await tx.task.update({
+					where: { id: moving.id },
+					data: { boardColumnId: escaped.id, position: 9 },
+				})
+				const [row] = await tx.$queryRaw<
+					{ pid: number }[]
+				>`SELECT pg_backend_pid() AS pid`
+				ready.resolve(row.pid)
+				await release.promise
+			},
+			{ timeout: 10_000 },
+		)
+		const pid = await ready.promise
+		const pending = request(server)
+			.patch(`${path()}/${moving.id}/move`)
+			.set('Cookie', memberCookies)
+			.send({ fromColumnId: source.id, toColumnId: target.id, position: 0 })
+			.then((response) => response)
+		try {
+			await waitForBlockedTask(pid)
+		} finally {
+			release.resolve()
+		}
+		await writer
+		expect((await pending).status).toBe(409)
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+		).toMatchObject({ boardColumnId: escaped.id, position: 9 })
+	})
+
+	it('serializes a move with source-column deletion without losing data', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Moving', 1)
+		const [moved, deleted] = await Promise.all([
+			request(server)
+				.patch(`${path()}/${moving.id}/move`)
+				.set('Cookie', memberCookies)
+				.send({ fromColumnId: source.id, toColumnId: target.id, position: 0 }),
+			request(server)
+				.delete(`/boards/${extraBoard.id}/columns/${source.id}`)
+				.set('Cookie', ownerCookies)
+				.send({ targetColumnId: target.id }),
+		])
+		expect([200, 404, 409]).toContain(moved.status)
+		expect(deleted.status).toBe(204)
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+		).toMatchObject({ boardColumnId: target.id, position: 0 })
+		expect(await prisma.task.count({ where: { projectId } })).toBe(1)
+	})
+
+	it('serializes a cross-board move with target-board deletion', async () => {
+		const moving = await task(mainBoard.columns[0].id, 'Moving', 1)
+		const [moved, deleted] = await Promise.all([
+			request(server)
+				.patch(`${path()}/${moving.id}/move`)
+				.set('Cookie', memberCookies)
+				.send({
+					fromColumnId: mainBoard.columns[0].id,
+					toColumnId: extraBoard.columns[0].id,
+					position: 0,
+				}),
+			request(server)
+				.delete(`/teams/${teamId}/projects/${projectId}/boards/${extraBoard.id}`)
+				.set('Cookie', ownerCookies),
+		])
+		expect([
+			[200, 409],
+			[404, 204],
+		]).toContainEqual([moved.status, deleted.status])
+		expect(await prisma.task.count({ where: { projectId } })).toBe(1)
+		const stored = await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })
+		expect(stored.boardColumnId).toBe(
+			moved.status === 200 ? extraBoard.columns[0].id : mainBoard.columns[0].id,
+		)
+	})
+
+	it('publishes required board selection and one column-based move contract in Swagger', () => {
+		const document = cleanupOpenApiDoc(
+			SwaggerModule.createDocument(
+				app,
+				new DocumentBuilder().setTitle('Board tasks').setVersion('1').build(),
+			),
+		)
+		const board = document.paths['/teams/{teamId}/projects/{projectId}/tasks/board'].get!
+		expect(board.parameters).toContainEqual(
+			expect.objectContaining({ name: 'boardId', in: 'query', required: true }),
+		)
+		expect(board.responses['200']).toMatchObject({
+			content: {
+				'application/json': {
+					schema: { $ref: expect.stringContaining('BoardViewResponseDto') },
+				},
+			},
+		})
+		expect(
+			document.paths['/teams/{teamId}/projects/{projectId}/tasks/{taskId}/move'].patch
+				?.responses['200'],
+		).toMatchObject({
+			content: {
+				'application/json': {
+					schema: { $ref: expect.stringContaining('BoardTaskResponseDto') },
+				},
+			},
+		})
+		expect(document.components?.schemas?.MoveTaskToColumnDto).toMatchObject({
+			required: ['fromColumnId', 'toColumnId', 'position'],
+			additionalProperties: false,
+		})
+		expect(document.components?.schemas?.BoardViewResponseDto).toMatchObject({
+			required: ['board', 'columns'],
+		})
+		expect(document.components?.schemas?.MoveTaskDto).toBeUndefined()
+		expect(document.components?.schemas?.BoardColumnDto).toBeUndefined()
+	})
+})

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { INestApplication } from '@nestjs/common'
 import request from 'supertest'
 import type { Redis } from 'ioredis'
+import type { BoardView } from '@repo/types'
 
 import { PrismaService } from '../../prisma/prisma.service'
 import { createTestApp, registerAndLogin, resetE2eState } from '../helpers/e2e.helpers'
@@ -22,6 +23,7 @@ describe('Tasks (e2e)', () => {
 
 	let teamId: string
 	let projectId: string
+	let boardId: string
 
 	beforeAll(async () => {
 		const testApp = await createTestApp()
@@ -88,6 +90,7 @@ describe('Tasks (e2e)', () => {
 			include: { columns: { orderBy: { position: 'asc' } } },
 		})
 		expect(boards).toHaveLength(1)
+		boardId = boards[0].id
 		expect(boards[0].isDefault).toBe(true)
 		expect(boards[0].columns.map((column) => column.key)).toEqual([
 			'TODO',
@@ -405,31 +408,30 @@ describe('Tasks (e2e)', () => {
 
 			const res = await request(server)
 				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.query({ boardId })
 				.set('Cookie', memberCookies)
 				.expect(200)
 
-			const columns = res.body as Array<{
-				status: string
-				tasks: Record<string, unknown>[]
-			}>
+			const result = res.body as BoardView
+			const columns = result.columns
 
-			expect(Array.isArray(columns)).toBe(true)
+			expect(result.board.id).toBe(boardId)
 			expect(columns).toHaveLength(4)
 
-			const statuses = columns.map((c) => c.status)
+			const statuses = columns.map((c) => c.key)
 			expect(statuses).toEqual(
 				expect.arrayContaining(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']),
 			)
 
-			const todoColumn = columns.find((c) => c.status === 'TODO')!
+			const todoColumn = columns.find((c) => c.key === 'TODO')!
 			expect(todoColumn.tasks).toHaveLength(1)
 			expect(todoColumn.tasks[0]).toMatchObject({ title: 'Todo task' })
 
-			const inProgressColumn = columns.find((c) => c.status === 'IN_PROGRESS')!
+			const inProgressColumn = columns.find((c) => c.key === 'IN_PROGRESS')!
 			expect(inProgressColumn.tasks).toHaveLength(1)
 
 			const emptyStatuses = columns.filter(
-				(c) => !['TODO', 'IN_PROGRESS'].includes(c.status),
+				(c) => !['TODO', 'IN_PROGRESS'].includes(c.key),
 			)
 			emptyStatuses.forEach((col) => expect(col.tasks).toHaveLength(0))
 		})
@@ -437,6 +439,7 @@ describe('Tasks (e2e)', () => {
 		it('403 — незнакомец не может получить доску', async () => {
 			await request(server)
 				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.query({ boardId })
 				.set('Cookie', strangerCookies)
 				.expect(403)
 		})
@@ -446,15 +449,19 @@ describe('Tasks (e2e)', () => {
 				title: 'Movable task',
 				status: 'TODO',
 			})
+			const boardColumns = await prisma.boardColumn.findMany({ where: { boardId } })
+			const fromColumnId = boardColumns.find((column) => column.key === 'TODO')!.id
+			const toColumnId = boardColumns.find((column) => column.key === 'IN_PROGRESS')!.id
 
 			const res = await request(server)
 				.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}/move`)
 				.set('Cookie', memberCookies)
-				.send({ status: 'IN_PROGRESS', position: 1 })
+				.send({ fromColumnId, toColumnId, position: 0 })
 				.expect(200)
 
 			expect(res.body.status).toBe('IN_PROGRESS')
-			expect(res.body.position).toBe(1)
+			expect(res.body.position).toBe(0)
+			expect(res.body.boardColumnId).toBe(toColumnId)
 			const stored = await prisma.task.findUniqueOrThrow({
 				where: { id: task.id },
 				include: { boardColumn: true },
@@ -468,14 +475,12 @@ describe('Tasks (e2e)', () => {
 			// Подтверждаем через доску
 			const boardRes = await request(server)
 				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.query({ boardId })
 				.set('Cookie', memberCookies)
 				.expect(200)
 
-			const columns = boardRes.body as Array<{
-				status: string
-				tasks: Array<{ id: string }>
-			}>
-			const inProgressTasks = columns.find((c) => c.status === 'IN_PROGRESS')!.tasks
+			const columns = (boardRes.body as BoardView).columns
+			const inProgressTasks = columns.find((c) => c.key === 'IN_PROGRESS')!.tasks
 			expect(inProgressTasks.some((t) => t.id === task.id)).toBe(true)
 		})
 

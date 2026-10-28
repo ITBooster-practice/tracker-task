@@ -14,6 +14,9 @@ import {
 } from '@nestjs/common'
 import {
 	ApiBearerAuth,
+	ApiBadRequestResponse,
+	ApiBody,
+	ApiConflictResponse,
 	ApiCreatedResponse,
 	ApiForbiddenResponse,
 	ApiNotFoundResponse,
@@ -25,9 +28,11 @@ import {
 
 import { Authorization } from '../auth/decorators/authorization.decorator'
 import { Authorized } from '../auth/decorators/authorized.decorator'
-import { BoardResponseDto } from './dto/board-response.dto'
+import { BoardQueryDto } from './dto/board-query.dto'
+import { BoardViewResponseDto, BoardTaskResponseDto } from './dto/board-view-response.dto'
+import { MoveTaskToColumnDto } from './dto/move-task-to-column.dto'
+import { BoardTasksService } from './board-tasks.service'
 import { CreateTaskDto } from './dto/create-task.dto'
-import { MoveTaskDto } from './dto/move-task.dto'
 import { TaskResponseDto } from './dto/task-response.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
@@ -39,7 +44,10 @@ import { TasksService } from './tasks.service'
 @Authorization()
 @Controller('teams/:teamId/projects/:projectId/tasks')
 export class TasksController {
-	constructor(private readonly tasksService: TasksService) {}
+	constructor(
+		private readonly tasksService: TasksService,
+		private readonly boardTasksService: BoardTasksService,
+	) {}
 
 	@ApiOperation({ summary: 'Создать задачу' })
 	@ApiCreatedResponse({ type: TaskResponseDto, description: 'Задача успешно создана' })
@@ -75,8 +83,13 @@ export class TasksController {
 		)
 	}
 
-	@ApiOperation({ summary: 'Получить доску (задачи, сгруппированные по статусам)' })
-	@ApiOkResponse({ type: BoardResponseDto, description: 'Структура канбан-доски' })
+	@ApiOperation({
+		summary: 'Получить доску с колонками и задачами',
+		description: 'boardId выбирает доску проекта.',
+	})
+	@ApiOkResponse({ type: BoardViewResponseDto })
+	@ApiBadRequestResponse({ description: 'Некорректный boardId' })
+	@ApiNotFoundResponse({ description: 'Проект или доска не найдены' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@RequireFeatures(FEATURE_KEYS.BOARDS)
 	@Get('board')
@@ -84,8 +97,9 @@ export class TasksController {
 		@Param('teamId') teamId: string,
 		@Param('projectId') projectId: string,
 		@Authorized('id') userId: string,
+		@Query() query: BoardQueryDto,
 	) {
-		return this.tasksService.getBoard(teamId, projectId, userId)
+		return this.boardTasksService.getBoard(teamId, projectId, query.boardId, userId)
 	}
 
 	@ApiOperation({ summary: 'Получить задачу по ID' })
@@ -117,8 +131,15 @@ export class TasksController {
 		return this.tasksService.update(teamId, projectId, taskId, userId, dto)
 	}
 
-	@ApiOperation({ summary: 'Переместить задачу (сменить статус / позицию)' })
-	@ApiOkResponse({ type: TaskResponseDto, description: 'Задача перемещена' })
+	@ApiOperation({
+		summary: 'Переместить задачу между колонками или внутри колонки',
+		description:
+			'fromColumnId, toColumnId и position задают колонку и индекс вставки с нуля.',
+	})
+	@ApiBody({ type: MoveTaskToColumnDto })
+	@ApiOkResponse({ type: BoardTaskResponseDto })
+	@ApiBadRequestResponse({ description: 'Некорректный формат перемещения или позиция' })
+	@ApiConflictResponse({ description: 'Исходная колонка или данные доски изменились' })
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Patch(':taskId/move')
@@ -127,9 +148,9 @@ export class TasksController {
 		@Param('projectId') projectId: string,
 		@Param('taskId') taskId: string,
 		@Authorized('id') userId: string,
-		@Body() dto: MoveTaskDto,
+		@Body() dto: MoveTaskToColumnDto,
 	) {
-		return this.tasksService.moveTask(teamId, projectId, taskId, userId, dto)
+		return this.boardTasksService.moveTask(teamId, projectId, taskId, userId, dto)
 	}
 
 	@ApiOperation({ summary: 'Удалить задачу (OWNER / ADMIN)' })
