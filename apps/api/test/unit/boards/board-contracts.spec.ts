@@ -3,8 +3,8 @@ import {
 	createColumnSchema,
 	deleteBoardSchema,
 	deleteColumnSchema,
-	moveTaskSchema,
 	moveTaskToColumnSchema,
+	boardQuerySchema,
 	reorderColumnsSchema,
 	updateBoardSchema,
 	updateColumnSchema,
@@ -79,21 +79,53 @@ describe('Shared board contracts', () => {
 				createColumnSchema.safeParse({ key: 'x', title: 'X', position }).success,
 			).toBe(false)
 			expect(
-				moveTaskToColumnSchema.safeParse({ targetColumnId: 'target', position }).success,
+				moveTaskToColumnSchema.safeParse({
+					fromColumnId: 'source',
+					toColumnId: 'target',
+					position,
+				}).success,
 			).toBe(false)
 		},
 	)
 
-	it('keeps the legacy status move separate from the new column move', () => {
-		expect(moveTaskSchema.parse({ status: 'IN_PROGRESS', position: 1 })).toEqual({
-			status: 'IN_PROGRESS',
-			position: 1,
-		})
+	it('uses column IDs and rejects status-based moves', () => {
 		expect(
-			moveTaskToColumnSchema.parse({ targetColumnId: 'target', position: 0 }),
-		).toEqual({ targetColumnId: 'target', position: 0 })
+			moveTaskToColumnSchema.parse({
+				fromColumnId: ' source ',
+				toColumnId: ' target ',
+				position: 0,
+			}),
+		).toEqual({ fromColumnId: 'source', toColumnId: 'target', position: 0 })
 		expect(
 			moveTaskToColumnSchema.safeParse({ status: 'TODO', position: 0 }).success,
 		).toBe(false)
+	})
+
+	it('rejects mixed or incomplete move bodies', () => {
+		const canonical = { fromColumnId: 'source', toColumnId: 'target', position: 0 }
+		expect(moveTaskToColumnSchema.parse(canonical)).toEqual(canonical)
+		for (const body of [
+			{ ...canonical, status: 'TODO' },
+			{ ...canonical, extra: true },
+			{ toColumnId: 'target', position: 0 },
+			{ fromColumnId: 'source', position: 0 },
+			{ targetColumnId: 'target', position: 0 },
+			{ position: 0 },
+			{ status: 'TODO', position: 1 },
+		])
+			expect(moveTaskToColumnSchema.safeParse(body).success).toBe(false)
+	})
+
+	it('requires a board ID and rejects ambiguous query values', () => {
+		expect(boardQuerySchema.parse({ boardId: ' board ' })).toEqual({ boardId: 'board' })
+		for (const query of [
+			{},
+			{ boardId: '' },
+			{ boardId: ' ' },
+			{ boardId: ['a', 'b'] },
+			{ id: 'a' },
+		]) {
+			expect(boardQuerySchema.safeParse(query).success).toBe(false)
+		}
 	})
 })
