@@ -21,7 +21,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { BoardListItem, BoardView } from '@repo/types'
+import type { BoardListItem, BoardTask, BoardView } from '@repo/types'
 
 import type { Board } from '@/views/boards/ui/board'
 import type { BoardTaskDetailsDialog } from '@/views/boards/ui/board-task-details-dialog'
@@ -29,12 +29,18 @@ import { ProjectBoardPageView } from '@/views/boards/ui/project-board-page-view'
 import { boardsKeys } from '@/shared/api/use-boards'
 import { tasksKeys } from '@/shared/api/use-tasks'
 
+const { boardState, toastError } = vi.hoisted(() => ({
+	boardState: { current: null as ComponentProps<typeof Board> | null },
+	toastError: vi.fn(),
+}))
+
 vi.mock('next/link', () => ({
 	default: ({ children, href }: React.PropsWithChildren<{ href: string }>) => (
 		<a href={href}>{children}</a>
 	),
 }))
 vi.mock('@repo/ui', () => ({
+	toast: { error: toastError },
 	cn: (...values: unknown[]) =>
 		values.filter((value) => typeof value === 'string').join(' '),
 	Button: ({
@@ -61,20 +67,28 @@ vi.mock('@repo/ui', () => ({
 	),
 }))
 vi.mock('@/views/boards/ui/board', () => ({
-	Board: ({ columns, onOpenTask, onMoveTask }: ComponentProps<typeof Board>) => (
-		<section data-testid='board' data-movable={Boolean(onMoveTask)}>
-			{columns.map((column) => (
-				<div key={column.id}>
-					<h2>{column.title}</h2>
-					{column.tasks.map((task) => (
-						<button key={task.id} onClick={() => onOpenTask(task.id)}>
-							{task.title}
-						</button>
-					))}
-				</div>
-			))}
-		</section>
-	),
+	Board: (props: ComponentProps<typeof Board>) => {
+		boardState.current = props
+		const { columns, onOpenTask, onMoveTask, disableInteraction } = props
+		return (
+			<section
+				data-testid='board'
+				data-movable={Boolean(onMoveTask)}
+				data-disabled={Boolean(disableInteraction)}
+			>
+				{columns.map((column) => (
+					<div key={column.id}>
+						<h2>{column.title}</h2>
+						{column.tasks.map((task) => (
+							<button key={task.id} onClick={() => onOpenTask(task.id)}>
+								{task.title}
+							</button>
+						))}
+					</div>
+				))}
+			</section>
+		)
+	},
 }))
 vi.mock('@/views/boards/ui/board-task-details-dialog', () => ({
 	BoardTaskDetailsDialog: ({
@@ -93,10 +107,12 @@ vi.mock('@/views/boards/ui/board-task-details-dialog', () => ({
 
 function deferred<T>() {
 	let resolve!: (value: T) => void
-	const promise = new Promise<T>((callback) => {
+	let reject!: (reason: unknown) => void
+	const promise = new Promise<T>((callback, rejectPromise) => {
 		resolve = callback
+		reject = rejectPromise
 	})
-	return { promise, resolve }
+	return { promise, resolve, reject }
 }
 
 const liveView = (projectId = 'project-1') => {
@@ -109,6 +125,20 @@ const liveView = (projectId = 'project-1') => {
 	return view
 }
 
+const movableView = () => {
+	const view = liveView()
+	view.columns.push({
+		...view.columns[0]!,
+		id: 'target',
+		key: 'DONE',
+		title: 'Готово',
+		isSystem: true,
+		position: 1,
+		tasks: [],
+	})
+	return view
+}
+
 describe('ProjectBoardPageView', () => {
 	let client: QueryClient
 	const Wrapper = ({ children }: React.PropsWithChildren) => (
@@ -116,6 +146,8 @@ describe('ProjectBoardPageView', () => {
 	)
 
 	beforeEach(() => {
+		toastError.mockReset()
+		boardState.current = null
 		boardsServiceMock.getAll.mockReset()
 		resetTasksServiceMock()
 		resetProjectsServiceMock()
@@ -174,13 +206,184 @@ describe('ProjectBoardPageView', () => {
 		expect(
 			screen.getByRole('link', { name: 'Тестовый проект' }).getAttribute('href'),
 		).toBe('/teams/team-1/projects/project-1')
-		expect(screen.getByTestId('board').getAttribute('data-movable')).toBe('false')
+		expect(screen.getByTestId('board').getAttribute('data-movable')).toBe('true')
 		fireEvent.click(screen.getByText('Задача из API'))
 		expect(screen.getByRole('dialog').getAttribute('data-readonly')).toBe('true')
 		expect(screen.getByText('Описание из API')).toBeDefined()
 		expect(screen.getByText('7')).toBeDefined()
 		fireEvent.click(screen.getByText('Закрыть'))
 		expect(screen.queryByRole('dialog')).toBeNull()
+	})
+
+	it('сохраняет перенос с исходной версией, блокируя повтор до обновления доски', async () => {
+		const before = movableView()
+		const after = structuredClone(before)
+		const moved = {
+			...after.columns[0]!.tasks[0]!,
+			boardColumnId: 'target',
+			status: 'DONE' as const,
+			position: 0,
+			version: 8,
+		}
+		after.columns[0]!.tasks = []
+		after.columns[1]!.tasks = [moved]
+		const patch = deferred<BoardTask>()
+		const refresh = deferred<BoardView>()
+		tasksServiceMock.getBoard
+			.mockResolvedValueOnce(before)
+			.mockReturnValueOnce(refresh.promise)
+		tasksServiceMock.move.mockReturnValueOnce(patch.promise)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		const input = { taskId: 'task-1', toColumnId: 'target', toIndex: 0 }
+		act(() => {
+			boardState.current!.onMoveTask!(input)
+			boardState.current!.onMoveTask!(input)
+		})
+		await waitFor(() =>
+			expect(tasksServiceMock.move).toHaveBeenCalledExactlyOnceWith(
+				'team-1',
+				'project-1',
+				'task-1',
+				{
+					fromColumnId: 'board-1-column',
+					toColumnId: 'target',
+					position: 0,
+					expectedVersion: 7,
+				},
+			),
+		)
+		expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('true')
+		expect(
+			client.getQueryData<BoardView>(tasksKeys.board('team-1', 'project-1', 'board-1'))!
+				.columns[1]!.tasks[0]!.id,
+		).toBe('task-1')
+		await act(async () => patch.resolve(moved))
+		await waitFor(() => expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(2))
+		expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('true')
+		act(() => boardState.current!.onMoveTask!(input))
+		expect(tasksServiceMock.move).toHaveBeenCalledTimes(1)
+		await act(async () => refresh.resolve(after))
+		await waitFor(() =>
+			expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('false'),
+		)
+		const back = structuredClone(before)
+		back.columns[0]!.tasks[0]!.version = 9
+		tasksServiceMock.getBoard.mockResolvedValueOnce(back)
+		tasksServiceMock.move.mockResolvedValueOnce(back.columns[0]!.tasks[0]!)
+		act(() =>
+			boardState.current!.onMoveTask!({
+				taskId: 'task-1',
+				toColumnId: 'board-1-column',
+				toIndex: 0,
+			}),
+		)
+		await waitFor(() =>
+			expect(tasksServiceMock.move).toHaveBeenLastCalledWith(
+				'team-1',
+				'project-1',
+				'task-1',
+				{
+					fromColumnId: 'target',
+					toColumnId: 'board-1-column',
+					position: 0,
+					expectedVersion: 8,
+				},
+			),
+		)
+		await waitFor(() =>
+			expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('false'),
+		)
+	})
+
+	it.each([409, 503])(
+		'при ошибке %s откатывает перенос и показывает toast даже при ошибке refetch',
+		async (statusCode) => {
+			const before = movableView()
+			const patch = deferred<BoardTask>()
+			tasksServiceMock.getBoard
+				.mockResolvedValueOnce(before)
+				.mockRejectedValueOnce({ statusCode: 503, message: 'Refetch unavailable' })
+			tasksServiceMock.move.mockReturnValueOnce(patch.promise)
+			render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+				wrapper: Wrapper,
+			})
+			await screen.findByText('Задача из API')
+			act(() =>
+				boardState.current!.onMoveTask!({
+					taskId: 'task-1',
+					toColumnId: 'target',
+					toIndex: 0,
+				}),
+			)
+			await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
+			await act(async () => patch.reject({ statusCode, message: 'Move failed' }))
+			await waitFor(() =>
+				expect(toastError).toHaveBeenCalledExactlyOnceWith(
+					statusCode === 409
+						? 'Доска изменилась. Попробуйте переместить задачу ещё раз.'
+						: 'Не удалось переместить задачу. Попробуйте ещё раз.',
+				),
+			)
+			await screen.findByText('Не удалось загрузить доску')
+			expect(
+				client.getQueryData(tasksKeys.board('team-1', 'project-1', 'board-1')),
+			).toEqual(before)
+		},
+	)
+
+	it('не отправляет перенос без изменения позиции или в неизвестную колонку', async () => {
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		act(() => {
+			boardState.current!.onMoveTask!({
+				taskId: 'task-1',
+				toColumnId: 'board-1-column',
+				toIndex: 0,
+			})
+			boardState.current!.onMoveTask!({
+				taskId: 'task-1',
+				toColumnId: 'missing',
+				toIndex: 0,
+			})
+		})
+		expect(tasksServiceMock.move).not.toHaveBeenCalled()
+	})
+
+	it('запоздавшая ошибка переноса не меняет новую доску и не показывает чужой toast', async () => {
+		const before = movableView()
+		const other = liveView('project-2')
+		other.columns[0]!.tasks[0]!.title = 'Задача другого проекта'
+		const patch = deferred<BoardTask>()
+		tasksServiceMock.getBoard.mockResolvedValueOnce(before).mockResolvedValueOnce(other)
+		tasksServiceMock.move.mockReturnValueOnce(patch.promise)
+		const { rerender } = render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' />,
+			{ wrapper: Wrapper },
+		)
+		await screen.findByText('Задача из API')
+		act(() =>
+			boardState.current!.onMoveTask!({
+				taskId: 'task-1',
+				toColumnId: 'target',
+				toIndex: 0,
+			}),
+		)
+		await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
+		rerender(<ProjectBoardPageView teamId='team-2' projectId='project-2' />)
+		await screen.findByText('Задача другого проекта')
+		await act(async () =>
+			patch.reject({ statusCode: 409, message: 'Old request failed' }),
+		)
+		expect(toastError).not.toHaveBeenCalled()
+		expect(screen.getByText('Задача другого проекта')).toBeDefined()
+		expect(
+			client.getQueryData(tasksKeys.board('team-2', 'project-2', 'board-1')),
+		).toEqual(other)
 	})
 
 	it('показывает отсутствие досок без запроса с пустым boardId', async () => {

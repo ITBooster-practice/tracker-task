@@ -11,7 +11,7 @@ import {
 import { createTaskFixture } from '@/test/mocks/api/tasks.fixtures'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { BoardView, Task, TaskMoveConflict } from '@repo/types'
 
@@ -26,15 +26,18 @@ import {
 
 function deferred<T>() {
 	let resolve!: (value: T) => void
-	const promise = new Promise<T>((resolvePromise) => {
+	let reject!: (reason: unknown) => void
+	const promise = new Promise<T>((resolvePromise, rejectPromise) => {
 		resolve = resolvePromise
+		reject = rejectPromise
 	})
-	return { promise, resolve }
+	return { promise, resolve, reject }
 }
 
 const variables = {
 	teamId: 'team-1',
 	projectId: 'project-1',
+	boardId: 'board-1',
 	taskId: 'task-1',
 	body: {
 		fromColumnId: 'board-1-column',
@@ -49,6 +52,25 @@ const conflict: TaskMoveConflict = {
 	taskId: 'task-1',
 	reason: 'VERSION_MISMATCH',
 	message: 'Task changed',
+}
+
+const movableView = (systemTarget = true) => {
+	const view = createBoardViewFixture()
+	const source = view.columns[0]!
+	source.tasks.push(createBoardTaskFixture({ id: 'neighbor', position: 1 }))
+	view.columns.push({
+		...source,
+		id: 'target',
+		key: 'DONE',
+		isSystem: systemTarget,
+		tasks: [createBoardTaskFixture({ id: 'target-task', boardColumnId: 'target' })],
+	})
+	return view
+}
+
+const boardMove = {
+	...variables,
+	body: { ...variables.body, toColumnId: 'target', position: 1 },
 }
 
 describe('board task queries', () => {
@@ -140,6 +162,7 @@ describe('board task queries', () => {
 			]
 			for (const key of [...affected, ...unaffected])
 				client.setQueryData(key, { cached: true })
+			client.setQueryData(affected[0]!, createBoardViewFixture())
 			const error =
 				outcome === 'conflict' ? conflict : { statusCode: 503, message: 'Network failed' }
 			if (outcome === 'success')
@@ -296,6 +319,112 @@ describe('board task queries', () => {
 		unsubscribe()
 		expect(observedVersions).not.toContain(1)
 		expect(result.current.detail.data).toEqual(latest)
+	})
+
+	it.each([true, false])(
+		'оптимистично переносит карточку и сохраняет серверную версию (system=%s)',
+		async (systemTarget) => {
+			const original = movableView(systemTarget)
+			const snapshot = structuredClone(original)
+			const key = tasksKeys.board('team-1', 'project-1', 'board-1')
+			const otherKey = tasksKeys.board('team-1', 'project-2', 'board-1')
+			client.setQueryData(key, original)
+			client.setQueryData(otherKey, original)
+			const pending = deferred<ReturnType<typeof createBoardTaskFixture>>()
+			tasksServiceMock.move.mockReturnValueOnce(pending.promise)
+			const { result } = renderHook(() => useMoveTask(), { wrapper: Wrapper })
+			act(() => result.current.mutate(boardMove))
+			await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
+			const optimistic = client.getQueryData<BoardView>(key)!
+			expect(result.current.isPending).toBe(true)
+			expect(
+				optimistic.columns[0]!.tasks.map((task) => [task.id, task.position]),
+			).toEqual([['neighbor', 0]])
+			expect(
+				optimistic.columns[1]!.tasks.map((task) => [task.id, task.position]),
+			).toEqual([
+				['target-task', 0],
+				['task-1', 1],
+			])
+			expect(optimistic.columns[1]!.tasks[1]).toMatchObject({
+				boardColumnId: 'target',
+				status: systemTarget ? 'DONE' : snapshot.columns[0]!.tasks[0]!.status,
+			})
+			expect(original).toEqual(snapshot)
+			expect(client.getQueryData(otherKey)).toEqual(snapshot)
+			await act(async () =>
+				pending.resolve({ ...optimistic.columns[1]!.tasks[1]!, version: 1 }),
+			)
+			await waitFor(() => expect(result.current.isSuccess).toBe(true))
+			expect(client.getQueryData<BoardView>(key)!.columns[1]!.tasks[1]!.version).toBe(1)
+		},
+	)
+
+	it('переставляет вниз в той же колонке по конечному индексу без повторного вычитания', async () => {
+		const original = movableView()
+		const key = tasksKeys.board('team-1', 'project-1', 'board-1')
+		client.setQueryData(key, original)
+		const pending = deferred<ReturnType<typeof createBoardTaskFixture>>()
+		tasksServiceMock.move.mockReturnValueOnce(pending.promise)
+		const { result } = renderHook(() => useMoveTask(), { wrapper: Wrapper })
+		act(() =>
+			result.current.mutate({
+				...variables,
+				body: { ...variables.body, toColumnId: 'board-1-column', position: 1 },
+			}),
+		)
+		await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
+		expect(
+			client
+				.getQueryData<BoardView>(key)!
+				.columns[0]!.tasks.map((task) => [task.id, task.position]),
+		).toEqual([
+			['neighbor', 0],
+			['task-1', 1],
+		])
+		await act(async () =>
+			pending.resolve(createBoardTaskFixture({ position: 1, version: 1 })),
+		)
+		await waitFor(() => expect(result.current.isSuccess).toBe(true))
+	})
+
+	it.each([conflict, { statusCode: 503, message: 'Network failed' }])(
+		'откатывает исходную доску до уведомления об ошибке $statusCode',
+		async (error) => {
+			const original = movableView()
+			const key = tasksKeys.board('team-1', 'project-1', 'board-1')
+			client.setQueryData(key, original)
+			const pending = deferred<ReturnType<typeof createBoardTaskFixture>>()
+			tasksServiceMock.move.mockReturnValueOnce(pending.promise)
+			const onError = vi.fn(() => expect(client.getQueryData(key)).toEqual(original))
+			const { result } = renderHook(() => useMoveTask({ onError }), { wrapper: Wrapper })
+			act(() => result.current.mutate(boardMove))
+			await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
+			expect(client.getQueryData<BoardView>(key)!.columns[0]!.tasks).toHaveLength(1)
+			await act(async () => pending.reject(error))
+			await waitFor(() => expect(result.current.isError).toBe(true))
+			expect(client.getQueryData(key)).toEqual(original)
+			expect(result.current.error).toEqual(error)
+			expect(onError).toHaveBeenCalledExactlyOnceWith(error)
+			expect(tasksServiceMock.move).toHaveBeenCalledTimes(1)
+		},
+	)
+
+	it('откат не затирает более свежие данные, полученные во время переноса', async () => {
+		const key = tasksKeys.board('team-1', 'project-1', 'board-1')
+		client.setQueryData(key, movableView())
+		const pending = deferred<ReturnType<typeof createBoardTaskFixture>>()
+		tasksServiceMock.move.mockReturnValueOnce(pending.promise)
+		const { result } = renderHook(() => useMoveTask(), { wrapper: Wrapper })
+		act(() => result.current.mutate(boardMove))
+		await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
+		const fresh = movableView()
+		fresh.columns[0]!.tasks[0]!.title = 'Новое изменение другого пользователя'
+		fresh.columns[0]!.tasks[0]!.version = 5
+		client.setQueryData(key, fresh)
+		await act(async () => pending.reject(conflict))
+		await waitFor(() => expect(result.current.isError).toBe(true))
+		expect(client.getQueryData(key)).toEqual(fresh)
 	})
 
 	it('ошибка обновления доски не подменяет конфликт переноса', async () => {

@@ -20,6 +20,7 @@ import type {
 
 import { tasksService } from '@/shared/lib/api/tasks-service'
 import type { ApiError } from '@/shared/lib/api/types'
+import { optimisticBoardMove } from '@/shared/lib/optimistic-board-move'
 
 export const tasksKeys = {
 	all: ['tasks'] as const,
@@ -62,16 +63,68 @@ export const useBoardQuery = (teamId: string, projectId: string, boardId: string
 	})
 }
 
-export const useMoveTask = () => {
+interface MoveTaskVariables {
+	teamId: string
+	projectId: string
+	boardId: string
+	taskId: string
+	body: MoveTaskToColumn
+}
+
+type MoveTaskError = ApiError | TaskMoveConflict
+
+interface MoveTaskContext {
+	key: ReturnType<typeof tasksKeys.board>
+	previous: BoardView | undefined
+	optimistic: BoardView | undefined
+}
+
+export const useMoveTask = (options?: { onError?: (error: MoveTaskError) => void }) => {
 	const queryClient = useQueryClient()
-	return useMutation<
-		BoardTask,
-		ApiError | TaskMoveConflict,
-		{ teamId: string; projectId: string; taskId: string; body: MoveTaskToColumn }
-	>({
+	return useMutation<BoardTask, MoveTaskError, MoveTaskVariables, MoveTaskContext>({
 		mutationFn: ({ teamId, projectId, taskId, body }) =>
 			tasksService.move(teamId, projectId, taskId, body),
 		retry: false,
+		onMutate: async ({ teamId, projectId, boardId, taskId, body }) => {
+			const key = tasksKeys.board(teamId, projectId, boardId)
+			await queryClient.cancelQueries({ queryKey: key, exact: true })
+			const previous = queryClient.getQueryData<BoardView>(key)
+			const next = previous ? optimisticBoardMove(previous, taskId, body) : undefined
+			const optimistic =
+				next && next !== previous
+					? queryClient.setQueryData<BoardView>(key, next)
+					: undefined
+			return { key, previous, optimistic }
+		},
+		onSuccess: (task, { teamId, projectId, boardId }) => {
+			queryClient.setQueryData<BoardView>(
+				tasksKeys.board(teamId, projectId, boardId),
+				(view) =>
+					view && {
+						...view,
+						columns: view.columns.map((column) => ({
+							...column,
+							tasks: column.tasks.map((current) =>
+								current.id === task.id &&
+								current.boardColumnId === task.boardColumnId &&
+								current.version <= task.version
+									? task
+									: current,
+							),
+						})),
+					},
+			)
+		},
+		onError: (error, _variables, context) => {
+			if (
+				context?.previous &&
+				context.optimistic &&
+				queryClient.getQueryData(context.key) === context.optimistic
+			) {
+				queryClient.setQueryData(context.key, context.previous)
+			}
+			options?.onError?.(error)
+		},
 		onSettled: (_, _error, { teamId, projectId }) =>
 			refreshProjectTasks(queryClient, teamId, projectId),
 	})

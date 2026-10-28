@@ -194,8 +194,49 @@ describe('Board', () => {
 		expect(moveInput).toEqual({
 			taskId: 'task-a',
 			toColumnId: 'TODO',
-			toIndex: 2,
+			toIndex: 1,
 		})
+	})
+
+	it.each([false, true])(
+		'drop в ту же колонку задаёт индекс после удаления карточки (preview=%s)',
+		(preview) => {
+			let moveInput: BoardTaskMoveInput | undefined
+			render(
+				<Board
+					columns={createBoardColumnsFixture()}
+					onOpenTask={() => undefined}
+					onMoveTask={(input) => {
+						moveInput = input
+					}}
+				/>,
+			)
+			fireEvent.click(screen.getByTestId('drag-start'))
+			const event = {
+				active: { id: 'task-a', rect: { current: { translated: null } } },
+				over: { id: 'board-column:TODO', rect: { top: 0, height: 100 } },
+			}
+			if (preview) act(() => getBoardUnitMockState().dndContextProps!.onDragOver(event))
+			act(() => getBoardUnitMockState().dndContextProps!.onDragEnd(event))
+			expect(moveInput).toEqual({ taskId: 'task-a', toColumnId: 'TODO', toIndex: 1 })
+		},
+	)
+
+	it('повторный drop в целевую колонку после preview не считает активную карточку второй раз', () => {
+		let moveInput: BoardTaskMoveInput | undefined
+		render(
+			<Board
+				columns={createBoardColumnsFixture()}
+				onOpenTask={() => undefined}
+				onMoveTask={(input) => {
+					moveInput = input
+				}}
+			/>,
+		)
+		fireEvent.click(screen.getByTestId('drag-start'))
+		fireEvent.click(screen.getByTestId('drag-over-column'))
+		fireEvent.click(screen.getByTestId('drag-end-column'))
+		expect(moveInput).toEqual({ taskId: 'task-a', toColumnId: 'DONE', toIndex: 1 })
 	})
 
 	it('cancel сбрасывает drag state без move callback', () => {
