@@ -12,6 +12,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { CustomZodValidationPipe } from '../../src/common/providers/zod-validation.provider'
 import { REDIS_CLIENT } from '../../src/common/redis/redis.constants'
 import { MailService } from '../../src/mail/mail.service'
+import { FEATURE_KEYS } from '@repo/types'
 
 const mailServiceMock = {
 	sendWelcomeEmail: () => Promise.resolve(),
@@ -73,4 +74,10 @@ export async function resetE2eState(
 	await prisma.team.deleteMany()
 	await prisma.user.deleteMany()
 	await redisClient.flushall()
+	// CRUD suites must not depend on another suite enabling initially disabled flags.
+	// Feature flag tests can disable individual features after this shared reset.
+	await prisma.featureFlag.updateMany({
+		where: { key: { in: Object.values(FEATURE_KEYS) } },
+		data: { enabled: true },
+	})
 }
