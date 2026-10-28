@@ -17,7 +17,8 @@ describe('registerRequestWithConfirmPasswordSchema', () => {
 	})
 
 	it('name опционален', () => {
-		const { name: _, ...withoutName } = validRegister
+		const { email, password, confirmPassword } = validRegister
+		const withoutName = { email, password, confirmPassword }
 		const result = registerRequestWithConfirmPasswordSchema.safeParse(withoutName)
 
 		expect(result.success).toBe(true)

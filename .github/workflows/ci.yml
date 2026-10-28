@@ -3,140 +3,158 @@ name: CI
 on:
   push:
     branches: [develop]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
   pull_request:
     branches: [main, develop]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref для полной проверки
+        default: main
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      full:
+        default: true
+        type: boolean
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || inputs.ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 permissions:
   contents: read
 
 jobs:
-  lint:
+  plan:
     runs-on: ubuntu-latest
-
+    outputs:
+      api: ${{ steps.plan.outputs.api }}
+      web: ${{ steps.plan.outputs.web }}
+      sha: ${{ steps.commit.outputs.sha }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Проверка правил CI
+        run: node --test scripts/ci/*.test.mjs
+      - name: Зафиксировать проверяемый коммит
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Определить затронутые приложения
+        id: plan
+        env:
+          CI_FULL: ${{ inputs.full || github.event_name == 'workflow_dispatch' }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_COMPARE_MODE: ${{ github.event_name == 'push' && 'range' || 'merge-base' }}
+        run: node scripts/ci/plan.mjs
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+  checks:
+    needs: plan
+    if: needs.plan.outputs.api == 'true' || needs.plan.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: ${{ needs.plan.outputs.api == 'true' && 'postgres:16' || '' }}
+        env:
+          POSTGRES_USER: tracker_test
+          POSTGRES_PASSWORD: tracker_test
+          POSTGRES_DB: tracker_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U tracker_test -d tracker_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: ${{ needs.plan.outputs.api == 'true' && 'redis:7' || '' }}
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      HUSKY: '0'
+      DATABASE_URL: postgresql://tracker_test:tracker_test@127.0.0.1:5432/tracker_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      JWT_SECRET: ci-test-secret-not-for-production
+      JWT_ACCESS_TOKEN_TTL: 15m
+      JWT_REFRESH_TOKEN_TTL: 7d
+      COOKIE_DOMAIN: localhost
+      WEB_APP_URL: http://localhost:3001
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      API_INTERNAL_URL: http://localhost:3000
+      MAIL_TRANSPORT: smtp
+      MAIL_HOST: localhost
+      MAIL_PORT: '1025'
+      MAIL_SECURE: 'false'
+      MAIL_USER: ci
+      MAIL_PASSWORD: ci
+      MAIL_FROM: ci@example.com
+      MAIL_FROM_NAME: CI
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
         with:
           run_install: false
-
-      - name: Setup pnpm cache
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-
-      - name: Install dependencies
+      - name: Установка зависимостей
         run: pnpm install --frozen-lockfile
+      - name: Сборка общих контрактов и конфигурации тестов
+        run: pnpm --filter @repo/types --filter @repo/vitest-config build
+      - name: API — lint, типы и все unit-тесты
+        if: needs.plan.outputs.api == 'true'
+        run: pnpm exec turbo run lint check-types test --filter=api...
+      - name: Web — lint, типы и все unit-тесты
+        if: needs.plan.outputs.web == 'true'
+        run: pnpm exec turbo run lint check-types test --filter=web...
+      - name: API — миграции и все e2e-тесты
+        if: needs.plan.outputs.api == 'true'
+        run: pnpm --filter api test:e2e
+      - name: Web — все e2e-тесты
+        if: needs.plan.outputs.web == 'true'
+        run: pnpm --filter web test:e2e
+      - name: Сборка API
+        if: needs.plan.outputs.api == 'true'
+        env:
+          NODE_ENV: production
+        run: pnpm exec turbo run build --filter=api
+      - name: Сборка web
+        if: needs.plan.outputs.web == 'true'
+        env:
+          NODE_ENV: production
+        run: pnpm exec turbo run build --filter=web
 
-      - name: Run lint
-        run: pnpm lint
-
-  type-check:
+  result:
+    name: CI
+    if: always()
+    needs: [plan, checks]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha || inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Setup pnpm cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run type check
-        run: pnpm type-check
-
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Setup pnpm cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run tests (coverage >= 80%)
-        run: pnpm test
-
-      - name: Stop test containers
-        if: always()
-        run: pnpm docker:test-down
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [lint, type-check, test]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Setup pnpm cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run build
-        run: pnpm build
+      - name: Итог проверок
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          CHECKS_RESULT: ${{ needs.checks.result }}
+          CHECK_API: ${{ needs.plan.outputs.api }}
+          CHECK_WEB: ${{ needs.plan.outputs.web }}
+        run: node scripts/ci/gate.mjs

@@ -27,8 +27,11 @@
 		"test": {
 			"dependsOn": ["^build"]
 		},
-		"type-check": {},
+		"check-types": {
+			"dependsOn": ["^build"]
+		},
 		"test:e2e": {
+			"cache": false,
 			"dependsOn": ["^build"]
 		}
 	}
