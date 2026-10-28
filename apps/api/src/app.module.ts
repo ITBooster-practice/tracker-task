@@ -16,6 +16,7 @@ import { CustomZodValidationPipe } from './common/providers/zod-validation.provi
 import { RedisModule } from './common/redis/redis.module'
 import { ProjectsModule } from './projects/projects.module'
 import { TasksModule } from './tasks/tasks.module'
+import { BoardsModule } from './boards/boards.module'
 
 @Module({
 	imports: [
@@ -27,6 +28,7 @@ import { TasksModule } from './tasks/tasks.module'
 		TeamsModule,
 		ProjectsModule,
 		TasksModule,
+		BoardsModule,
 		FeatureFlagsModule,
 	],
 	controllers: [AppController],
