@@ -64,6 +64,7 @@ describe('SidebarMenuItem', () => {
 
 		// Когда sidebar открыт, title не нужен (он виден как текст)
 		expect(screen.getByRole('link').getAttribute('title')).toBeNull()
+		expect(screen.getByRole('link').getAttribute('aria-current')).toBe('page')
 	})
 
 	it('закрытый sidebar — title показывается как tooltip', () => {

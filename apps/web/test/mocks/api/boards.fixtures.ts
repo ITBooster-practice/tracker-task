@@ -1,6 +1,27 @@
-import type { BoardTask, BoardView } from '@repo/types'
+import type { BoardListItem, BoardTask, BoardView } from '@repo/types'
 
 import { createTaskFixture } from './tasks.fixtures'
+
+export function createBoardListItemFixture(
+	overrides?: Partial<BoardListItem>,
+): BoardListItem {
+	const view = createBoardViewFixture(overrides?.id, overrides?.projectId)
+	return {
+		...view.board,
+		columns: view.columns.map((column) => ({
+			id: column.id,
+			boardId: column.boardId,
+			projectId: column.projectId,
+			key: column.key,
+			title: column.title,
+			position: column.position,
+			isSystem: column.isSystem,
+			createdAt: column.createdAt,
+			updatedAt: column.updatedAt,
+		})),
+		...overrides,
+	}
+}
 
 export function createBoardTaskFixture(overrides?: Partial<BoardTask>): BoardTask {
 	return {

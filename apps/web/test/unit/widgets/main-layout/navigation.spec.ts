@@ -28,11 +28,13 @@ describe('Runtime sidebar navigation', () => {
 		expect(find('Обзор проекта')?.href).toBe('/teams/team-1/projects/project-1')
 		expect(find('Задачи')?.href).toBe('/teams/team-1/projects/project-1/tasks')
 		expect(find('Настройки команды')?.href).toBe('/teams/team-1/settings')
-		expect(find('Доска')?.href).toBe('/boards')
+		expect(find('Доска')?.href).toBe('/teams/team-1/projects/project-1/board')
 	})
 	it('keeps unresolved selectors as placeholders', () => {
 		expect(find('Проекты', snapshot, false, null)?.href).toBe('#')
 		expect(find('Задачи', snapshot, false, 'team-1', null)?.href).toBe('#')
+		expect(find('Доска', snapshot, false, 'team-1', null)?.href).toBe('#')
+		expect(find('Доска', snapshot, false, null, 'project-1')?.href).toBe('#')
 		expect(find('Обзор проекта', snapshot, false, 'team-1', null)).toBeUndefined()
 	})
 	it('hides flagged sections before loading', () => {

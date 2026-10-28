@@ -33,6 +33,8 @@ const SidebarMenuItem = (props: Props) => {
 	return (
 		<Link
 			href={href}
+			aria-current={isActive ? 'page' : undefined}
+			aria-disabled={href === '#' ? true : undefined}
 			title={!isOpen ? title : undefined}
 			onClick={handleClick}
 			className={cn('flex items-center text-[14px] transition-colors', {

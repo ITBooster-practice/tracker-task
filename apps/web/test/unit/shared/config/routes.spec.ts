@@ -85,6 +85,11 @@ describe('invitationRoutes', () => {
 })
 
 describe('teamRoutes', () => {
+	it('projectBoard сохраняет контекст и кодирует оба параметра', () => {
+		expect(teamRoutes.projectBoard('team /1', 'proj%2')).toBe(
+			'/teams/team%20%2F1/projects/proj%252/board',
+		)
+	})
 	it('projectTasksNew строит корректный URL', () => {
 		expect(teamRoutes.projectTasksNew('team-1', 'proj-1')).toBe(
 			'/teams/team-1/projects/proj-1/tasks/new',
@@ -184,6 +189,14 @@ describe('getSidebarRouteId', () => {
 	})
 
 	it('/teams/:id/projects/:projectId → team.project', () => {
+		expect(getSidebarRouteId('/teams/1/projects/p')).toBe(SIDEBAR_ROUTE_IDS.teamProject)
+	})
+
+	it('отличает доску проекта от его обзора', () => {
+		expect(getSidebarRouteId('/teams/1/projects/p/board')).toBe(SIDEBAR_ROUTE_IDS.boards)
+		expect(getSidebarRouteId('/teams/1/projects/p/board/details')).toBe(
+			SIDEBAR_ROUTE_IDS.boards,
+		)
 		expect(getSidebarRouteId('/teams/1/projects/p')).toBe(SIDEBAR_ROUTE_IDS.teamProject)
 	})
 

@@ -49,24 +49,26 @@ type BoardTaskDialogPanel = 'comments' | 'history'
 
 interface BoardTaskDetailsDialogProps {
 	task: BoardTask | null
-	commentDraft: string
-	isSubmitDisabled: boolean
-	onCommentDraftChange: (value: string) => void
+	commentDraft?: string
+	isSubmitDisabled?: boolean
+	readOnly?: boolean
+	onCommentDraftChange?: (value: string) => void
 	onDeleteTask?: (task: BoardTask) => void
 	onEditTask?: (task: BoardTask) => void
 	onOpenChange: (open: boolean) => void
-	onSubmitComment: (event: FormEvent<HTMLFormElement>) => void
+	onSubmitComment?: (event: FormEvent<HTMLFormElement>) => void
 }
 
 function BoardTaskDetailsDialog({
 	task,
-	commentDraft,
-	isSubmitDisabled,
+	commentDraft = '',
+	isSubmitDisabled = true,
+	readOnly = false,
 	onCommentDraftChange,
 	onDeleteTask,
 	onEditTask,
 	onOpenChange,
-	onSubmitComment,
+	onSubmitComment = (event) => event.preventDefault(),
 }: BoardTaskDetailsDialogProps) {
 	const [activePanel, setActivePanel] = useState<BoardTaskDialogPanel>('comments')
 
@@ -89,8 +91,8 @@ function BoardTaskDetailsDialog({
 
 	const commentsCount = task?.comments.length ?? 0
 	const historyCount = task?.history.length ?? 0
-	const canEditTask = task !== null && onEditTask !== undefined
-	const canDeleteTask = task !== null && onDeleteTask !== undefined
+	const canEditTask = !readOnly && task !== null && onEditTask !== undefined
+	const canDeleteTask = !readOnly && task !== null && onDeleteTask !== undefined
 
 	return (
 		<DialogDrawer open={task !== null} onOpenChange={onOpenChange}>
@@ -116,7 +118,9 @@ function BoardTaskDetailsDialog({
 									{task.title}
 								</DialogDrawerTitle>
 								<DialogDrawerDescription className='sr-only'>
-									Детали задачи, описание, комментарии и история изменений.
+									{readOnly
+										? 'Детали задачи и описание.'
+										: 'Детали задачи, описание, комментарии и история изменений.'}
 								</DialogDrawerDescription>
 								<div className='mt-3 flex flex-wrap gap-2'>
 									{canEditTask ? (
@@ -225,116 +229,119 @@ function BoardTaskDetailsDialog({
 								</p>
 							</section>
 
-							<Separator className='my-3 bg-white/10' />
-
-							<section>
-								<div className='inline-flex rounded-[14px] border border-white/10 bg-white/6 p-1'>
-									<button
-										type='button'
-										onClick={() => setActivePanel('comments')}
-										className={cn(
-											'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium transition-colors',
-											activePanel === 'comments'
-												? 'bg-[#0f1729] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
-												: 'text-slate-400 hover:text-white',
-										)}
-									>
-										<MessageSquare className='size-4' />
-										<span>Комментарии ({commentsCount})</span>
-									</button>
-									<button
-										type='button'
-										onClick={() => setActivePanel('history')}
-										className={cn(
-											'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium transition-colors',
-											activePanel === 'history'
-												? 'bg-[#0f1729] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
-												: 'text-slate-400 hover:text-white',
-										)}
-									>
-										<History className='size-4' />
-										<span>История ({historyCount})</span>
-									</button>
-								</div>
-
-								<div className='mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1'>
-									{activePanel === 'comments' ? (
-										task.comments.length > 0 ? (
-											task.comments.map((comment) => (
-												<div
-													key={comment.id}
-													className='rounded-[14px] border border-white/8 bg-white/[0.04] px-3 py-2.5'
-												>
-													<div className='flex items-start gap-3'>
-														<Avatar className='size-6.5 border border-white/10 bg-white/5'>
-															<AvatarFallback className='bg-white/6 text-[10px] font-semibold text-slate-200'>
-																{comment.author.initials}
-															</AvatarFallback>
-														</Avatar>
-														<div className='min-w-0 flex-1'>
-															<div className='flex flex-wrap items-center gap-2'>
-																<span className='text-[11px] font-semibold text-white'>
-																	{comment.author.name}
-																</span>
-																<span className='text-[10px] text-slate-500'>
-																	{comment.createdAtLabel}
-																</span>
-															</div>
-															<p className='mt-0.5 text-[12px] leading-5 text-slate-300'>
-																{comment.content}
-															</p>
-														</div>
-													</div>
-												</div>
-											))
-										) : (
-											<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-[13px] font-medium text-slate-500'>
-												Комментариев нет
-											</div>
-										)
-									) : task.history.length > 0 ? (
-										task.history.map((entry) => (
-											<div
-												key={entry.id}
-												className='rounded-[14px] border border-white/8 bg-white/[0.04] px-3 py-2.5'
+							{!readOnly && (
+								<>
+									<Separator className='my-3 bg-white/10' />
+									<section>
+										<div className='inline-flex rounded-[14px] border border-white/10 bg-white/6 p-1'>
+											<button
+												type='button'
+												onClick={() => setActivePanel('comments')}
+												className={cn(
+													'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium transition-colors',
+													activePanel === 'comments'
+														? 'bg-[#0f1729] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+														: 'text-slate-400 hover:text-white',
+												)}
 											>
-												<div className='flex items-start gap-3'>
-													<span className='mt-0.5 inline-flex size-6.5 items-center justify-center rounded-full border border-slate-400/15 bg-white/[0.05] text-slate-300'>
-														<UserRound className='size-3.25' />
-													</span>
-													<div className='min-w-0 flex-1'>
-														<div className='flex flex-wrap items-center gap-2'>
-															<span className='text-[11px] font-semibold text-white'>
-																{entry.actor?.name ?? 'Система'}
-															</span>
-															<span className='text-[10px] text-slate-500'>
-																{entry.createdAtLabel}
-															</span>
-														</div>
-														<p className='mt-0.5 text-[12px] leading-5 text-slate-300'>
-															{entry.action}
-														</p>
-													</div>
-												</div>
-											</div>
-										))
-									) : (
-										<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-[13px] font-medium text-slate-500'>
-											История пока пуста
+												<MessageSquare className='size-4' />
+												<span>Комментарии ({commentsCount})</span>
+											</button>
+											<button
+												type='button'
+												onClick={() => setActivePanel('history')}
+												className={cn(
+													'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium transition-colors',
+													activePanel === 'history'
+														? 'bg-[#0f1729] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+														: 'text-slate-400 hover:text-white',
+												)}
+											>
+												<History className='size-4' />
+												<span>История ({historyCount})</span>
+											</button>
 										</div>
-									)}
-								</div>
-							</section>
+
+										<div className='mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1'>
+											{activePanel === 'comments' ? (
+												task.comments.length > 0 ? (
+													task.comments.map((comment) => (
+														<div
+															key={comment.id}
+															className='rounded-[14px] border border-white/8 bg-white/[0.04] px-3 py-2.5'
+														>
+															<div className='flex items-start gap-3'>
+																<Avatar className='size-6.5 border border-white/10 bg-white/5'>
+																	<AvatarFallback className='bg-white/6 text-[10px] font-semibold text-slate-200'>
+																		{comment.author.initials}
+																	</AvatarFallback>
+																</Avatar>
+																<div className='min-w-0 flex-1'>
+																	<div className='flex flex-wrap items-center gap-2'>
+																		<span className='text-[11px] font-semibold text-white'>
+																			{comment.author.name}
+																		</span>
+																		<span className='text-[10px] text-slate-500'>
+																			{comment.createdAtLabel}
+																		</span>
+																	</div>
+																	<p className='mt-0.5 text-[12px] leading-5 text-slate-300'>
+																		{comment.content}
+																	</p>
+																</div>
+															</div>
+														</div>
+													))
+												) : (
+													<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-[13px] font-medium text-slate-500'>
+														Комментариев нет
+													</div>
+												)
+											) : task.history.length > 0 ? (
+												task.history.map((entry) => (
+													<div
+														key={entry.id}
+														className='rounded-[14px] border border-white/8 bg-white/[0.04] px-3 py-2.5'
+													>
+														<div className='flex items-start gap-3'>
+															<span className='mt-0.5 inline-flex size-6.5 items-center justify-center rounded-full border border-slate-400/15 bg-white/[0.05] text-slate-300'>
+																<UserRound className='size-3.25' />
+															</span>
+															<div className='min-w-0 flex-1'>
+																<div className='flex flex-wrap items-center gap-2'>
+																	<span className='text-[11px] font-semibold text-white'>
+																		{entry.actor?.name ?? 'Система'}
+																	</span>
+																	<span className='text-[10px] text-slate-500'>
+																		{entry.createdAtLabel}
+																	</span>
+																</div>
+																<p className='mt-0.5 text-[12px] leading-5 text-slate-300'>
+																	{entry.action}
+																</p>
+															</div>
+														</div>
+													</div>
+												))
+											) : (
+												<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-[13px] font-medium text-slate-500'>
+													История пока пуста
+												</div>
+											)}
+										</div>
+									</section>
+								</>
+							)}
 						</div>
 
-						{activePanel === 'comments' ? (
+						{!readOnly && activePanel === 'comments' ? (
 							<DialogDrawerFooter className='border-t border-white/10 px-5 py-2.5 sm:px-6 lg:px-7'>
 								<div className='flex w-full items-end gap-2.5'>
 									<Textarea
 										id='task-comment'
 										aria-label='Новый комментарий'
 										value={commentDraft}
-										onChange={(event) => onCommentDraftChange(event.target.value)}
+										onChange={(event) => onCommentDraftChange?.(event.target.value)}
 										placeholder='Написать комментарий...'
 										rows={1}
 										className='min-h-[42px] max-h-[84px] flex-1 resize-y rounded-[14px] border-white/10 bg-[#0a101c] px-3 py-2 text-[13px] text-slate-100 placeholder:text-slate-500 focus-visible:border-sky-500/50 focus-visible:ring-sky-500/20'

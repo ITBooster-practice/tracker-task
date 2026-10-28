@@ -48,7 +48,10 @@ export function getSidebarSections(
 					? [
 							{
 								title: 'Доска',
-								href: ROUTES.boards,
+								href:
+									activeTeamId && activeProjectId
+										? teamRoutes.projectBoard(activeTeamId, activeProjectId)
+										: '#',
 								routeId: SIDEBAR_ROUTE_IDS.boards,
 								icon: KanbanSquare,
 							},

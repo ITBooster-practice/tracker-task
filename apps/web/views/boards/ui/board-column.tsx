@@ -83,7 +83,7 @@ function BoardColumn({
 							))
 						) : (
 							<div className='flex min-h-[100px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-border/60 bg-background/40 px-4 text-center text-[11px] leading-5 text-muted-foreground/60'>
-								{disabled ? 'Нет задач под текущие фильтры' : 'Перетащите карточку сюда'}
+								{disabled ? 'Нет задач' : 'Перетащите карточку сюда'}
 							</div>
 						)}
 					</div>

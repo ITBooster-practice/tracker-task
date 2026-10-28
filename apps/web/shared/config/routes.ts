@@ -5,6 +5,7 @@ export const ROUTE_SEGMENTS = {
 	projects: 'projects',
 	settings: 'settings',
 	tasks: 'tasks',
+	board: 'board',
 	boards: 'boards',
 	invitations: 'invitations',
 } as const
@@ -60,6 +61,8 @@ export const teamRoutes = {
 		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}`,
 	projectTasks: (teamId: string, projectId: string) =>
 		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.tasks}`,
+	projectBoard: (teamId: string, projectId: string) =>
+		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.board}`,
 	projectTasksNew: (teamId: string, projectId: string) =>
 		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.tasks}/${ROUTE_SEGMENTS.new}`,
 	settings: (teamId: string) =>
@@ -162,6 +165,9 @@ export function getSidebarRouteId(
 	}
 
 	if (thirdSegment === ROUTE_SEGMENTS.projects) {
+		if (segments[4] === ROUTE_SEGMENTS.board) {
+			return SIDEBAR_ROUTE_IDS.boards
+		}
 		if (segments[4] === ROUTE_SEGMENTS.tasks) {
 			return SIDEBAR_ROUTE_IDS.tasks
 		}

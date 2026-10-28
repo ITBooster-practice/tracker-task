@@ -111,6 +111,6 @@ describe('BoardColumn', () => {
 			/>,
 		)
 
-		expect(screen.getByText('Нет задач под текущие фильтры')).toBeDefined()
+		expect(screen.getByText('Нет задач')).toBeDefined()
 	})
 })

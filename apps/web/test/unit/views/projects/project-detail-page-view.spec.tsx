@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectDetailPageView } from '@/views/projects/ui/project-detail-page-view'
 
 const mockUseProjectDetail = vi.fn()
+const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }))
 
 vi.mock('next/link', () => ({
 	default: ({
@@ -20,7 +21,7 @@ vi.mock('next/link', () => ({
 
 vi.mock('next/navigation', () => ({
 	useParams: () => ({ id: 'team-1', projectId: 'project-uuid-1' }),
-	useRouter: () => ({ push: vi.fn() }),
+	useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/shared/api/use-projects', () => ({
@@ -32,6 +33,8 @@ vi.mock('@/shared/config', () => ({
 	ROUTES: { teams: '/teams' },
 	teamRoutes: {
 		projects: (teamId: string) => `/teams/${teamId}/projects`,
+		projectBoard: (teamId: string, projectId: string) =>
+			`/teams/${teamId}/projects/${projectId}/board`,
 	},
 }))
 
@@ -107,6 +110,12 @@ describe('ProjectDetailPageView', () => {
 	})
 
 	afterEach(cleanup)
+
+	it('открывает доску текущего проекта через проектный маршрут', () => {
+		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
+		fireEvent.click(screen.getByRole('button', { name: /Открыть доску/ }))
+		expect(mockPush).toHaveBeenCalledWith('/teams/team-1/projects/project-uuid-1/board')
+	})
 
 	it('breadcrumb — показывает Команды, Проекты и название проекта', () => {
 		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
