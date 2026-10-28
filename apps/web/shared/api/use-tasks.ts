@@ -3,13 +3,18 @@ import {
 	useMutation,
 	useQuery,
 	useQueryClient,
+	type QueryClient,
 } from '@tanstack/react-query'
 
 import type {
+	BoardTask,
+	BoardView,
 	CreateTask,
+	MoveTaskToColumn,
 	PaginatedResponse,
 	Task,
 	TaskFilterParams,
+	TaskMoveConflict,
 	UpdateTask,
 } from '@repo/types'
 
@@ -24,9 +29,53 @@ export const tasksKeys = {
 	list: (teamId: string, projectId: string, params?: TaskFilterParams) =>
 		[...tasksKeys.projectLists(teamId, projectId), params] as const,
 	details: () => [...tasksKeys.all, 'detail'] as const,
+	projectDetails: (teamId: string, projectId: string) =>
+		[...tasksKeys.details(), teamId, projectId] as const,
 	detail: (teamId: string, projectId: string, taskId: string) =>
-		[...tasksKeys.details(), teamId, projectId, taskId] as const,
+		[...tasksKeys.projectDetails(teamId, projectId), taskId] as const,
+	boards: () => [...tasksKeys.all, 'board'] as const,
+	projectBoards: (teamId: string, projectId: string) =>
+		[...tasksKeys.boards(), teamId, projectId] as const,
+	board: (teamId: string, projectId: string, boardId: string) =>
+		[...tasksKeys.projectBoards(teamId, projectId), boardId] as const,
 } as const
+
+const refreshProjectTasks = async (
+	queryClient: QueryClient,
+	teamId: string,
+	projectId: string,
+) => {
+	const keys = [
+		tasksKeys.projectLists(teamId, projectId),
+		tasksKeys.projectBoards(teamId, projectId),
+		tasksKeys.projectDetails(teamId, projectId),
+	]
+	await Promise.all(keys.map((queryKey) => queryClient.cancelQueries({ queryKey })))
+	await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
+}
+
+export const useBoardQuery = (teamId: string, projectId: string, boardId: string) => {
+	return useQuery<BoardView, ApiError>({
+		queryKey: tasksKeys.board(teamId, projectId, boardId),
+		queryFn: ({ signal }) => tasksService.getBoard(teamId, projectId, boardId, signal),
+		enabled: Boolean(teamId) && Boolean(projectId) && Boolean(boardId),
+	})
+}
+
+export const useMoveTask = () => {
+	const queryClient = useQueryClient()
+	return useMutation<
+		BoardTask,
+		ApiError | TaskMoveConflict,
+		{ teamId: string; projectId: string; taskId: string; body: MoveTaskToColumn }
+	>({
+		mutationFn: ({ teamId, projectId, taskId, body }) =>
+			tasksService.move(teamId, projectId, taskId, body),
+		retry: false,
+		onSettled: (_, _error, { teamId, projectId }) =>
+			refreshProjectTasks(queryClient, teamId, projectId),
+	})
+}
 
 export const useTasksList = (
 	teamId: string,
@@ -59,12 +108,8 @@ export const useCreateTask = () => {
 	>({
 		mutationFn: ({ teamId, projectId, data }) =>
 			tasksService.create(teamId, projectId, data),
-		onSuccess: (task, { teamId, projectId }) => {
-			queryClient.setQueryData(tasksKeys.detail(teamId, projectId, task.id), task)
-			queryClient.invalidateQueries({
-				queryKey: tasksKeys.projectLists(teamId, projectId),
-			})
-		},
+		onSuccess: (_, { teamId, projectId }) =>
+			refreshProjectTasks(queryClient, teamId, projectId),
 	})
 }
 
@@ -78,12 +123,8 @@ export const useUpdateTask = () => {
 	>({
 		mutationFn: ({ teamId, projectId, taskId, data }) =>
 			tasksService.update(teamId, projectId, taskId, data),
-		onSuccess: (task, { teamId, projectId, taskId }) => {
-			queryClient.setQueryData(tasksKeys.detail(teamId, projectId, taskId), task)
-			queryClient.invalidateQueries({
-				queryKey: tasksKeys.projectLists(teamId, projectId),
-			})
-		},
+		onSuccess: (_, { teamId, projectId }) =>
+			refreshProjectTasks(queryClient, teamId, projectId),
 	})
 }
 
@@ -97,13 +138,12 @@ export const useDeleteTask = () => {
 	>({
 		mutationFn: ({ teamId, projectId, taskId }) =>
 			tasksService.delete(teamId, projectId, taskId),
-		onSuccess: (_, { teamId, projectId, taskId }) => {
-			queryClient.invalidateQueries({
-				queryKey: tasksKeys.projectLists(teamId, projectId),
-			})
+		onSuccess: async (_, { teamId, projectId, taskId }) => {
 			queryClient.removeQueries({
 				queryKey: tasksKeys.detail(teamId, projectId, taskId),
+				exact: true,
 			})
+			await refreshProjectTasks(queryClient, teamId, projectId)
 		},
 	})
 }
