@@ -29,6 +29,36 @@ describe('isApiError', () => {
 })
 
 describe('toApiError', () => {
+	it.each([
+		{
+			statusCode: 409,
+			code: 'OTHER_CONFLICT',
+			taskId: 'task-1',
+			reason: 'WRITE_CONFLICT',
+		},
+		{ statusCode: 409, code: 'TASK_MOVE_CONFLICT', taskId: 1, reason: 'WRITE_CONFLICT' },
+		{ statusCode: 409, code: 'TASK_MOVE_CONFLICT', taskId: 'task-1', reason: 'UNKNOWN' },
+		{
+			statusCode: 400,
+			code: 'TASK_MOVE_CONFLICT',
+			taskId: 'task-1',
+			reason: 'WRITE_CONFLICT',
+		},
+	])('не выдаёт некорректный payload за конфликт переноса: %j', (payload) => {
+		const error = new AxiosError('Conflict', '409', undefined, undefined, {
+			status: 409,
+			data: { ...payload, message: 'Conflict' },
+			statusText: 'Conflict',
+			headers: {},
+			config: { headers: new AxiosHeaders() },
+		})
+		expect(toApiError(error)).toEqual({
+			statusCode: 409,
+			message: 'Conflict',
+			error: 'Error',
+		})
+	})
+
 	it('из AxiosError с response.data.message копирует сообщение и статус', () => {
 		const error = new AxiosError('axios error', '400', undefined, undefined, {
 			status: 400,

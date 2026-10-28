@@ -1,5 +1,9 @@
 import '@/test/mocks/api/http-client.mock'
 
+import {
+	createBoardTaskFixture,
+	createBoardViewFixture,
+} from '@/test/mocks/api/boards.fixtures'
 import { mockApiClient, resetApiClientMock } from '@/test/mocks/api/http-client.mock'
 import { createTaskFixture } from '@/test/mocks/api/tasks.fixtures'
 import { axiosResponse } from '@/test/mocks/api/team-api.fixtures'
@@ -10,6 +14,46 @@ import { tasksService } from '@/shared/lib/api/tasks-service'
 describe('tasksService', () => {
 	beforeEach(() => {
 		resetApiClientMock()
+	})
+
+	it('загружает выбранную доску и передаёт сигнал отмены', async () => {
+		const board = createBoardViewFixture('board-2')
+		const { signal } = new AbortController()
+		mockApiClient.get.mockResolvedValue(axiosResponse(board))
+
+		await expect(
+			tasksService.getBoard('team-1', 'project-1', 'board-2', signal),
+		).resolves.toEqual(board)
+		expect(mockApiClient.get).toHaveBeenCalledWith(
+			'/teams/team-1/projects/project-1/tasks/board',
+			{
+				params: { boardId: 'board-2' },
+				signal,
+			},
+		)
+	})
+
+	it('передаёт колонку, позицию и ожидаемую версию при переносе', async () => {
+		const body = {
+			fromColumnId: 'source',
+			toColumnId: 'target',
+			position: 0,
+			expectedVersion: 3,
+		}
+		const movedTask = createBoardTaskFixture({
+			boardColumnId: 'target',
+			position: 0,
+			version: 4,
+		})
+		mockApiClient.patch.mockResolvedValue(axiosResponse(movedTask))
+
+		await expect(
+			tasksService.move('team-1', 'project-1', 'task-1', body),
+		).resolves.toEqual(movedTask)
+		expect(mockApiClient.patch).toHaveBeenCalledWith(
+			'/teams/team-1/projects/project-1/tasks/task-1/move',
+			body,
+		)
 	})
 
 	describe('getAll', () => {

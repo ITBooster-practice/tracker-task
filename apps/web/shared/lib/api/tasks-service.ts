@@ -1,5 +1,8 @@
 import type {
+	BoardTask,
+	BoardView,
 	CreateTask,
+	MoveTaskToColumn,
 	PaginatedResponse,
 	Task,
 	TaskFilterParams,
@@ -14,7 +17,36 @@ const buildTasksEndpoint = (teamId: string, projectId: string) =>
 const buildTaskEndpoint = (teamId: string, projectId: string, taskId: string) =>
 	`/teams/${teamId}/projects/${projectId}/tasks/${taskId}`
 
+const buildBoardEndpoint = (teamId: string, projectId: string) =>
+	`${buildTasksEndpoint(teamId, projectId)}/board`
+
 export const tasksService = {
+	getBoard: async (
+		teamId: string,
+		projectId: string,
+		boardId: string,
+		signal?: AbortSignal,
+	): Promise<BoardView> => {
+		const response = await client.get<BoardView>(buildBoardEndpoint(teamId, projectId), {
+			params: { boardId },
+			signal,
+		})
+		return response.data
+	},
+
+	move: async (
+		teamId: string,
+		projectId: string,
+		taskId: string,
+		body: MoveTaskToColumn,
+	): Promise<BoardTask> => {
+		const response = await client.patch<BoardTask>(
+			`${buildTaskEndpoint(teamId, projectId, taskId)}/move`,
+			body,
+		)
+		return response.data
+	},
+
 	getAll: async (
 		teamId: string,
 		projectId: string,
