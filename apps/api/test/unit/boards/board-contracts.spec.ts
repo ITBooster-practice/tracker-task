@@ -83,6 +83,7 @@ describe('Shared board contracts', () => {
 					fromColumnId: 'source',
 					toColumnId: 'target',
 					position,
+					expectedVersion: 0,
 				}).success,
 			).toBe(false)
 		},
@@ -94,15 +95,26 @@ describe('Shared board contracts', () => {
 				fromColumnId: ' source ',
 				toColumnId: ' target ',
 				position: 0,
+				expectedVersion: 0,
 			}),
-		).toEqual({ fromColumnId: 'source', toColumnId: 'target', position: 0 })
+		).toEqual({
+			fromColumnId: 'source',
+			toColumnId: 'target',
+			position: 0,
+			expectedVersion: 0,
+		})
 		expect(
 			moveTaskToColumnSchema.safeParse({ status: 'TODO', position: 0 }).success,
 		).toBe(false)
 	})
 
 	it('rejects mixed or incomplete move bodies', () => {
-		const canonical = { fromColumnId: 'source', toColumnId: 'target', position: 0 }
+		const canonical = {
+			fromColumnId: 'source',
+			toColumnId: 'target',
+			position: 0,
+			expectedVersion: 0,
+		}
 		expect(moveTaskToColumnSchema.parse(canonical)).toEqual(canonical)
 		for (const body of [
 			{ ...canonical, status: 'TODO' },
@@ -115,6 +127,20 @@ describe('Shared board contracts', () => {
 		])
 			expect(moveTaskToColumnSchema.safeParse(body).success).toBe(false)
 	})
+
+	it.each([undefined, -1, 0.5, '0', 2_147_483_648])(
+		'rejects an invalid expected version: %j',
+		(expectedVersion) => {
+			expect(
+				moveTaskToColumnSchema.safeParse({
+					fromColumnId: 'source',
+					toColumnId: 'target',
+					position: 0,
+					expectedVersion,
+				}).success,
+			).toBe(false)
+		},
+	)
 
 	it('requires a board ID and rejects ambiguous query values', () => {
 		expect(boardQuerySchema.parse({ boardId: ' board ' })).toEqual({ boardId: 'board' })

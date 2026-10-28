@@ -195,6 +195,7 @@ describe('Board schema (e2e)', () => {
 			fromColumnId: board.columns[0].id,
 			toColumnId: target.id,
 			position: 0,
+			expectedVersion: updated.version,
 		})
 		const view = await boardService.getBoard(teamId, projectId, defaultBoard.id, userId)
 		const boardTask = view.columns.find((column) => column.id === target.id)!.tasks[0]

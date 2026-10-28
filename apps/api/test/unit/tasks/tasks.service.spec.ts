@@ -286,7 +286,7 @@ describe('TasksService', () => {
 
 	// ── update ──────────────────────────────────────────────────────────────────
 	describe('update', () => {
-		const UPDATED_TASK = { ...MOCK_TASK, title: UPDATE_TASK_DTO.title }
+		const UPDATED_TASK = { ...MOCK_TASK, title: UPDATE_TASK_DTO.title, version: 1 }
 
 		it('должен обновить задачу если пользователь является её создателем (даже с ролью MEMBER)', async () => {
 			// MEMBER_PLAIN is the creator of the task (createdById === OTHER_USER_ID)

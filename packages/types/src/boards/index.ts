@@ -1,4 +1,5 @@
 export * from './types/board.types'
+export * from './types/task-move-conflict.types'
 export * from './schemas/board.schema'
 export * from './schemas/board-query.schema'
 export * from './schemas/column.schema'

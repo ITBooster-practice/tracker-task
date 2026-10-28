@@ -470,6 +470,7 @@ describe('Board columns (e2e)', () => {
 				...original,
 				boardColumnId: target.id,
 				position: 9 + index,
+				version: original.version + 1,
 				updatedAt: expect.any(Date),
 			})
 		}

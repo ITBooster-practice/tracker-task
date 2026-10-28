@@ -189,7 +189,7 @@ export class BoardColumnsService {
 						)
 					await tx.$executeRaw(Prisma.sql`
 						UPDATE "Task" AS task
-						SET "boardColumnId" = ${target.id}, "position" = moved.position,
+						SET "boardColumnId" = ${target.id}, "position" = moved.position, "version" = task."version" + 1,
 							"updatedAt" = ${new Date()} ${status}
 						FROM (VALUES ${Prisma.join(positions)}) AS moved(id, position)
 						WHERE task."id" = moved.id AND task."boardColumnId" = ${source.id}

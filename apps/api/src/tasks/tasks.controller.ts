@@ -34,6 +34,7 @@ import { MoveTaskToColumnDto } from './dto/move-task-to-column.dto'
 import { BoardTasksService } from './board-tasks.service'
 import { CreateTaskDto } from './dto/create-task.dto'
 import { TaskResponseDto } from './dto/task-response.dto'
+import { TaskMoveConflictResponseDto } from './dto/task-move-conflict-response.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 import { TasksService } from './tasks.service'
@@ -134,12 +135,12 @@ export class TasksController {
 	@ApiOperation({
 		summary: 'Переместить задачу между колонками или внутри колонки',
 		description:
-			'fromColumnId, toColumnId и position задают колонку и индекс вставки с нуля.',
+			'fromColumnId, toColumnId и position задают колонку и индекс вставки с нуля; expectedVersion — значение version задачи из последнего ответа API. После успешного переноса или ответа 409 перечитайте затронутые доски, чтобы обновить порядок и версии задач, включая соседние.',
 	})
 	@ApiBody({ type: MoveTaskToColumnDto })
 	@ApiOkResponse({ type: BoardTaskResponseDto })
 	@ApiBadRequestResponse({ description: 'Некорректный формат перемещения или позиция' })
-	@ApiConflictResponse({ description: 'Исходная колонка или данные доски изменились' })
+	@ApiConflictResponse({ type: TaskMoveConflictResponseDto })
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Patch(':taskId/move')

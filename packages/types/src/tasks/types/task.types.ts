@@ -18,6 +18,7 @@ export interface Task {
 	priority: Priority
 	type?: TaskType
 	position: number
+	version: number
 	dueDate: string | null
 	projectId: string
 	assigneeId: string | null

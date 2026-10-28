@@ -164,6 +164,7 @@ model Task {
   status        TaskStatus  @default(TODO)
   priority      Priority    @default(MEDIUM)
   position      Int         @default(0)
+  version       Int         @default(0)
   dueDate       DateTime?
   projectId     String
   project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)

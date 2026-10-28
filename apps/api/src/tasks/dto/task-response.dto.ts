@@ -25,6 +25,9 @@ export class TaskResponseDto {
 	@ApiProperty({ example: 1 })
 	position: number
 
+	@ApiProperty({ example: 0, minimum: 0 })
+	version: number
+
 	@ApiPropertyOptional({ example: 'user-uuid', nullable: true })
 	assigneeId: string | null
 
