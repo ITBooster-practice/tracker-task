@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import type { Project, TeamMember } from 'generated/prisma/client'
 import { CreateProjectDto } from './dto/create-project.dto'
 import { PrismaService } from '../../prisma/prisma.service'
+import { defaultBoardData } from '../boards/default-board'
 import {
 	buildPaginatedResponse,
 	getPaginationPrismaParams,
@@ -63,6 +64,7 @@ export class ProjectsService {
 				description: dto.description,
 				teamId,
 				createdById: userId,
+				boards: { create: defaultBoardData() },
 			},
 		})
 	}

@@ -50,6 +50,7 @@ export class TasksService {
 		await this.findProjectOrThrow(teamId, projectId)
 
 		const status = dto.status ?? TaskStatus.TODO
+		const boardColumnId = await this.systemColumnId(projectId, status)
 
 		const aggregate = await this.prisma.task.aggregate({
 			where: { projectId, status: status as never },
@@ -69,6 +70,7 @@ export class TasksService {
 				assigneeId: dto.assigneeId,
 				dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
 				projectId,
+				boardColumnId,
 				position,
 				createdById: userId,
 			},
@@ -126,6 +128,14 @@ export class TasksService {
 		return task
 	}
 
+	private async systemColumnId(projectId: string, status: string) {
+		const column = await this.prisma.boardColumn.findFirstOrThrow({
+			where: { projectId, key: status, isSystem: true, board: { isDefault: true } },
+			select: { id: true },
+		})
+		return column.id
+	}
+
 	async update(
 		teamId: string,
 		projectId: string,
@@ -144,6 +154,11 @@ export class TasksService {
 			throw new ForbiddenException('Недостаточно прав для выполнения этого действия')
 		}
 
+		const boardColumnId =
+			dto.status !== undefined
+				? await this.systemColumnId(projectId, dto.status)
+				: undefined
+
 		return this.prisma.task.update({
 			omit: taskApiOmit,
 			where: { id: taskId },
@@ -151,6 +166,7 @@ export class TasksService {
 				...(dto.title !== undefined && { title: dto.title }),
 				...(dto.description !== undefined && { description: dto.description }),
 				...(dto.status !== undefined && { status: dto.status as never }),
+				...(boardColumnId !== undefined && { boardColumnId }),
 				...(dto.priority !== undefined && { priority: dto.priority as never }),
 				...(dto.assigneeId !== undefined && { assigneeId: dto.assigneeId }),
 				...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
@@ -193,12 +209,14 @@ export class TasksService {
 		await this.assertTeamMember(teamId, userId)
 		await this.findProjectOrThrow(teamId, projectId)
 		await this.findTaskOrThrow(projectId, taskId)
+		const boardColumnId = await this.systemColumnId(projectId, dto.status)
 
 		return this.prisma.task.update({
 			omit: taskApiOmit,
 			where: { id: taskId },
 			data: {
 				status: dto.status as never,
+				boardColumnId,
 				position: dto.position,
 			},
 		})

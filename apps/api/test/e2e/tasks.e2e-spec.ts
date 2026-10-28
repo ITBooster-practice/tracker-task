@@ -82,6 +82,19 @@ describe('Tasks (e2e)', () => {
 			.expect(201)
 
 		projectId = createProjectRes.body.id as string
+		expect(createProjectRes.body).not.toHaveProperty('boards')
+		const boards = await prisma.board.findMany({
+			where: { projectId },
+			include: { columns: { orderBy: { position: 'asc' } } },
+		})
+		expect(boards).toHaveLength(1)
+		expect(boards[0].isDefault).toBe(true)
+		expect(boards[0].columns.map((column) => column.key)).toEqual([
+			'TODO',
+			'IN_PROGRESS',
+			'IN_REVIEW',
+			'DONE',
+		])
 	})
 	// Создаём задачу через API.
 	async function createTask(cookies: string, overrides: Record<string, unknown> = {}) {
@@ -92,6 +105,16 @@ describe('Tasks (e2e)', () => {
 			.expect(201)
 
 		expect(res.body).not.toHaveProperty('boardColumnId')
+		const stored = await prisma.task.findUniqueOrThrow({
+			where: { id: res.body.id as string },
+			include: { boardColumn: { include: { board: true } } },
+		})
+		expect(stored.boardColumn).toMatchObject({
+			projectId,
+			key: stored.status,
+			isSystem: true,
+			board: { isDefault: true },
+		})
 
 		return res.body as {
 			id: string
@@ -292,6 +315,27 @@ describe('Tasks (e2e)', () => {
 	})
 
 	describe('PATCH /teams/:teamId/projects/:projectId/tasks/:taskId', () => {
+		it('200 — синхронизирует колонку со статусом при обычном PATCH', async () => {
+			const task = await createTask(ownerCookies)
+			for (const status of ['IN_PROGRESS', 'IN_REVIEW', 'DONE', 'TODO']) {
+				const response = await request(server)
+					.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
+					.set('Cookie', ownerCookies)
+					.send({ status })
+					.expect(200)
+				expectTaskShape(response.body as Record<string, unknown>, { status })
+				const stored = await prisma.task.findUniqueOrThrow({
+					where: { id: task.id },
+					include: { boardColumn: true },
+				})
+				expect(stored.boardColumn).toMatchObject({
+					projectId,
+					key: status,
+					isSystem: true,
+				})
+			}
+		})
+
 		it('200 — создатель задачи (MEMBER) может обновить свою задачу', async () => {
 			// Участник создаёт задачу и становится её автором.
 			const task = await createTask(memberCookies, { title: 'Member task' })
@@ -411,6 +455,15 @@ describe('Tasks (e2e)', () => {
 
 			expect(res.body.status).toBe('IN_PROGRESS')
 			expect(res.body.position).toBe(1)
+			const stored = await prisma.task.findUniqueOrThrow({
+				where: { id: task.id },
+				include: { boardColumn: true },
+			})
+			expect(stored.boardColumn).toMatchObject({
+				projectId,
+				key: 'IN_PROGRESS',
+				isSystem: true,
+			})
 
 			// Подтверждаем через доску
 			const boardRes = await request(server)
