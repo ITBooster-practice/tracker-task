@@ -264,11 +264,34 @@ describe('Board columns (e2e)', () => {
 		const foreign = await prisma.board.create({
 			data: { projectId: foreignProjectId, ...defaultBoardData() },
 		})
+		const foreignColumn = await prisma.boardColumn.create({
+			data: {
+				boardId: foreign.id,
+				projectId: foreignProjectId,
+				key: 'PRIVATE',
+				title: 'Private',
+				position: 4,
+			},
+		})
+		const originalForeign = await columns(foreign.id)
+		const originalLocal = await columns(board.id)
+		const originalOther = await columns(other.id)
 		await request(server)
 			.post(path(foreign.id))
 			.set('Cookie', ownerCookies)
 			.send({ key: 'DENIED', title: 'Denied' })
 			.expect(403)
+		await request(server)
+			.patch(`${path(foreign.id)}/${foreignColumn.id}`)
+			.set('Cookie', ownerCookies)
+			.send({ title: 'Denied' })
+			.expect(403)
+		await request(server)
+			.patch(`${path(foreign.id)}/reorder`)
+			.set('Cookie', ownerCookies)
+			.send({ columnIds: originalForeign.map((column) => column.id).reverse() })
+			.expect(403)
+		await deleteColumn(foreign.id, foreignColumn.id, originalForeign[0].id, 403)
 		await request(server)
 			.patch(`${path(board.id)}/${other.columns[0].id}`)
 			.set('Cookie', ownerCookies)
@@ -276,7 +299,60 @@ describe('Board columns (e2e)', () => {
 			.expect(404)
 		await deleteColumn(board.id, other.columns[0].id, board.columns[1].id, 404)
 		await deleteColumn(board.id, board.columns[0].id, other.columns[1].id, 404)
-		expect(await prisma.boardColumn.count({ where: { boardId: board.id } })).toBe(4)
+		expect(await columns(foreign.id)).toEqual(originalForeign)
+		expect(await columns(board.id)).toEqual(originalLocal)
+		expect(await columns(other.id)).toEqual(originalOther)
+	})
+
+	it('rejects columns from another project even when the actor owns both teams', async () => {
+		const { teamId: foreignTeamId } = await prisma.project.findUniqueOrThrow({
+			where: { id: foreignProjectId },
+		})
+		const membership = await prisma.teamMember.create({
+			data: { teamId: foreignTeamId, userId: ownerId, role: 'OWNER' },
+		})
+		try {
+			const board = await createBoard()
+			const source = await createColumn(board.id, 'SOURCE')
+			const foreign = await prisma.board.create({
+				data: { projectId: foreignProjectId, ...defaultBoardData() },
+			})
+			const foreignColumn = await prisma.boardColumn.create({
+				data: {
+					boardId: foreign.id,
+					projectId: foreignProjectId,
+					key: 'FOREIGN',
+					title: 'Foreign',
+					position: 4,
+				},
+			})
+			const originalLocal = await columns(board.id)
+			const originalForeign = await columns(foreign.id)
+			const moving = await createTask(source.id, 'Keep task', 0)
+			await request(server)
+				.patch(`${path(board.id)}/${foreignColumn.id}`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Wrong project' })
+				.expect(404)
+			await deleteColumn(board.id, foreignColumn.id, board.columns[0].id, 404)
+			await deleteColumn(board.id, source.id, foreignColumn.id, 404)
+			await request(server)
+				.patch(`${path(board.id)}/reorder`)
+				.set('Cookie', ownerCookies)
+				.send({
+					columnIds: originalLocal.map((column) =>
+						column.id === source.id ? foreignColumn.id : column.id,
+					),
+				})
+				.expect(400)
+			expect(await columns(board.id)).toEqual(originalLocal)
+			expect(await columns(foreign.id)).toEqual(originalForeign)
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+		} finally {
+			await prisma.teamMember.delete({ where: { id: membership.id } })
+		}
 	})
 
 	it('returns 404 for missing boards and columns on all operations', async () => {

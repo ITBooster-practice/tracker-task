@@ -27,6 +27,11 @@ describe('Boards (e2e)', () => {
 
 	const path = (team = teamId, project = projectId) =>
 		`/teams/${team}/projects/${project}/boards`
+	const snapshotBoard = (boardId: string) =>
+		prisma.board.findUniqueOrThrow({
+			where: { id: boardId },
+			include: { columns: { orderBy: { id: 'asc' } } },
+		})
 
 	beforeAll(async () => {
 		const testApp = await createTestApp()
@@ -174,29 +179,35 @@ describe('Boards (e2e)', () => {
 		])
 	})
 
-	it('allows an admin to create, rename and delete a regular empty board', async () => {
-		const board = await createBoard('Admin board', adminCookies)
-		const updated = await request(server)
-			.patch(`${path()}/${board.id}`)
-			.set('Cookie', adminCookies)
-			.send({ name: ' Renamed ' })
-			.expect(200)
-		expect(updated.body).toMatchObject({
-			id: board.id,
-			name: 'Renamed',
-			isDefault: false,
-		})
-		expect((updated.body as BoardListItem).columns.map((column) => column.id)).toEqual(
-			board.columns.map((column) => column.id),
-		)
-		await request(server)
-			.delete(`${path()}/${board.id}`)
-			.set('Cookie', adminCookies)
-			.expect(204)
-		expect(await prisma.board.findUnique({ where: { id: board.id } })).toBeNull()
-		expect(await prisma.boardColumn.count({ where: { boardId: board.id } })).toBe(0)
-		expect(await prisma.board.count({ where: { projectId, isDefault: true } })).toBe(1)
-	})
+	it.each(['owner', 'admin'])(
+		'allows an %s to manage a regular empty board',
+		async (role) => {
+			const cookies = role === 'owner' ? ownerCookies : adminCookies
+			const board = await createBoard('Managed board', cookies)
+			const listed = await request(server).get(path()).set('Cookie', cookies).expect(200)
+			expect((listed.body as BoardListItem[]).map((item) => item.id)).toContain(board.id)
+			const updated = await request(server)
+				.patch(`${path()}/${board.id}`)
+				.set('Cookie', cookies)
+				.send({ name: ' Renamed ' })
+				.expect(200)
+			expect(updated.body).toMatchObject({
+				id: board.id,
+				name: 'Renamed',
+				isDefault: false,
+			})
+			expect((updated.body as BoardListItem).columns.map((column) => column.id)).toEqual(
+				board.columns.map((column) => column.id),
+			)
+			await request(server)
+				.delete(`${path()}/${board.id}`)
+				.set('Cookie', cookies)
+				.expect(204)
+			expect(await prisma.board.findUnique({ where: { id: board.id } })).toBeNull()
+			expect(await prisma.boardColumn.count({ where: { boardId: board.id } })).toBe(0)
+			expect(await prisma.board.count({ where: { projectId, isDefault: true } })).toBe(1)
+		},
+	)
 
 	it.each(['member', 'outsider'])('rejects every mutation by a %s', async (role) => {
 		const board = await createBoard()
@@ -222,12 +233,58 @@ describe('Boards (e2e)', () => {
 	})
 
 	it('rejects outsider reads and unauthenticated requests', async () => {
+		const board = await createBoard()
+		const original = await snapshotBoard(board.id)
 		await request(server).get(path()).set('Cookie', outsiderCookies).expect(403)
 		await request(server).get(path()).expect(401)
 		await request(server).post(path()).send({ name: 'Unauthenticated' }).expect(401)
+		await request(server)
+			.patch(`${path()}/${board.id}`)
+			.send({ name: 'Unauthenticated' })
+			.expect(401)
+		await request(server).delete(`${path()}/${board.id}`).expect(401)
+		expect(await snapshotBoard(board.id)).toEqual(original)
+		expect(await prisma.board.count({ where: { projectId } })).toBe(2)
+	})
+
+	it('applies an admin demotion immediately to an existing authenticated session', async () => {
+		const board = await createBoard()
+		const original = await snapshotBoard(board.id)
+		const admin = await prisma.user.findUniqueOrThrow({
+			where: { email: 'boards-admin@example.com' },
+		})
+		const membership = { teamId_userId: { teamId, userId: admin.id } }
+		await prisma.teamMember.update({ where: membership, data: { role: 'MEMBER' } })
+		try {
+			await request(server).get(path()).set('Cookie', adminCookies).expect(200)
+			await request(server)
+				.post(path())
+				.set('Cookie', adminCookies)
+				.send({ name: 'Denied after demotion' })
+				.expect(403)
+			await request(server)
+				.patch(`${path()}/${board.id}`)
+				.set('Cookie', adminCookies)
+				.send({ name: 'Denied after demotion' })
+				.expect(403)
+			await request(server)
+				.delete(`${path()}/${board.id}`)
+				.set('Cookie', adminCookies)
+				.expect(403)
+			expect(await snapshotBoard(board.id)).toEqual(original)
+			expect(await prisma.board.count({ where: { projectId } })).toBe(2)
+		} finally {
+			await prisma.teamMember.update({ where: membership, data: { role: 'ADMIN' } })
+		}
 	})
 
 	it('validates team/project scope even when the user belongs to both teams', async () => {
+		const foreign = await createBoard(
+			'Foreign',
+			ownerCookies,
+			path(otherTeamId, otherProjectId),
+		)
+		const original = await snapshotBoard(foreign.id)
 		await request(server)
 			.get(path(teamId, otherProjectId))
 			.set('Cookie', ownerCookies)
@@ -241,6 +298,18 @@ describe('Boards (e2e)', () => {
 			.get(path(teamId, 'missing-project'))
 			.set('Cookie', ownerCookies)
 			.expect(404)
+		await request(server)
+			.patch(`${path(teamId, otherProjectId)}/${foreign.id}`)
+			.set('Cookie', ownerCookies)
+			.send({ name: 'Wrong team' })
+			.expect(404)
+		await request(server)
+			.delete(`${path(teamId, otherProjectId)}/${foreign.id}`)
+			.set('Cookie', ownerCookies)
+			.expect(404)
+		expect(await snapshotBoard(foreign.id)).toEqual(original)
+		expect(await prisma.board.count({ where: { projectId } })).toBe(1)
+		expect(await prisma.board.count({ where: { projectId: otherProjectId } })).toBe(2)
 	})
 
 	it('cannot rename or delete a board through another project route', async () => {

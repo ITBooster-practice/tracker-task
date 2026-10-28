@@ -18,6 +18,7 @@ describe('Board task payload and moves (e2e)', () => {
 	let prisma: PrismaService
 	let redis: Redis
 	let ownerCookies: string
+	let adminCookies: string
 	let memberCookies: string
 	let outsiderCookies: string
 	let ownerId: string
@@ -38,6 +39,7 @@ describe('Board task payload and moves (e2e)', () => {
 		redis = testApp.redisClient
 		await resetE2eState(prisma, redis)
 		ownerCookies = (await registerAndLogin(app, 'board-tasks-owner@example.com')).cookies
+		adminCookies = (await registerAndLogin(app, 'board-tasks-admin@example.com')).cookies
 		memberCookies = (await registerAndLogin(app, 'board-tasks-member@example.com'))
 			.cookies
 		outsiderCookies = (await registerAndLogin(app, 'board-tasks-outsider@example.com'))
@@ -52,6 +54,11 @@ describe('Board task payload and moves (e2e)', () => {
 				where: { email: 'board-tasks-member@example.com' },
 			})
 		).id
+		const adminId = (
+			await prisma.user.findUniqueOrThrow({
+				where: { email: 'board-tasks-admin@example.com' },
+			})
+		).id
 		teamId = (
 			await prisma.team.create({
 				data: {
@@ -60,6 +67,7 @@ describe('Board task payload and moves (e2e)', () => {
 						create: [
 							{ userId: ownerId, role: 'OWNER' },
 							{ userId: memberId, role: 'MEMBER' },
+							{ userId: adminId, role: 'ADMIN' },
 						],
 					},
 				},
@@ -237,6 +245,75 @@ describe('Board task payload and moves (e2e)', () => {
 		expect(await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).toEqual(
 			original,
 		)
+	})
+
+	it('allows an admin to read a board and move tasks created by another user', async () => {
+		const fromColumnId = extraBoard.columns[0].id
+		const toColumnId = extraBoard.columns[1].id
+		const moving = await task(fromColumnId, 'Admin move', 0)
+		const before = await view(extraBoard.id, adminCookies)
+		expect(
+			before.columns
+				.find((column) => column.id === fromColumnId)
+				?.tasks.map((item) => item.id),
+		).toEqual([moving.id])
+		const moved = await request(server)
+			.patch(`${path()}/${moving.id}/move`)
+			.set('Cookie', adminCookies)
+			.send({ fromColumnId, toColumnId, position: 0, expectedVersion: moving.version })
+			.expect(200)
+		expect(moved.body).toMatchObject({
+			id: moving.id,
+			boardColumnId: toColumnId,
+			position: 0,
+			version: moving.version + 1,
+			priority: moving.priority,
+			type: moving.type,
+		})
+		const after = await view(extraBoard.id, adminCookies)
+		expect(after.columns.find((column) => column.id === fromColumnId)?.tasks).toEqual([])
+		expect(
+			after.columns
+				.find((column) => column.id === toColumnId)
+				?.tasks.map((item) => item.id),
+		).toEqual([moving.id])
+		await expectOrder(toColumnId, [moving.id])
+	})
+
+	it('revokes board reads and moves immediately after team membership is removed', async () => {
+		const moving = await task(extraBoard.columns[0].id, 'Keep after revocation', 0)
+		const member = await prisma.user.findUniqueOrThrow({
+			where: { email: 'board-tasks-member@example.com' },
+		})
+		const removed = await prisma.teamMember.delete({
+			where: { teamId_userId: { teamId, userId: member.id } },
+		})
+		try {
+			await request(server)
+				.get(`${path()}/board`)
+				.set('Cookie', memberCookies)
+				.query({ boardId: extraBoard.id })
+				.expect(403)
+			await request(server)
+				.patch(`${path()}/${moving.id}/move`)
+				.set('Cookie', memberCookies)
+				.send({
+					fromColumnId: extraBoard.columns[0].id,
+					toColumnId: extraBoard.columns[1].id,
+					position: 0,
+					expectedVersion: moving.version,
+				})
+				.expect(403)
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+			expect((await list(extraBoard.columns[0].id)).map((item) => item.id)).toEqual([
+				moving.id,
+			])
+			expect(await list(extraBoard.columns[1].id)).toEqual([])
+		} finally {
+			await prisma.teamMember.create({ data: removed })
+		}
 	})
 
 	it('validates project, board and team boundaries for reads and moves', async () => {
