@@ -4,7 +4,7 @@ import {
 	PrioritySchema,
 	TaskTypeSchema,
 } from '../schemas/create-task.schema'
-import type { PaginationParams } from '../../pagination'
+import type { TaskFilterQuery } from '../schemas/task-filter-query.schema'
 
 export type TaskStatus = z.infer<typeof TaskStatusSchema>
 export type Priority = z.infer<typeof PrioritySchema>
@@ -16,7 +16,7 @@ export interface Task {
 	description: string | null
 	status: TaskStatus
 	priority: Priority
-	type?: TaskType
+	type: TaskType
 	position: number
 	version: number
 	dueDate: string | null
@@ -26,8 +26,4 @@ export interface Task {
 	updatedAt: string
 }
 
-export interface TaskFilterParams extends PaginationParams {
-	status?: TaskStatus
-	priority?: Priority
-	assigneeId?: string
-}
+export type TaskFilterParams = Partial<TaskFilterQuery>

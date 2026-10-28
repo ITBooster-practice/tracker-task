@@ -66,6 +66,9 @@ export class TasksController {
 
 	@ApiOperation({ summary: 'Список задач проекта' })
 	@ApiOkResponse({ type: [TaskResponseDto], description: 'Пагинированный список задач' })
+	@ApiBadRequestResponse({
+		description: 'Некорректные параметры фильтрации, поиска, сортировки или пагинации',
+	})
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Get()
 	findAll(
@@ -74,14 +77,8 @@ export class TasksController {
 		@Authorized('id') userId: string,
 		@Query() query: TaskFilterQueryDto,
 	) {
-		const { page, limit, status, priority, assigneeId } = query
-		return this.tasksService.findAll(
-			teamId,
-			projectId,
-			userId,
-			{ status, priority, assigneeId },
-			{ page, limit },
-		)
+		const { page, limit, ...filters } = query
+		return this.tasksService.findAll(teamId, projectId, userId, filters, { page, limit })
 	}
 
 	@ApiOperation({
