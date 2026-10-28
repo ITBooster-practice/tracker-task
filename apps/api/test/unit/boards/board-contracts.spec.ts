@@ -1,0 +1,99 @@
+import {
+	createBoardSchema,
+	createColumnSchema,
+	deleteBoardSchema,
+	deleteColumnSchema,
+	moveTaskSchema,
+	moveTaskToColumnSchema,
+	reorderColumnsSchema,
+	updateBoardSchema,
+	updateColumnSchema,
+} from '@repo/types'
+import { describe, expect, it } from 'vitest'
+
+describe('Shared board contracts', () => {
+	it('normalizes names and supports an empty DELETE body', () => {
+		expect(createBoardSchema.parse({ name: '  Разработка  ' })).toEqual({
+			name: 'Разработка',
+		})
+		expect(updateBoardSchema.parse({ name: ' Поддержка ' })).toEqual({
+			name: 'Поддержка',
+		})
+		expect(deleteBoardSchema.parse(undefined)).toEqual({})
+		expect(deleteBoardSchema.parse({})).toEqual({})
+	})
+
+	it.each(['', '   ', 'x'.repeat(101), 123, null])(
+		'rejects an invalid board name: %j',
+		(name) => {
+			expect(createBoardSchema.safeParse({ name }).success).toBe(false)
+			expect(updateBoardSchema.safeParse({ name }).success).toBe(false)
+		},
+	)
+
+	it('rejects empty updates and changes to server-owned board fields', () => {
+		expect(updateBoardSchema.safeParse({}).success).toBe(false)
+		expect(createBoardSchema.safeParse({ name: 'Board', isDefault: true }).success).toBe(
+			false,
+		)
+		expect(
+			updateBoardSchema.safeParse({ name: 'Board', projectId: 'other' }).success,
+		).toBe(false)
+		expect(deleteBoardSchema.safeParse({ targetBoardId: 'other' }).success).toBe(false)
+	})
+
+	it('defines column creation and renaming without exposing system flags', () => {
+		expect(
+			createColumnSchema.parse({ key: ' custom ', title: ' Review ', position: 0 }),
+		).toEqual({
+			key: 'custom',
+			title: 'Review',
+			position: 0,
+		})
+		expect(updateColumnSchema.parse({ title: ' Review ' })).toEqual({ title: 'Review' })
+		for (const body of [{}, { title: ' ' }, { position: 2 }, { isSystem: false }]) {
+			expect(updateColumnSchema.safeParse(body).success).toBe(false)
+		}
+		expect(
+			createColumnSchema.safeParse({ key: 'x', title: 'X', isSystem: true }).success,
+		).toBe(false)
+	})
+
+	it('requires a transfer target and a nonempty, unique column order', () => {
+		expect(deleteColumnSchema.parse({ targetColumnId: 'target' })).toEqual({
+			targetColumnId: 'target',
+		})
+		expect(deleteColumnSchema.safeParse({}).success).toBe(false)
+		expect(reorderColumnsSchema.parse({ columnIds: ['second', 'first'] })).toEqual({
+			columnIds: ['second', 'first'],
+		})
+		for (const columnIds of [[], ['first', 'first'], ['first', ' ']]) {
+			expect(reorderColumnsSchema.safeParse({ columnIds }).success).toBe(false)
+		}
+	})
+
+	it.each([-1, 0.5, '1', 2_147_483_648])(
+		'rejects an invalid column/task position: %j',
+		(position) => {
+			expect(
+				createColumnSchema.safeParse({ key: 'x', title: 'X', position }).success,
+			).toBe(false)
+			expect(
+				moveTaskToColumnSchema.safeParse({ targetColumnId: 'target', position }).success,
+			).toBe(false)
+		},
+	)
+
+	it('keeps the legacy status move separate from the new column move', () => {
+		expect(moveTaskSchema.parse({ status: 'IN_PROGRESS', position: 1 })).toEqual({
+			status: 'IN_PROGRESS',
+			position: 1,
+		})
+		expect(
+			moveTaskToColumnSchema.parse({ targetColumnId: 'target', position: 0 }),
+		).toEqual({ targetColumnId: 'target', position: 0 })
+		expect(
+			moveTaskToColumnSchema.safeParse({ status: 'TODO', position: 0 }).success,
+		).toBe(false)
+	})
+})
