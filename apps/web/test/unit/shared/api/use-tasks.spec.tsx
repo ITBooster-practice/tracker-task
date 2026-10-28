@@ -146,7 +146,7 @@ describe('use-tasks hooks', () => {
 	})
 
 	describe('useCreateTask', () => {
-		it('после создания обновляет кэш (setQueryData) и инвалидирует список', async () => {
+		it('после создания возвращает задачу и инвалидирует списки и доски проекта', async () => {
 			const task = createTaskFixture({ id: 'task-new', title: 'New Task' })
 			tasksServiceMock.create.mockResolvedValue(task)
 
@@ -155,6 +155,8 @@ describe('use-tasks hooks', () => {
 			const { result } = renderHook(() => useCreateTask(), {
 				wrapper: createWrapper(),
 			})
+			const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
+			queryClient.setQueryData(boardKey, { columns: [] })
 
 			result.current.mutate({
 				teamId: 'team-1',
@@ -167,9 +169,8 @@ describe('use-tasks hooks', () => {
 			expect(tasksServiceMock.create).toHaveBeenCalledWith('team-1', 'project-1', {
 				title: 'New Task',
 			})
-			expect(
-				queryClient.getQueryData(tasksKeys.detail('team-1', 'project-1', 'task-new')),
-			).toEqual(task)
+			expect(result.current.data).toEqual(task)
+			expect(queryClient.getQueryState(boardKey)?.isInvalidated).toBe(true)
 			expect(invalidateSpy).toHaveBeenCalledWith({
 				queryKey: tasksKeys.projectLists('team-1', 'project-1'),
 			})
@@ -179,7 +180,7 @@ describe('use-tasks hooks', () => {
 	})
 
 	describe('useUpdateTask', () => {
-		it('обновляет кэш задачи и инвалидирует список', async () => {
+		it('после обновления инвалидирует детали, списки и доски проекта', async () => {
 			const task = createTaskFixture({ id: 'task-1', title: 'Updated' })
 			tasksServiceMock.update.mockResolvedValue(task)
 
@@ -188,6 +189,10 @@ describe('use-tasks hooks', () => {
 			const { result } = renderHook(() => useUpdateTask(), {
 				wrapper: createWrapper(),
 			})
+			const detailKey = tasksKeys.detail('team-1', 'project-1', 'task-1')
+			const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
+			queryClient.setQueryData(detailKey, createTaskFixture())
+			queryClient.setQueryData(boardKey, { columns: [] })
 
 			result.current.mutate({
 				teamId: 'team-1',
@@ -204,9 +209,9 @@ describe('use-tasks hooks', () => {
 				'task-1',
 				{ title: 'Updated' },
 			)
-			expect(
-				queryClient.getQueryData(tasksKeys.detail('team-1', 'project-1', 'task-1')),
-			).toEqual(task)
+			expect(result.current.data).toEqual(task)
+			expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true)
+			expect(queryClient.getQueryState(boardKey)?.isInvalidated).toBe(true)
 			expect(invalidateSpy).toHaveBeenCalledWith({
 				queryKey: tasksKeys.projectLists('team-1', 'project-1'),
 			})
@@ -226,6 +231,8 @@ describe('use-tasks hooks', () => {
 				},
 			})
 			queryClient.setQueryData(tasksKeys.detail('team-1', 'project-1', 'task-1'), task)
+			const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
+			queryClient.setQueryData(boardKey, { columns: [] })
 
 			tasksServiceMock.delete.mockResolvedValue(undefined)
 
@@ -259,6 +266,7 @@ describe('use-tasks hooks', () => {
 			expect(
 				queryClient.getQueryData(tasksKeys.detail('team-1', 'project-1', 'task-1')),
 			).toBeUndefined()
+			expect(queryClient.getQueryState(boardKey)?.isInvalidated).toBe(true)
 
 			invalidateSpy.mockRestore()
 		})
