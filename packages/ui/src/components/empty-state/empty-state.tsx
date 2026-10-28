@@ -7,6 +7,7 @@ import { Button } from '../button'
 type EmptyStateProps = React.ComponentProps<'section'> & {
 	icon?: React.ReactNode
 	title: string
+	headingLevel?: 'h1' | 'h2'
 	description?: string
 	action?: React.ReactNode
 	actionLabel?: string
@@ -17,12 +18,14 @@ function EmptyState({
 	className,
 	icon,
 	title,
+	headingLevel = 'h1',
 	description,
 	action,
 	actionLabel,
 	onAction,
 	...props
 }: EmptyStateProps) {
+	const Heading = headingLevel
 	return (
 		<section
 			data-slot='empty-state'
@@ -37,7 +40,7 @@ function EmptyState({
 			</div>
 
 			<div className='space-y-1.5'>
-				<h1 className='text-2xl font-semibold'>{title}</h1>
+				<Heading className='text-2xl font-semibold'>{title}</Heading>
 				{description ? (
 					<p className='text-muted-foreground text-sm'>{description}</p>
 				) : null}

@@ -192,6 +192,7 @@ Self-hosted трекер, который можно развернуть на с
 
 ### Frontend
 
+- [Дизайн-система Tracker Task](./design-system/README.md) — шапки страниц, темы, типографика и применение UI
 - [ShadCN UI](./frontend/shadcn.md)
 - [Layout / навигация](./frontend/layout-navigation.md)
 - [API-интеграция](./frontend/api-integration-pattern.md)

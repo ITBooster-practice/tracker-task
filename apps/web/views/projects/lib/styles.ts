@@ -1,12 +1,13 @@
 import { cn } from '@repo/ui'
 
-export const projectPageHeaderClassName =
-	'mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'
+import { pageHeaderRowClassName } from '@/shared/ui/page-header/styles'
 
-export const projectPageTitleClassName =
-	'text-[34px] font-semibold leading-[1] tracking-tight'
+export {
+	pageTitleClassName as projectPageTitleClassName,
+	pageDescriptionClassName as projectPageSubtitleClassName,
+} from '@/shared/ui/page-header/styles'
 
-export const projectPageSubtitleClassName = 'mt-1.5 text-[15px] text-muted-foreground'
+export const projectPageHeaderClassName = `mb-6 ${pageHeaderRowClassName}`
 
 export const projectPagePrimaryButtonClassName =
 	'h-9 w-full sm:w-auto rounded-[var(--radius-control)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90'
