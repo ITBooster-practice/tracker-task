@@ -1,3 +1,8 @@
+import {
+	createBoardTaskFixture as createApiBoardTaskFixture,
+	createBoardViewFixture,
+} from '@/test/mocks/api/boards.fixtures'
+
 import type { BoardAssignee, BoardColumn, BoardTask } from '@/views/boards/model/types'
 
 export const boardTestAssignee: BoardAssignee = {
@@ -8,16 +13,17 @@ export const boardTestAssignee: BoardAssignee = {
 
 export function createBoardTaskFixture(overrides: Partial<BoardTask> = {}): BoardTask {
 	return {
+		...createApiBoardTaskFixture({ assigneeId: boardTestAssignee.id }),
 		id: 'task-a',
 		key: 'TT-1',
 		title: 'Проверить карточку задачи',
 		description: 'Описание задачи для unit-теста board UI.',
-		type: 'Задача',
+		type: 'TASK',
 		priority: 'HIGH',
-		columnId: 'TODO',
+		boardColumnId: 'TODO',
 		tags: ['ui', 'tests'],
 		assignee: boardTestAssignee,
-		deadline: '2026-05-01',
+		dueDate: '2026-05-01T00:00:00.000Z',
 		checklist: { completed: 1, total: 3 },
 		comments: [
 			{
@@ -44,6 +50,7 @@ export function createBoardColumnFixture(
 	overrides: Partial<BoardColumn> = {},
 ): BoardColumn {
 	return {
+		...createBoardViewFixture().columns[0]!,
 		id: 'TODO',
 		title: 'К выполнению',
 		description: 'Готово к старту.',
@@ -64,6 +71,8 @@ export function createBoardColumnsFixture(): BoardColumn[] {
 		createBoardColumnFixture(),
 		createBoardColumnFixture({
 			id: 'DONE',
+			key: 'DONE',
+			position: 1,
 			title: 'Готово',
 			description: 'Завершённые задачи.',
 			tasks: [
@@ -71,7 +80,8 @@ export function createBoardColumnsFixture(): BoardColumn[] {
 					id: 'task-done',
 					key: 'TT-3',
 					title: 'Готовая карточка',
-					columnId: 'DONE',
+					boardColumnId: 'DONE',
+					status: 'DONE',
 				}),
 			],
 		}),

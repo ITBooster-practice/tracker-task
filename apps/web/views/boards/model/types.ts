@@ -1,6 +1,13 @@
-import type { TaskPriority, TaskType } from '@/entities/task'
+import type {
+	BoardColumn as ApiBoardColumn,
+	BoardTask as ApiBoardTask,
+	Board,
+	BoardColumnWithTasks,
+	Priority,
+	TaskType,
+} from '@repo/types'
 
-export type BoardColumnId = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE'
+export type BoardColumnId = ApiBoardColumn['id']
 
 export type BoardTypeFilter = 'ALL' | TaskType
 export type BoardAssigneeFilter = 'ALL' | string
@@ -30,33 +37,22 @@ export interface BoardHistoryEntry {
 	createdAtLabel: string
 }
 
-export interface BoardTask {
-	id: string
+export interface BoardTask extends ApiBoardTask {
 	key: string
-	title: string
-	description: string
-	type: TaskType
-	priority: TaskPriority
-	columnId: BoardColumnId
 	tags: string[]
-	assignee: BoardAssignee
-	deadline: string
+	assignee: BoardAssignee | null
 	checklist?: BoardChecklist
 	comments: BoardComment[]
 	history: BoardHistoryEntry[]
 	createdAtLabel: string
 }
 
-export interface BoardColumn {
-	id: BoardColumnId
-	title: string
-	description: string
+export interface BoardColumn extends Omit<BoardColumnWithTasks, 'tasks'> {
+	description?: string
 	tasks: BoardTask[]
 }
 
-export interface BoardInfo {
-	id: string
-	name: string
+export interface BoardInfo extends Board {
 	projectName: string
 	periodLabel: string
 	goal: string
@@ -77,10 +73,10 @@ export interface BoardTaskMoveInput {
 export interface BoardTaskFormValues {
 	title: string
 	description: string
-	columnId: BoardColumnId
-	priority: TaskPriority
+	boardColumnId: BoardColumnId
+	priority: Priority
 	assigneeId: string
-	deadline: string
+	dueDate: string
 	tags: string[]
 }
 

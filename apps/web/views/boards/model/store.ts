@@ -13,10 +13,15 @@ import type {
 	BoardTaskMoveInput,
 	BoardTypeFilter,
 } from './types'
-import { flattenBoardTasks, moveTaskInColumns, updateBoardTask } from './utils'
+import {
+	flattenBoardTasks,
+	getBoardColumnTaskStatus,
+	moveTaskInColumns,
+	updateBoardTask,
+} from './utils'
 
 const BOARD_TASK_KEY_PREFIX = 'SPR'
-const DEFAULT_TASK_TYPE = 'Задача'
+const DEFAULT_TASK_TYPE = 'TASK'
 
 interface BoardStoreState {
 	board: BoardInfo
@@ -55,7 +60,7 @@ const findAssigneeById = (
 	columns: BoardColumn[],
 	assigneeId: string,
 ): BoardAssignee | null =>
-	flattenBoardTasks(columns).find((task) => task.assignee.id === assigneeId)?.assignee ??
+	flattenBoardTasks(columns).find((task) => task.assignee?.id === assigneeId)?.assignee ??
 	null
 
 const getNextTaskNumber = (columns: BoardColumn[]) =>
@@ -72,7 +77,8 @@ const createBoardTaskFromValues = (
 ): BoardTask | null => {
 	const assignee = findAssigneeById(columns, values.assigneeId)
 
-	if (!assignee) {
+	const column = columns.find((column) => column.id === values.boardColumnId)
+	if (!column || (values.assigneeId && !assignee)) {
 		return null
 	}
 
@@ -80,15 +86,23 @@ const createBoardTaskFromValues = (
 
 	return {
 		id: `task-${taskNumber}`,
+		projectId: column.projectId,
+		createdById: boardMock.currentUser.id,
+		assigneeId: assignee?.id ?? null,
+		status: getBoardColumnTaskStatus(column, 'TODO'),
+		position: column.tasks.length,
+		version: 0,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 		key: `${BOARD_TASK_KEY_PREFIX}-${taskNumber}`,
 		title: values.title,
 		description: values.description,
 		type: DEFAULT_TASK_TYPE,
 		priority: values.priority,
-		columnId: values.columnId,
+		boardColumnId: values.boardColumnId,
 		tags: values.tags,
 		assignee,
-		deadline: values.deadline,
+		dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : null,
 		comments: [],
 		history: [
 			{
@@ -108,6 +122,9 @@ const updateTaskInTargetColumn = (
 	targetColumnId: BoardColumnId,
 	updater: (task: BoardTask) => BoardTask,
 ) => {
+	if (!columns.some((column) => column.id === targetColumnId)) {
+		return columns
+	}
 	let updatedTask: BoardTask | null = null
 	let sourceColumnId: BoardColumnId | null = null
 
@@ -191,7 +208,7 @@ export const useBoardStore = create<BoardStoreState>((set) => ({
 
 			return {
 				columns: state.columns.map((column) =>
-					column.id === values.columnId
+					column.id === values.boardColumnId
 						? {
 								...column,
 								tasks: [...column.tasks, task],
@@ -248,24 +265,27 @@ export const useBoardStore = create<BoardStoreState>((set) => ({
 	updateTask: (taskId, values) =>
 		set((state) => {
 			const assignee = findAssigneeById(state.columns, values.assigneeId)
+			const column = state.columns.find((column) => column.id === values.boardColumnId)
 
-			if (!assignee) {
+			if (!column || (values.assigneeId && !assignee)) {
 				return state
 			}
 
 			const nextColumns = updateTaskInTargetColumn(
 				state.columns,
 				taskId,
-				values.columnId,
+				values.boardColumnId,
 				(task) => ({
 					...task,
 					title: values.title,
 					description: values.description,
 					priority: values.priority,
-					columnId: values.columnId,
+					boardColumnId: values.boardColumnId,
+					status: getBoardColumnTaskStatus(column, task.status),
 					tags: values.tags,
 					assignee,
-					deadline: values.deadline,
+					assigneeId: assignee?.id ?? null,
+					dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : null,
 					history: [
 						{
 							id: `history-${Date.now()}`,

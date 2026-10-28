@@ -20,9 +20,10 @@ import {
 	Textarea,
 } from '@repo/ui'
 
-import { BOARD_COLUMNS, BOARD_PRIORITY_LABELS } from '../model/constants'
+import { BOARD_PRIORITY_LABELS } from '../model/constants'
 import type {
 	BoardAssignee,
+	BoardColumn,
 	BoardColumnId,
 	BoardTask,
 	BoardTaskFormValues,
@@ -34,6 +35,7 @@ interface BoardTaskFormDialogProps {
 	open: boolean
 	mode: BoardTaskFormMode
 	task: BoardTask | null
+	columns: readonly Pick<BoardColumn, 'id' | 'key' | 'title'>[]
 	assignees: BoardAssignee[]
 	onOpenChange: (open: boolean) => void
 	onSubmit: (values: BoardTaskFormValues) => void
@@ -42,20 +44,20 @@ interface BoardTaskFormDialogProps {
 interface BoardTaskFormState {
 	title: string
 	description: string
-	columnId: BoardColumnId
+	boardColumnId: BoardColumnId
 	priority: BoardTask['priority']
 	assigneeId: string
-	deadline: string
+	dueDate: string
 	tags: string
 }
 
 const DEFAULT_TASK_FORM_STATE: BoardTaskFormState = {
 	title: '',
 	description: '',
-	columnId: 'TODO',
+	boardColumnId: '',
 	priority: 'MEDIUM',
 	assigneeId: '',
-	deadline: '',
+	dueDate: '',
 	tags: '',
 }
 
@@ -69,10 +71,10 @@ const TASK_FORM_TEXT = {
 	cancel: 'Отмена',
 	title: 'Название',
 	description: 'Описание',
-	status: 'Статус',
+	status: 'Колонка',
 	priority: 'Приоритет',
 	assignee: 'Исполнитель',
-	deadline: 'Дедлайн',
+	dueDate: 'Дедлайн',
 	tags: 'Теги',
 } as const
 
@@ -86,21 +88,24 @@ const TASK_PRIORITY_OPTIONS = (
 const getInitialFormState = (
 	task: BoardTask | null,
 	assignees: BoardAssignee[],
+	columns: BoardTaskFormDialogProps['columns'],
 ): BoardTaskFormState => {
 	if (task) {
 		return {
 			title: task.title,
-			description: task.description,
-			columnId: task.columnId,
+			description: task.description ?? '',
+			boardColumnId: task.boardColumnId,
 			priority: task.priority,
-			assigneeId: task.assignee.id,
-			deadline: task.deadline,
+			assigneeId: task.assigneeId ?? '',
+			dueDate: task.dueDate?.slice(0, 10) ?? '',
 			tags: task.tags.join(', '),
 		}
 	}
 
 	return {
 		...DEFAULT_TASK_FORM_STATE,
+		boardColumnId:
+			columns.find((column) => column.key === 'TODO')?.id ?? columns[0]?.id ?? '',
 		assigneeId: assignees[0]?.id ?? '',
 	}
 }
@@ -115,12 +120,13 @@ function BoardTaskFormDialog({
 	open,
 	mode,
 	task,
+	columns,
 	assignees,
 	onOpenChange,
 	onSubmit,
 }: BoardTaskFormDialogProps) {
 	const [formState, setFormState] = useState<BoardTaskFormState>(() =>
-		getInitialFormState(task, assignees),
+		getInitialFormState(task, assignees, columns),
 	)
 
 	useEffect(() => {
@@ -128,22 +134,22 @@ function BoardTaskFormDialog({
 			return
 		}
 
-		setFormState(getInitialFormState(task, assignees))
-	}, [assignees, open, task])
+		setFormState(getInitialFormState(task, assignees, columns))
+	}, [assignees, columns, open, task])
 
 	const isCreateMode = mode === 'create'
 	const isSubmitDisabled =
 		formState.title.trim().length === 0 ||
-		formState.description.trim().length === 0 ||
-		formState.assigneeId.length === 0
+		!columns.some((column) => column.id === formState.boardColumnId)
 
 	const selectedStatusLabel = useMemo(
-		() => BOARD_COLUMNS.find((column) => column.id === formState.columnId)?.title,
-		[formState.columnId],
+		() => columns.find((column) => column.id === formState.boardColumnId)?.title,
+		[columns, formState.boardColumnId],
 	)
 	const selectedPriorityLabel = BOARD_PRIORITY_LABELS[formState.priority]
 	const selectedAssigneeLabel =
-		assignees.find((assignee) => assignee.id === formState.assigneeId)?.name ?? ''
+		assignees.find((assignee) => assignee.id === formState.assigneeId)?.name ??
+		'Без исполнителя'
 
 	const updateField = <Field extends keyof BoardTaskFormState>(
 		field: Field,
@@ -165,10 +171,10 @@ function BoardTaskFormDialog({
 		onSubmit({
 			title: formState.title.trim(),
 			description: formState.description.trim(),
-			columnId: formState.columnId,
+			boardColumnId: formState.boardColumnId,
 			priority: formState.priority,
 			assigneeId: formState.assigneeId,
-			deadline: formState.deadline,
+			dueDate: formState.dueDate,
 			tags: normalizeTags(formState.tags),
 		})
 	}
@@ -218,16 +224,16 @@ function BoardTaskFormDialog({
 							<div className='space-y-2'>
 								<Label>{TASK_FORM_TEXT.status}</Label>
 								<Select
-									value={formState.columnId}
+									value={formState.boardColumnId}
 									onValueChange={(value) =>
-										updateField('columnId', value as BoardColumnId)
+										updateField('boardColumnId', value as BoardColumnId)
 									}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder={selectedStatusLabel} />
 									</SelectTrigger>
 									<SelectContent>
-										{BOARD_COLUMNS.map((column) => (
+										{columns.map((column) => (
 											<SelectItem key={column.id} value={column.id}>
 												{column.title}
 											</SelectItem>
@@ -260,13 +266,16 @@ function BoardTaskFormDialog({
 							<div className='space-y-2'>
 								<Label>{TASK_FORM_TEXT.assignee}</Label>
 								<Select
-									value={formState.assigneeId}
-									onValueChange={(value) => updateField('assigneeId', value)}
+									value={formState.assigneeId || '__unassigned__'}
+									onValueChange={(value) =>
+										updateField('assigneeId', value === '__unassigned__' ? '' : value)
+									}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder={selectedAssigneeLabel} />
 									</SelectTrigger>
 									<SelectContent>
+										<SelectItem value='__unassigned__'>Без исполнителя</SelectItem>
 										{assignees.map((assignee) => (
 											<SelectItem key={assignee.id} value={assignee.id}>
 												{assignee.name}
@@ -277,12 +286,12 @@ function BoardTaskFormDialog({
 							</div>
 
 							<div className='space-y-2'>
-								<Label htmlFor='board-task-deadline'>{TASK_FORM_TEXT.deadline}</Label>
+								<Label htmlFor='board-task-dueDate'>{TASK_FORM_TEXT.dueDate}</Label>
 								<Input
-									id='board-task-deadline'
+									id='board-task-dueDate'
 									type='date'
-									value={formState.deadline}
-									onChange={(event) => updateField('deadline', event.target.value)}
+									value={formState.dueDate}
+									onChange={(event) => updateField('dueDate', event.target.value)}
 								/>
 							</div>
 						</div>

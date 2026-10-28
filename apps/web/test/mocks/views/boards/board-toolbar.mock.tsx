@@ -19,7 +19,7 @@ vi.mock('@repo/ui', () => {
 			.join(' ')
 
 	const selectNextValues: Record<string, string> = {
-		Баг: 'Задача',
+		BUG: 'TASK',
 		anna: 'alexey',
 	}
 

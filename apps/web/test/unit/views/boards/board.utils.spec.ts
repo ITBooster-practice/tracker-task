@@ -80,7 +80,7 @@ describe('board utils', () => {
 		expect(
 			hasBoardActiveFilters({
 				query: '',
-				type: 'Баг',
+				type: 'BUG',
 				assignee: 'ALL',
 			}),
 		).toBe(true)

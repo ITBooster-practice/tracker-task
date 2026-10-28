@@ -163,7 +163,7 @@ function BoardTaskDetailsDialog({
 								<div>
 									<p className='text-[11px] font-medium text-slate-400'>Статус</p>
 									<p className='mt-0.5 text-[14px] font-semibold text-white'>
-										{BOARD_COLUMN_TITLES[task.columnId]}
+										{BOARD_COLUMN_TITLES[task.status]}
 									</p>
 								</div>
 
@@ -185,11 +185,11 @@ function BoardTaskDetailsDialog({
 									<div className='mt-0.5 inline-flex items-center gap-2'>
 										<Avatar className='size-6 border border-white/10 bg-white/5'>
 											<AvatarFallback className='bg-white/6 text-[10px] font-semibold text-slate-200'>
-												{task.assignee.initials}
+												{task.assignee?.initials ?? '—'}
 											</AvatarFallback>
 										</Avatar>
 										<span className='text-[14px] font-semibold text-white'>
-											{task.assignee.name}
+											{task.assignee?.name ?? 'Без исполнителя'}
 										</span>
 									</div>
 								</div>
@@ -197,7 +197,7 @@ function BoardTaskDetailsDialog({
 								<div>
 									<p className='text-[11px] font-medium text-slate-400'>Дедлайн</p>
 									<p className='mt-0.5 text-[14px] font-medium text-white'>
-										{task.deadline}
+										{task.dueDate?.slice(0, 10) ?? 'Не указан'}
 									</p>
 								</div>
 							</section>
@@ -221,7 +221,7 @@ function BoardTaskDetailsDialog({
 							<section className='mt-0.5 flex min-h-0 flex-1 flex-col'>
 								<h3 className='text-[14px] font-semibold text-white'>Описание</h3>
 								<p className='mt-2 max-w-none text-[13px] leading-6 text-slate-300'>
-									{task.description}
+									{task.description || 'Описание не добавлено'}
 								</p>
 							</section>
 

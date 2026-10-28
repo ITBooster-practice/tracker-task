@@ -12,8 +12,8 @@ import {
 } from '@dnd-kit/core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { getBoardColumnContainerId } from '../model/constants'
-import type { BoardColumn, BoardColumnId, BoardTaskMoveInput } from '../model/types'
+import { BOARD_COLUMN_CONTAINER_PREFIX } from '../model/constants'
+import type { BoardColumn, BoardTaskMoveInput } from '../model/types'
 import { findBoardTask, moveTaskInColumns } from '../model/utils'
 import { BoardCard } from './board-card'
 import { BoardColumn as BoardColumnView } from './board-column'
@@ -26,14 +26,12 @@ interface BoardProps {
 	disableInteraction?: boolean
 }
 
-const BOARD_COLUMN_ID_PREFIX = getBoardColumnContainerId('BACKLOG').split(':')[0]
-
 const getColumnIdFromDroppableId = (droppableId: string) => {
-	if (!droppableId.startsWith(`${BOARD_COLUMN_ID_PREFIX}:`)) {
+	if (!droppableId.startsWith(`${BOARD_COLUMN_CONTAINER_PREFIX}:`)) {
 		return null
 	}
 
-	return droppableId.split(':')[1] as BoardColumnId
+	return droppableId.slice(BOARD_COLUMN_CONTAINER_PREFIX.length + 1)
 }
 
 const getDragPlacement = (
@@ -201,7 +199,7 @@ function Board({
 					<div className='w-[260px]'>
 						<BoardCard
 							task={activeTask}
-							columnId={activeTask.columnId}
+							boardColumnId={activeTask.boardColumnId}
 							onOpenTask={onOpenTask}
 							isDragOverlay
 						/>

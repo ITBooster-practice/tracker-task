@@ -8,8 +8,8 @@ import { BoardToolbar } from '@/views/boards/ui/board-toolbar'
 
 const typeOptions: Array<{ label: string; value: BoardTypeFilter }> = [
 	{ label: 'Все типы', value: 'ALL' },
-	{ label: 'Баги', value: 'Баг' },
-	{ label: 'Задачи', value: 'Задача' },
+	{ label: 'Баги', value: 'BUG' },
+	{ label: 'Задачи', value: 'TASK' },
 ]
 
 const assigneeOptions: Array<{ label: string; value: BoardAssigneeFilter }> = [
@@ -39,7 +39,7 @@ describe('BoardToolbar', () => {
 
 		expect(screen.getByTestId('icon-search')).toBeDefined()
 		expect(screen.getByPlaceholderText('Поиск по названию, ключу или тегу')).toBeDefined()
-		expect(screen.getByTestId('select-item-Баг')).toBeDefined()
+		expect(screen.getByTestId('select-item-BUG')).toBeDefined()
 		expect(screen.getByTestId('select-item-anna')).toBeDefined()
 		expect(screen.getByRole('button', { name: /Сбросить/ })).toHaveProperty(
 			'disabled',
@@ -56,7 +56,7 @@ describe('BoardToolbar', () => {
 		render(
 			<BoardToolbar
 				query='старый'
-				type='Баг'
+				type='BUG'
 				assignee='anna'
 				typeOptions={typeOptions}
 				assigneeOptions={assigneeOptions}
@@ -79,12 +79,12 @@ describe('BoardToolbar', () => {
 		fireEvent.change(screen.getByPlaceholderText('Поиск по названию, ключу или тегу'), {
 			target: { value: 'drag preview' },
 		})
-		fireEvent.click(screen.getByTestId('select-Баг-change'))
+		fireEvent.click(screen.getByTestId('select-BUG-change'))
 		fireEvent.click(screen.getByTestId('select-anna-change'))
 		fireEvent.click(screen.getByRole('button', { name: /Сбросить/ }))
 
 		expect(queryValue).toBe('drag preview')
-		expect(typeValue).toBe('Задача')
+		expect(typeValue).toBe('TASK')
 		expect(assigneeValue).toBe('alexey')
 		expect(resetCalls).toBe(1)
 	})

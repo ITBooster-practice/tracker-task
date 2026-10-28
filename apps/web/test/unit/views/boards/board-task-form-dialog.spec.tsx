@@ -1,6 +1,10 @@
 import '@/test/mocks/views/boards/board-task-form-dialog.mock'
 
-import { createBoardTaskFixture } from '@/test/mocks/views/boards/board-ui.fixtures'
+import {
+	createBoardColumnFixture,
+	createBoardColumnsFixture,
+	createBoardTaskFixture,
+} from '@/test/mocks/views/boards/board-ui.fixtures'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -12,12 +16,55 @@ const assignees: BoardAssignee[] = [
 	{ id: 'anna', name: 'Анна Ким', initials: 'AK' },
 ]
 
+const columns = [
+	...createBoardColumnsFixture(),
+	createBoardColumnFixture({
+		id: 'IN_REVIEW',
+		key: 'IN_REVIEW',
+		title: 'На ревью',
+		tasks: [],
+	}),
+]
+
 describe('BoardTaskFormDialog', () => {
 	afterEach(cleanup)
+
+	it('редактирует неназначенную API-задачу с пустым описанием в произвольной колонке', () => {
+		let submitted: BoardTaskFormValues | undefined
+		const task = createBoardTaskFixture({
+			boardColumnId: 'column:custom',
+			description: null,
+			dueDate: null,
+			assignee: null,
+			assigneeId: null,
+		})
+		render(
+			<BoardTaskFormDialog
+				open
+				mode='edit'
+				task={task}
+				assignees={[]}
+				columns={[{ id: 'column:custom', key: 'EXTERNAL', title: 'Ожидание' }]}
+				onOpenChange={() => undefined}
+				onSubmit={(values) => {
+					submitted = values
+				}}
+			/>,
+		)
+		expect(screen.getByTestId('select-item-column:custom').textContent).toBe('Ожидание')
+		fireEvent.submit(screen.getByLabelText('Название').closest('form')!)
+		expect(submitted).toMatchObject({
+			boardColumnId: 'column:custom',
+			description: '',
+			dueDate: '',
+			assigneeId: '',
+		})
+	})
 
 	it('не рендерится когда open=false', () => {
 		render(
 			<BoardTaskFormDialog
+				columns={columns}
 				open={false}
 				mode='create'
 				task={null}
@@ -35,6 +82,7 @@ describe('BoardTaskFormDialog', () => {
 
 		render(
 			<BoardTaskFormDialog
+				columns={columns}
 				open
 				mode='create'
 				task={null}
@@ -66,10 +114,10 @@ describe('BoardTaskFormDialog', () => {
 		expect(submittedValues).toEqual({
 			title: 'Новая задача',
 			description: 'Описание задачи',
-			columnId: 'IN_REVIEW',
+			boardColumnId: 'IN_REVIEW',
 			priority: 'HIGH',
 			assigneeId: 'anna',
-			deadline: '2026-05-10',
+			dueDate: '2026-05-10',
 			tags: ['ui', 'board', 'tests'],
 		})
 	})
@@ -80,6 +128,7 @@ describe('BoardTaskFormDialog', () => {
 
 		render(
 			<BoardTaskFormDialog
+				columns={columns}
 				open
 				mode='edit'
 				task={createBoardTaskFixture()}
@@ -118,6 +167,7 @@ describe('BoardTaskFormDialog', () => {
 
 		render(
 			<BoardTaskFormDialog
+				columns={columns}
 				open
 				mode='create'
 				task={null}

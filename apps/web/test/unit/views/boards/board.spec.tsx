@@ -3,7 +3,7 @@ import {
 	getBoardUnitMockState,
 	resetBoardUnitMocks,
 } from '@/test/mocks/views/boards/board.mock'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { BoardTaskMoveInput } from '@/views/boards/model/types'
@@ -15,6 +15,33 @@ describe('Board', () => {
 	})
 
 	afterEach(cleanup)
+
+	it('сохраняет произвольный ID колонки целиком при drop', () => {
+		const columns = createBoardColumnsFixture()
+		columns[1]!.id = 'column:custom-target'
+		let moveInput: BoardTaskMoveInput | undefined
+		render(
+			<Board
+				columns={columns}
+				onOpenTask={() => undefined}
+				onMoveTask={(input) => {
+					moveInput = input
+				}}
+			/>,
+		)
+		fireEvent.click(screen.getByTestId('drag-start'))
+		act(() =>
+			getBoardUnitMockState().dndContextProps!.onDragEnd({
+				active: { id: 'task-a', rect: { current: { translated: null } } },
+				over: { id: 'board-column:column:custom-target', rect: { top: 0, height: 100 } },
+			}),
+		)
+		expect(moveInput).toEqual({
+			taskId: 'task-a',
+			toColumnId: 'column:custom-target',
+			toIndex: 1,
+		})
+	})
 
 	it('рендерит колонки, sensors и прокидывает открытие задачи', () => {
 		let openedTaskId = ''

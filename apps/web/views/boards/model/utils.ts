@@ -1,3 +1,5 @@
+import { TaskStatusSchema, type TaskStatus } from '@repo/types'
+
 import { BOARD_ASSIGNEE_ALL_OPTION_LABEL, BOARD_FILTER_ALL } from './constants'
 import type {
 	BoardAssigneeFilter,
@@ -13,13 +15,21 @@ const clampIndex = (value: number, min: number, max: number) =>
 
 const normalizeSearchValue = (value: string) => value.trim().toLowerCase()
 
+export const getBoardColumnTaskStatus = (
+	column: BoardColumn,
+	previousStatus: TaskStatus,
+) => {
+	const parsed = TaskStatusSchema.safeParse(column.key)
+	return parsed.success ? parsed.data : previousStatus
+}
+
 const findTaskLocation = (columns: BoardColumn[], taskId: string) => {
 	for (const [columnIndex, column] of columns.entries()) {
 		const taskIndex = column.tasks.findIndex((task) => task.id === taskId)
 
 		if (taskIndex >= 0) {
 			return {
-				columnId: column.id,
+				boardColumnId: column.id,
 				columnIndex,
 				taskIndex,
 			}
@@ -96,7 +106,8 @@ export const moveTaskInColumns = (
 
 	nextTargetColumn.tasks.splice(adjustedIndex, 0, {
 		...task,
-		columnId: toColumnId,
+		boardColumnId: toColumnId,
+		status: getBoardColumnTaskStatus(nextTargetColumn, task.status),
 	})
 
 	return nextColumns
@@ -134,13 +145,13 @@ export const filterBoardColumns = (columns: BoardColumn[], filters: BoardFilters
 			const normalizedQuery = normalizeSearchValue(filters.query)
 			const matchesQuery =
 				normalizedQuery.length === 0 ||
-				[task.key, task.title, task.assignee.name, ...task.tags].some((value) =>
+				[task.key, task.title, task.assignee?.name ?? '', ...task.tags].some((value) =>
 					value.toLowerCase().includes(normalizedQuery),
 				)
 
 			const matchesType = filters.type === BOARD_FILTER_ALL || task.type === filters.type
 			const matchesAssignee =
-				filters.assignee === BOARD_FILTER_ALL || task.assignee.id === filters.assignee
+				filters.assignee === BOARD_FILTER_ALL || task.assigneeId === filters.assignee
 
 			return matchesQuery && matchesType && matchesAssignee
 		}),
@@ -153,7 +164,7 @@ export const buildBoardAssigneeOptions = (tasks: BoardTask[]) => {
 	]
 
 	for (const task of tasks) {
-		if (seenAssignees.has(task.assignee.id)) {
+		if (!task.assignee || seenAssignees.has(task.assignee.id)) {
 			continue
 		}
 
@@ -170,8 +181,8 @@ export const buildBoardAssigneeOptions = (tasks: BoardTask[]) => {
 export const buildBoardAssignees = (tasks: BoardTask[]) => {
 	const seenAssignees = new Set<string>()
 
-	return tasks.reduce<BoardTask['assignee'][]>((assignees, task) => {
-		if (seenAssignees.has(task.assignee.id)) {
+	return tasks.reduce<NonNullable<BoardTask['assignee']>[]>((assignees, task) => {
+		if (!task.assignee || seenAssignees.has(task.assignee.id)) {
 			return assignees
 		}
 
@@ -187,11 +198,12 @@ export const hasBoardActiveFilters = (filters: BoardFilters) =>
 
 export const buildBoardStats = (columns: BoardColumn[]): BoardStat[] => {
 	const totalTasksCount = flattenBoardTasks(columns).length
-	const doneTasksCount = columns.find((column) => column.id === 'DONE')?.tasks.length ?? 0
+	const doneTasksCount =
+		columns.find((column) => column.key === 'DONE')?.tasks.length ?? 0
 	const reviewTasksCount =
-		columns.find((column) => column.id === 'IN_REVIEW')?.tasks.length ?? 0
+		columns.find((column) => column.key === 'IN_REVIEW')?.tasks.length ?? 0
 	const inProgressTasksCount =
-		columns.find((column) => column.id === 'IN_PROGRESS')?.tasks.length ?? 0
+		columns.find((column) => column.key === 'IN_PROGRESS')?.tasks.length ?? 0
 	const completionRate =
 		totalTasksCount === 0 ? 0 : Math.round((doneTasksCount / totalTasksCount) * 100)
 

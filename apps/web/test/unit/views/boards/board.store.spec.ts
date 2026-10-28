@@ -12,6 +12,52 @@ describe('board store', () => {
 		useBoardStore.getState().resetBoard()
 	})
 
+	it('создаёт и изменяет задачу без исполнителя и срока', () => {
+		const values = {
+			title: 'Без исполнителя',
+			description: '',
+			boardColumnId: 'TODO',
+			priority: 'LOW' as const,
+			assigneeId: '',
+			dueDate: '',
+			tags: [],
+		}
+		useBoardStore.getState().createTask(values)
+		const created = findBoardTask(useBoardStore.getState().columns, 'task-110')!
+		expect(created).toMatchObject({
+			type: 'TASK',
+			status: 'TODO',
+			assignee: null,
+			assigneeId: null,
+			dueDate: null,
+			version: 0,
+		})
+		useBoardStore
+			.getState()
+			.updateTask(created.id, { ...values, boardColumnId: 'IN_REVIEW' })
+		expect(findBoardTask(useBoardStore.getState().columns, created.id)).toMatchObject({
+			boardColumnId: 'IN_REVIEW',
+			status: 'IN_REVIEW',
+			assignee: null,
+			assigneeId: null,
+		})
+	})
+
+	it('не удаляет задачу при выборе неизвестной колонки', () => {
+		const columns = useBoardStore.getState().columns
+		useBoardStore.getState().updateTask('task-103', {
+			title: 'Изменение',
+			description: '',
+			boardColumnId: 'missing-column',
+			priority: 'LOW',
+			assigneeId: '',
+			dueDate: '',
+			tags: [],
+		})
+		expect(useBoardStore.getState().columns).toBe(columns)
+		expect(findBoardTask(columns, 'task-103')?.boardColumnId).toBe('TODO')
+	})
+
 	it('moveTaskInColumns переносит карточку между колонками и обновляет её статус', () => {
 		const initialColumns = useBoardStore.getState().columns
 		const nextColumns = moveTaskInColumns(initialColumns, {
@@ -24,7 +70,7 @@ describe('board store', () => {
 		const movedTask = doneColumn?.tasks.find((task) => task.id === 'task-105')
 
 		expect(doneColumn?.tasks.map((task) => task.id)).toContain('task-105')
-		expect(movedTask?.columnId).toBe('DONE')
+		expect(movedTask?.boardColumnId).toBe('DONE')
 	})
 
 	it('submitComment добавляет комментарий и запись в историю', () => {
@@ -64,7 +110,7 @@ describe('board store', () => {
 	it('resetFilters возвращает значения фильтров по умолчанию', () => {
 		useBoardStore.setState({
 			query: 'review',
-			type: 'Баг',
+			type: 'BUG',
 			assignee: 'denis',
 		})
 
@@ -99,10 +145,10 @@ describe('board store', () => {
 		useBoardStore.getState().createTask({
 			title: 'Новая задача',
 			description: 'Описание новой задачи',
-			columnId: 'TODO',
+			boardColumnId: 'TODO',
 			priority: 'HIGH',
 			assigneeId: 'anna',
-			deadline: '2026-05-01',
+			dueDate: '2026-05-01',
 			tags: ['feature', 'board'],
 		})
 
@@ -113,12 +159,12 @@ describe('board store', () => {
 		expect(createdTask).toMatchObject({
 			title: 'Новая задача',
 			description: 'Описание новой задачи',
-			columnId: 'TODO',
+			boardColumnId: 'TODO',
 			priority: 'HIGH',
-			deadline: '2026-05-01',
+			dueDate: '2026-05-01T00:00:00.000Z',
 			tags: ['feature', 'board'],
 		})
-		expect(createdTask?.assignee.id).toBe('anna')
+		expect(createdTask?.assignee?.id).toBe('anna')
 		expect(createdTask?.key).toBe('SPR-110')
 	})
 
@@ -126,10 +172,10 @@ describe('board store', () => {
 		useBoardStore.getState().updateTask('task-103', {
 			title: 'Обновлённая задача',
 			description: 'Новое описание',
-			columnId: 'IN_REVIEW',
+			boardColumnId: 'IN_REVIEW',
 			priority: 'CRITICAL',
 			assigneeId: 'denis',
-			deadline: '2026-05-02',
+			dueDate: '2026-05-02',
 			tags: ['review'],
 		})
 
@@ -144,12 +190,12 @@ describe('board store', () => {
 		expect(updatedTask).toMatchObject({
 			title: 'Обновлённая задача',
 			description: 'Новое описание',
-			columnId: 'IN_REVIEW',
+			boardColumnId: 'IN_REVIEW',
 			priority: 'CRITICAL',
-			deadline: '2026-05-02',
+			dueDate: '2026-05-02T00:00:00.000Z',
 			tags: ['review'],
 		})
-		expect(updatedTask?.assignee.id).toBe('denis')
+		expect(updatedTask?.assignee?.id).toBe('denis')
 	})
 
 	it('deleteTask удаляет задачу и закрывает её детали', () => {

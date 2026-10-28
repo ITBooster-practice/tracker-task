@@ -16,6 +16,17 @@ describe('BoardCard', () => {
 
 	afterEach(cleanup)
 
+	it('рендерит карточку без исполнителя', () => {
+		render(
+			<BoardCard
+				task={createTaskFixture({ assignee: null, assigneeId: null })}
+				boardColumnId='custom-column'
+				onOpenTask={() => undefined}
+			/>,
+		)
+		expect(screen.getByText('—')).toBeDefined()
+	})
+
 	it('рендерит данные задачи и регистрирует sortable с колонкой', () => {
 		let openedTaskId = ''
 		const task = createTaskFixture()
@@ -23,7 +34,7 @@ describe('BoardCard', () => {
 		render(
 			<BoardCard
 				task={task}
-				columnId='TODO'
+				boardColumnId='TODO'
 				onOpenTask={(taskId) => {
 					openedTaskId = taskId
 				}}
@@ -38,7 +49,7 @@ describe('BoardCard', () => {
 		expect(openedTaskId).toBe('task-a')
 		expect(getBoardCardSortableCalls().at(-1)).toMatchObject({
 			data: {
-				columnId: 'TODO',
+				boardColumnId: 'TODO',
 				taskId: 'task-a',
 				type: 'task',
 			},
@@ -54,7 +65,7 @@ describe('BoardCard', () => {
 		render(
 			<BoardCard
 				task={task}
-				columnId='TODO'
+				boardColumnId='TODO'
 				onOpenTask={(taskId) => {
 					openedTaskIds.push(taskId)
 				}}
@@ -74,7 +85,7 @@ describe('BoardCard', () => {
 		render(
 			<BoardCard
 				task={createTaskFixture()}
-				columnId='TODO'
+				boardColumnId='TODO'
 				disabled
 				onOpenTask={() => undefined}
 			/>,
@@ -93,7 +104,7 @@ describe('BoardCard', () => {
 		render(
 			<BoardCard
 				task={createTaskFixture()}
-				columnId='TODO'
+				boardColumnId='TODO'
 				isActiveDragItem
 				onOpenTask={() => {
 					openCalls += 1
@@ -111,7 +122,7 @@ describe('BoardCard', () => {
 		render(
 			<BoardCard
 				task={createTaskFixture({ id: 'task-overlay' })}
-				columnId='IN_PROGRESS'
+				boardColumnId='IN_PROGRESS'
 				isDragOverlay
 				onOpenTask={() => undefined}
 			/>,
