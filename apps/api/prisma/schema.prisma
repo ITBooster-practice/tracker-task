@@ -152,6 +152,7 @@ model BoardColumn {
   updatedAt DateTime @updatedAt
 
   @@unique([boardId, key])
+  @@unique([boardId, title])
   @@unique([boardId, position])
   @@unique([id, projectId])
 }
