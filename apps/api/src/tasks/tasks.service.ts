@@ -1,5 +1,11 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { TaskStatus, TeamRole, type TeamMember } from 'generated/prisma/client'
+import type { Prisma } from 'generated/prisma/client'
+import {
+	DEFAULT_TASK_SORT_BY,
+	DEFAULT_TASK_SORT_ORDER,
+	type TaskFilterQuery,
+} from '@repo/types'
 import { PrismaService } from '../../prisma/prisma.service'
 import {
 	buildPaginatedResponse,
@@ -8,7 +14,6 @@ import {
 } from '../utils/pagination.util'
 import { CreateTaskDto } from './dto/create-task.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
-import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 
 // Task CRUD responses omit the column ID; board payloads expose it.
 const taskApiOmit = { boardColumnId: true } as const
@@ -65,6 +70,7 @@ export class TasksService {
 				description: dto.description,
 				status: status as never,
 				priority: dto.priority as never,
+				type: dto.type,
 				assigneeId: dto.assigneeId,
 				dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
 				projectId,
@@ -79,18 +85,29 @@ export class TasksService {
 		teamId: string,
 		projectId: string,
 		userId: string,
-		filters: Pick<TaskFilterQueryDto, 'status' | 'priority' | 'assigneeId'>,
+		filters: Partial<Omit<TaskFilterQuery, 'page' | 'limit'>>,
 		pagination: PaginationOptions,
 	) {
 		await this.assertTeamMember(teamId, userId)
 		await this.findProjectOrThrow(teamId, projectId)
 
-		const where = {
+		const search = filters.search?.trim()
+		const where: Prisma.TaskWhereInput = {
 			projectId,
-			...(filters.status && { status: filters.status as never }),
-			...(filters.priority && { priority: filters.priority as never }),
+			...(filters.status && { status: filters.status as TaskStatus }),
+			...(filters.priority && { priority: filters.priority }),
 			...(filters.assigneeId && { assigneeId: filters.assigneeId }),
+			...(filters.type && { type: filters.type }),
+			...(search && {
+				title: {
+					// LIKE metacharacters are literal text in a user search.
+					contains: search.replace(/[\\%_]/g, '\\$&'),
+					mode: 'insensitive' as const,
+				},
+			}),
 		}
+		const sortBy = filters.sortBy ?? DEFAULT_TASK_SORT_BY
+		const sortOrder = filters.sortOrder ?? DEFAULT_TASK_SORT_ORDER
 
 		const { skip, take } = getPaginationPrismaParams(pagination)
 
@@ -98,7 +115,7 @@ export class TasksService {
 			this.prisma.task.findMany({
 				omit: taskApiOmit,
 				where,
-				orderBy: [{ status: 'asc' }, { position: 'asc' }],
+				orderBy: [{ [sortBy]: sortOrder }, { id: sortOrder }],
 				skip,
 				take,
 			}),
@@ -167,6 +184,7 @@ export class TasksService {
 				...(dto.status !== undefined && { status: dto.status as never }),
 				...(boardColumnId !== undefined && { boardColumnId }),
 				...(dto.priority !== undefined && { priority: dto.priority as never }),
+				...(dto.type !== undefined && { type: dto.type }),
 				...(dto.assigneeId !== undefined && { assigneeId: dto.assigneeId }),
 				...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
 			},

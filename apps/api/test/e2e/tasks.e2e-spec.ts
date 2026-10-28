@@ -1,6 +1,8 @@
 import type { Server } from 'http'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { INestApplication } from '@nestjs/common'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { cleanupOpenApiDoc } from 'nestjs-zod'
 import request from 'supertest'
 import type { Redis } from 'ioredis'
 import type { BoardView } from '@repo/types'
@@ -125,6 +127,7 @@ describe('Tasks (e2e)', () => {
 			description: string | null
 			status: string
 			priority: string
+			type: string
 			position: number
 			projectId: string
 			createdById: string
@@ -142,6 +145,7 @@ describe('Tasks (e2e)', () => {
 			title: expect.any(String),
 			status: expect.any(String),
 			priority: expect.any(String),
+			type: expect.any(String),
 			position: expect.any(Number),
 			projectId,
 			createdById: expect.any(String),
@@ -235,6 +239,36 @@ describe('Tasks (e2e)', () => {
 	})
 
 	describe('GET /teams/:teamId/projects/:projectId/tasks', () => {
+		it('publishes the list query contract and task type in Swagger', () => {
+			const document = cleanupOpenApiDoc(
+				SwaggerModule.createDocument(
+					app,
+					new DocumentBuilder().setTitle('Tasks').setVersion('1').build(),
+				),
+			)
+			const parameters =
+				document.paths['/teams/{teamId}/projects/{projectId}/tasks'].get?.parameters
+			for (const [name, schema] of [
+				['type', { enum: ['EPIC', 'STORY', 'BUG', 'TECH_DEBT', 'TASK'] }],
+				['search', { type: 'string', maxLength: 255 }],
+				['sortBy', { enum: ['createdAt', 'priority', 'status'], default: 'createdAt' }],
+				['sortOrder', { enum: ['asc', 'desc'], default: 'desc' }],
+			] as const) {
+				expect(parameters).toContainEqual(
+					expect.objectContaining({
+						name,
+						in: 'query',
+						required: false,
+						schema: expect.objectContaining(schema),
+					}),
+				)
+			}
+			expect(document.components?.schemas?.TaskResponseDto).toMatchObject({
+				required: expect.arrayContaining(['type']),
+				properties: { type: { enum: ['EPIC', 'STORY', 'BUG', 'TECH_DEBT', 'TASK'] } },
+			})
+		})
+
 		it('200 — возвращает пагинированный список задач', async () => {
 			await createTask(ownerCookies, { title: 'Task A' })
 			await createTask(ownerCookies, { title: 'Task B' })
@@ -279,6 +313,233 @@ describe('Tasks (e2e)', () => {
 				.get(`/teams/${teamId}/projects/${projectId}/tasks`)
 				.set('Cookie', strangerCookies)
 				.expect(403)
+		})
+
+		it('stores task types, returns TASK by default and applies type changes to filtering', async () => {
+			const standard = await createTask(ownerCookies)
+			expect(standard.type).toBe('TASK')
+			const typed = await createTask(ownerCookies, { title: 'Typed task', type: 'BUG' })
+			expect(typed.type).toBe('BUG')
+			const updated = await request(server)
+				.patch(`/teams/${teamId}/projects/${projectId}/tasks/${typed.id}`)
+				.set('Cookie', ownerCookies)
+				.send({ type: 'STORY' })
+				.expect(200)
+			expect(updated.body).toMatchObject({ type: 'STORY', version: 1 })
+			for (const [type, ids] of [
+				['TASK', [standard.id]],
+				['BUG', []],
+				['STORY', [typed.id]],
+			] as const) {
+				const response = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.set('Cookie', ownerCookies)
+					.query({ type })
+					.expect(200)
+				expect(response.body.data.map((task: { id: string }) => task.id)).toEqual(ids)
+				expect(response.body.meta.total).toBe(ids.length)
+			}
+		})
+
+		it('supports all task types stored in PostgreSQL', async () => {
+			for (const type of ['EPIC', 'STORY', 'BUG', 'TECH_DEBT', 'TASK']) {
+				await createTask(ownerCookies, { title: type, type })
+			}
+			for (const type of ['EPIC', 'STORY', 'BUG', 'TECH_DEBT', 'TASK']) {
+				const response = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.set('Cookie', ownerCookies)
+					.query({ type })
+					.expect(200)
+				expect(response.body.data).toHaveLength(1)
+				expect(response.body.data[0]).toMatchObject({ type, title: type })
+			}
+		})
+
+		it('combines search with type, status, priority and assignee before counting and pagination', async () => {
+			const { createdById: assigneeId } = await prisma.project.findUniqueOrThrow({
+				where: { id: projectId },
+			})
+			const filters = { type: 'BUG', status: 'IN_PROGRESS', priority: 'HIGH', assigneeId }
+			const match = await createTask(ownerCookies, {
+				title: 'Fix LoGiN issue',
+				...filters,
+			})
+			await createTask(ownerCookies, { title: 'Login task', ...filters, type: 'TASK' })
+			await createTask(ownerCookies, { title: 'Login done', ...filters, status: 'DONE' })
+			await createTask(ownerCookies, { title: 'Login low', ...filters, priority: 'LOW' })
+			await createTask(ownerCookies, {
+				title: 'Login unassigned',
+				...filters,
+				assigneeId: undefined,
+			})
+			await createTask(ownerCookies, {
+				title: 'Other issue',
+				description: 'login',
+				...filters,
+			})
+			const first = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.query({ ...filters, search: '  login  ', limit: 1 })
+				.expect(200)
+			expect(first.body.data.map((task: { id: string }) => task.id)).toEqual([match.id])
+			expect(first.body.meta).toEqual({ page: 1, limit: 1, total: 1, totalPages: 1 })
+			const next = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.query({ ...filters, search: 'login', limit: 1, page: 2 })
+				.expect(200)
+			expect(next.body.data).toEqual([])
+			expect(next.body.meta.total).toBe(1)
+		})
+
+		it('restricts search and counts to the requested project', async () => {
+			const match = await createTask(ownerCookies, { title: 'Find this item' })
+			const other = await request(server)
+				.post(`/teams/${teamId}/projects`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Other project' })
+				.expect(201)
+			await request(server)
+				.post(`/teams/${teamId}/projects/${other.body.id}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Find this item' })
+				.expect(201)
+			const response = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.query({ search: 'find this' })
+				.expect(200)
+			expect(response.body.data.map((task: { id: string }) => task.id)).toEqual([
+				match.id,
+			])
+			expect(response.body.meta.total).toBe(1)
+		})
+
+		it.each([
+			['100%', 'Progress 100% ready', 'Progress 1000 ready'],
+			['under_score', 'under_score fix', 'underXscore fix'],
+			['C:\\work', 'C:\\work fix', 'C:work fix'],
+			['поиск', 'Проверить ПоИсК', 'Other task'],
+		])(
+			'searches for the literal case-insensitive substring %s',
+			async (search, title, otherTitle) => {
+				const match = await createTask(ownerCookies, { title })
+				await createTask(ownerCookies, { title: otherTitle })
+				const response = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.set('Cookie', ownerCookies)
+					.query({ search })
+					.expect(200)
+				expect(response.body.data.map((task: { id: string }) => task.id)).toEqual([
+					match.id,
+				])
+				expect(response.body.meta.total).toBe(1)
+			},
+		)
+
+		it('does not filter on an empty or whitespace-only search', async () => {
+			await createTask(ownerCookies)
+			for (const search of ['', '   ']) {
+				const response = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.set('Cookie', ownerCookies)
+					.query({ search })
+					.expect(200)
+				expect(response.body.data).toHaveLength(1)
+				expect(response.body.meta.total).toBe(1)
+			}
+		})
+
+		it.each([
+			{ sortBy: 'createdAt', sortOrder: 'asc', indices: [1, 3, 0, 2] },
+			{ sortBy: 'createdAt', sortOrder: 'desc', indices: [2, 0, 3, 1] },
+			{ sortBy: 'priority', sortOrder: 'asc', indices: [2, 0, 3, 1] },
+			{ sortBy: 'priority', sortOrder: 'desc', indices: [1, 3, 0, 2] },
+			{ sortBy: 'status', sortOrder: 'asc', indices: [1, 3, 0, 2] },
+			{ sortBy: 'status', sortOrder: 'desc', indices: [2, 0, 3, 1] },
+		])(
+			'sorts by $sortBy $sortOrder using date/enum order',
+			async ({ sortBy, sortOrder, indices }) => {
+				const priorities = ['MEDIUM', 'CRITICAL', 'LOW', 'HIGH']
+				const statuses = ['IN_REVIEW', 'TODO', 'DONE', 'IN_PROGRESS']
+				const days = [3, 1, 4, 2]
+				const ids: string[] = []
+				for (let i = 0; i < 4; i++) {
+					const task = await createTask(ownerCookies, {
+						title: `Sort ${i}`,
+						priority: priorities[i],
+						status: statuses[i],
+					})
+					await prisma.task.update({
+						where: { id: task.id },
+						data: { createdAt: new Date(`2026-01-0${days[i]}T00:00:00Z`) },
+					})
+					ids.push(task.id)
+				}
+				const response = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.set('Cookie', ownerCookies)
+					.query({ sortBy, sortOrder })
+					.expect(200)
+				expect(response.body.data.map((task: { id: string }) => task.id)).toEqual(
+					indices.map((i) => ids[i]),
+				)
+			},
+		)
+
+		it('uses an ID tie-breaker for stable default ordering and pagination', async () => {
+			const column = await prisma.boardColumn.findFirstOrThrow({
+				where: { projectId, key: 'TODO' },
+			})
+			const { createdById } = await prisma.project.findUniqueOrThrow({
+				where: { id: projectId },
+			})
+			const ids = [1, 2, 3, 4, 5].map((i) => `00000000-0000-4000-8000-00000000000${i}`)
+			await prisma.task.createMany({
+				data: ids.map((id, position) => ({
+					id,
+					title: id,
+					projectId,
+					createdById,
+					boardColumnId: column.id,
+					position,
+					createdAt: new Date('2026-01-01T00:00:00Z'),
+				})),
+			})
+			const pages: string[] = []
+			for (const page of [1, 2, 3]) {
+				const response = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.set('Cookie', ownerCookies)
+					.query({ page, limit: 2 })
+					.expect(200)
+				pages.push(...(response.body.data as { id: string }[]).map((task) => task.id))
+				expect(response.body.meta.total).toBe(5)
+			}
+			expect(pages).toEqual([...ids].reverse())
+			const ascending = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.query({ sortOrder: 'asc' })
+				.expect(200)
+			expect(ascending.body.data.map((task: { id: string }) => task.id)).toEqual(ids)
+		})
+
+		it.each([
+			{ type: 'UNKNOWN' },
+			{ search: 'x'.repeat(256) },
+			{ sortBy: 'title' },
+			{ sortBy: 'createdAt; DROP TABLE Task' },
+			{ sortOrder: 'DESC' },
+			{ sortOrder: 'sideways' },
+		])('returns 400 for invalid query %j', async (query) => {
+			await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.query(query)
+				.expect(400)
 		})
 	})
 

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { type TaskType, TaskTypeSchema } from '@repo/types'
 
 export class TaskResponseDto {
 	@ApiProperty({ example: 'c1f2d3e4-5678-90ab-cdef-1234567890ab' })
@@ -12,6 +13,13 @@ export class TaskResponseDto {
 		nullable: true,
 	})
 	description: string | null
+
+	@ApiProperty({
+		example: 'TASK',
+		enum: TaskTypeSchema.options,
+		description: 'Тип задачи',
+	})
+	type: TaskType
 
 	@ApiProperty({
 		example: 'TODO',

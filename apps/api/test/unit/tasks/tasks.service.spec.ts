@@ -138,7 +138,7 @@ describe('TasksService', () => {
 			expect(prisma.task.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
 					where: { projectId: PROJECT_ID },
-					orderBy: [{ status: 'asc' }, { position: 'asc' }],
+					orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
 					skip: 0,
 					take: 10,
 				}),

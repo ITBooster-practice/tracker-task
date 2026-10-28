@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { type Priority, type TaskStatus, updateTaskSchema } from '@repo/types'
+import {
+	type Priority,
+	type TaskStatus,
+	type TaskType,
+	TaskTypeSchema,
+	updateTaskSchema,
+} from '@repo/types'
 import { createZodDto } from 'nestjs-zod'
 
 export class UpdateTaskDto extends createZodDto(updateTaskSchema) {
@@ -14,6 +20,13 @@ export class UpdateTaskDto extends createZodDto(updateTaskSchema) {
 		description: 'Описание задачи (до 5000 символов)',
 	})
 	description?: string
+
+	@ApiPropertyOptional({
+		example: 'BUG',
+		enum: TaskTypeSchema.options,
+		description: 'Тип задачи; если не указан, текущее значение сохраняется',
+	})
+	type?: TaskType
 
 	@ApiPropertyOptional({
 		example: 'TODO',

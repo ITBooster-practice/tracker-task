@@ -39,6 +39,14 @@ enum Priority {
   CRITICAL
 }
 
+enum TaskType {
+  EPIC
+  STORY
+  BUG
+  TECH_DEBT
+  TASK
+}
+
 enum TeamRole {
   OWNER
   ADMIN
@@ -163,6 +171,7 @@ model Task {
   description   String?
   status        TaskStatus  @default(TODO)
   priority      Priority    @default(MEDIUM)
+  type          TaskType    @default(TASK)
   position      Int         @default(0)
   version       Int         @default(0)
   dueDate       DateTime?
@@ -178,5 +187,7 @@ model Task {
   updatedAt     DateTime    @updatedAt
 
   @@index([projectId, status, position])
+  @@index([projectId, type])
+  @@index([projectId, createdAt, id])
   @@index([boardColumnId, position])
 }
