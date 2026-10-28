@@ -16,6 +16,24 @@ describe('Board', () => {
 
 	afterEach(cleanup)
 
+	it('оставляет открытие карточек, отключая drag без обработчика переноса', () => {
+		let openedTaskId = ''
+		render(
+			<Board
+				columns={createBoardColumnsFixture()}
+				onOpenTask={(taskId) => {
+					openedTaskId = taskId
+				}}
+			/>,
+		)
+		const columns = getBoardUnitMockState().boardColumnProps.slice(-2)
+		expect(columns.every((props) => props.disabled === true)).toBe(true)
+		fireEvent.click(screen.getByText('Проверить карточку задачи'))
+		expect(openedTaskId).toBe('task-a')
+		fireEvent.click(screen.getByTestId('drag-start'))
+		expect(screen.queryByTestId('overlay-card-task-a')).toBeNull()
+	})
+
 	it('сохраняет произвольный ID колонки целиком при drop', () => {
 		const columns = createBoardColumnsFixture()
 		columns[1]!.id = 'column:custom-target'

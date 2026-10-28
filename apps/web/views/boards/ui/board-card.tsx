@@ -144,7 +144,11 @@ function BoardCard({
 					onOpenTask(task.id)
 				}
 			}}
-			title='Клик открывает задачу. Зажмите и потяните, чтобы перенести её.'
+			title={
+				disabled
+					? 'Открыть задачу'
+					: 'Клик открывает задачу. Зажмите и потяните, чтобы перенести её.'
+			}
 			{...attributes}
 			{...listeners}
 			className={cn('select-none outline-none', {

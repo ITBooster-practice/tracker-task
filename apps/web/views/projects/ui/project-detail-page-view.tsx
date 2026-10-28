@@ -21,8 +21,8 @@ import {
 import { useDeleteProject, useProjectDetail } from '@/shared/api/use-projects'
 import { ROUTES, teamRoutes } from '@/shared/config'
 import { isApiError } from '@/shared/lib/api/utils'
+import { PageHeader } from '@/shared/ui/page-header'
 
-import { projectPageSubtitleClassName, projectPageTitleClassName } from '../lib/styles'
 import { EditProjectDialog } from './edit-project-dialog'
 
 const actionCards = [
@@ -102,7 +102,7 @@ function ProjectDetailPageView() {
 	if (isLoading) {
 		return (
 			<div className='min-h-full w-full bg-background text-foreground'>
-				<div className='mx-auto max-w-[960px] px-6 py-5'>
+				<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
 					<Skeleton className='mb-3 h-4 w-48' />
 					<div className='mb-6'>
 						<Skeleton className='mb-2 h-9 w-64' />
@@ -143,50 +143,59 @@ function ProjectDetailPageView() {
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
-			<div className='mx-auto max-w-[960px] px-6 py-5'>
-				<nav className='mb-3 flex flex-wrap items-center gap-2 text-[14px] text-muted-foreground'>
-					<Link href={ROUTES.teams} className='transition-colors hover:text-foreground'>
-						Команды
-					</Link>
-					<ChevronRight className='size-4 text-muted-foreground/70' />
-					<Link
-						href={teamRoutes.projects(teamId)}
-						className='transition-colors hover:text-foreground'
-					>
-						Проекты
-					</Link>
-					<ChevronRight className='size-4 text-muted-foreground/70' />
-					<span className='text-foreground'>{project.name}</span>
-				</nav>
-
-				<header className='mb-6 flex items-start justify-between gap-4'>
-					<div>
-						<h1 className={projectPageTitleClassName}>{project.name}</h1>
-						<p className={projectPageSubtitleClassName}>{project.description ?? ''}</p>
-					</div>
-
-					<div className='flex shrink-0 items-center gap-2'>
-						<Button
-							type='button'
-							variant='outline'
-							size='icon-sm'
-							onClick={() => setIsEditDialogOpen(true)}
-							aria-label='Редактировать проект'
+			<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
+				<PageHeader
+					title={project.name}
+					description={project.description?.trim() || 'Доски и задачи проекта.'}
+					className='mb-6'
+					navigation={
+						<nav
+							aria-label='Хлебные крошки'
+							className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'
 						>
-							<Pencil className='size-4' />
-						</Button>
-						<Button
-							type='button'
-							variant='outline'
-							size='icon-sm'
-							onClick={() => setIsDeleteDialogOpen(true)}
-							aria-label='Удалить проект'
-							className='text-destructive hover:border-destructive/50 hover:text-destructive'
-						>
-							<Trash2 className='size-4' />
-						</Button>
-					</div>
-				</header>
+							<Link
+								href={ROUTES.teams}
+								className='transition-colors hover:text-foreground'
+							>
+								Команды
+							</Link>
+							<ChevronRight className='size-4 text-muted-foreground/70' />
+							<Link
+								href={teamRoutes.projects(teamId)}
+								className='transition-colors hover:text-foreground'
+							>
+								Проекты
+							</Link>
+							<ChevronRight className='size-4 text-muted-foreground/70' />
+							<span className='text-foreground' aria-current='page'>
+								{project.name}
+							</span>
+						</nav>
+					}
+					actions={
+						<>
+							<Button
+								type='button'
+								variant='outline'
+								size='icon-sm'
+								onClick={() => setIsEditDialogOpen(true)}
+								aria-label='Редактировать проект'
+							>
+								<Pencil className='size-4' />
+							</Button>
+							<Button
+								type='button'
+								variant='outline'
+								size='icon-sm'
+								onClick={() => setIsDeleteDialogOpen(true)}
+								aria-label='Удалить проект'
+								className='text-destructive hover:border-destructive/50 hover:text-destructive'
+							>
+								<Trash2 className='size-4' />
+							</Button>
+						</>
+					}
+				/>
 
 				<section className='mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
 					{actionCards.map((card) => {
@@ -194,7 +203,9 @@ function ProjectDetailPageView() {
 						const handleClick =
 							card.id === 'all-tasks'
 								? () => router.push(teamRoutes.projectTasks(teamId, projectId))
-								: undefined
+								: card.id === 'open-board'
+									? () => router.push(teamRoutes.projectBoard(teamId, projectId))
+									: undefined
 
 						return (
 							<button

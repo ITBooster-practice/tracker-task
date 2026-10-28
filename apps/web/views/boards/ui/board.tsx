@@ -21,7 +21,7 @@ import { BoardColumn as BoardColumnView } from './board-column'
 interface BoardProps {
 	columns: BoardColumn[]
 	onOpenTask: (taskId: string) => void
-	onMoveTask: (input: BoardTaskMoveInput) => void
+	onMoveTask?: (input: BoardTaskMoveInput) => void
 	onCreateTask?: () => void
 	disableInteraction?: boolean
 }
@@ -90,6 +90,7 @@ function Board({
 	onCreateTask,
 	disableInteraction = false,
 }: BoardProps) {
+	const isInteractionDisabled = disableInteraction || !onMoveTask
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {
@@ -127,7 +128,7 @@ function Board({
 	}
 
 	const handleDragStart = (event: DragStartEvent) => {
-		if (disableInteraction) {
+		if (isInteractionDisabled) {
 			return
 		}
 
@@ -137,7 +138,7 @@ function Board({
 	}
 
 	const handleDragOver = (event: DragOverEvent) => {
-		if (disableInteraction || activeTaskId === null) {
+		if (isInteractionDisabled || activeTaskId === null) {
 			return
 		}
 
@@ -155,7 +156,7 @@ function Board({
 	}
 
 	const handleDragEnd = (event: DragEndEvent) => {
-		if (disableInteraction || activeTaskId === null) {
+		if (isInteractionDisabled || activeTaskId === null) {
 			resetDragState()
 			return
 		}
@@ -164,7 +165,7 @@ function Board({
 			getDragPlacement(previewColumns, event, activeTaskId) ?? latestPlacementRef.current
 
 		if (finalPlacement) {
-			onMoveTask(finalPlacement)
+			onMoveTask?.(finalPlacement)
 		}
 
 		resetDragState()
@@ -188,7 +189,7 @@ function Board({
 							onOpenTask={onOpenTask}
 							onCreateTask={onCreateTask}
 							activeDragTaskId={activeTaskId}
-							disabled={disableInteraction}
+							disabled={isInteractionDisabled}
 						/>
 					))}
 				</div>
