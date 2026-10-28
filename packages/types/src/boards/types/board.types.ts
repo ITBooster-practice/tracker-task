@@ -22,3 +22,18 @@ export interface BoardColumn {
 export interface BoardListItem extends Board {
 	columns: BoardColumn[]
 }
+import type { Task } from '../../tasks/types/task.types'
+
+export interface BoardTask extends Task {
+	boardColumnId: string
+	createdById: string
+}
+
+export interface BoardColumnWithTasks extends BoardColumn {
+	tasks: BoardTask[]
+}
+
+export interface BoardView {
+	board: Board
+	columns: BoardColumnWithTasks[]
+}

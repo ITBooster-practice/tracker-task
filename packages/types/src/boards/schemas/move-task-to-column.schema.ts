@@ -3,7 +3,8 @@ import { columnPositionSchema } from './column.schema'
 
 export const moveTaskToColumnSchema = z
 	.object({
-		targetColumnId: z.string().trim().min(1),
+		fromColumnId: z.string().trim().min(1),
+		toColumnId: z.string().trim().min(1),
 		position: columnPositionSchema,
 	})
 	.strict()
