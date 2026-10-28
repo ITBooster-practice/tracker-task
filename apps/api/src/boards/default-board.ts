@@ -1,14 +1,18 @@
-export function defaultBoardData() {
+export function boardData(name: string, isDefault = false) {
 	return {
-		name: 'Основная доска',
-		isDefault: true,
+		name,
+		isDefault,
 		columns: {
 			create: [
-				{ key: 'TODO', title: 'К выполнению', position: 0, isSystem: true },
-				{ key: 'IN_PROGRESS', title: 'В работе', position: 1, isSystem: true },
-				{ key: 'IN_REVIEW', title: 'На проверке', position: 2, isSystem: true },
-				{ key: 'DONE', title: 'Готово', position: 3, isSystem: true },
+				{ key: 'TODO', title: 'К выполнению', position: 0, isSystem: isDefault },
+				{ key: 'IN_PROGRESS', title: 'В работе', position: 1, isSystem: isDefault },
+				{ key: 'IN_REVIEW', title: 'На проверке', position: 2, isSystem: isDefault },
+				{ key: 'DONE', title: 'Готово', position: 3, isSystem: isDefault },
 			],
 		},
 	}
+}
+
+export function defaultBoardData() {
+	return boardData('Основная доска', true)
 }
