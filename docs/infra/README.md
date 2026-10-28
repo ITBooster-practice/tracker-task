@@ -1,91 +1,62 @@
-# CI/CD в Tracker Task
+﻿# CI/CD в Tracker Task
 
-## Цель
-
-CI проверяет качество кода до и после слияния в основные ветки.
+CI проверяет приложения до слияния изменений, а релизный workflow публикует проверенные Docker-образы в GHCR. Конфигурация находится в [.github/workflows](../../.github/workflows), правила выбора приложений — в [scripts/ci/plan.mjs](../../scripts/ci/plan.mjs).
 
 ## Содержание раздела
 
-- [ci-cd-overview.md](./ci-cd-overview.md) — базовое объяснение, зачем нужен CI, какие проблемы он решает и как читать статусы.
-- [deployment.md](./deployment.md) — целевая инфраструктура: stage и prod на одном VPS, GitHub Actions, SSL, реестр образов, обновление БД stage срезом из prod, защита, мониторинг.
-- [release-process.md](./release-process.md) — практический гайд по релизному процессу: release-ветки, RC, smoke, теги, hotfix.
-- [runbooks/cicd-start-plan.md](./runbooks/cicd-start-plan.md) — пошаговый старт внедрения CI/CD без перегруза.
+- [Как читать статусы CI](./ci-cd-overview.md) — результат проверок и разбор падений.
+- [Процесс релиза и публикация образов](./release-process.md) — релизные теги, RC и запуск публикации.
+- [Целевая инфраструктура](./deployment.md) — устройство stage и production.
+- [План внедрения CI/CD](./runbooks/cicd-start-plan.md) — последовательность настройки инфраструктуры.
+- [Подготовка VPS](./runbooks/step-1-vps-bootstrap.md) — VPS, DNS, Caddy и HTTPS.
+- [Ручной stage-деплой](./runbooks/step-2-manual-stage-deploy.md) — работа с шаблонами в `infra/deploy/stage`.
 
-## Практические шаблоны
+## Когда и что проверяет CI
 
-- [runbooks/step-1-vps-bootstrap.md](./runbooks/step-1-vps-bootstrap.md) — подробный runbook Шага 1: VPS, DNS, Caddy, HTTPS.
-- [runbooks/step-2-manual-stage-deploy.md](./runbooks/step-2-manual-stage-deploy.md) — подробный runbook Шага 2: ручной stage-деплой.
+[Workflow CI](../../.github/workflows/ci.yml) использует Node.js 24 и pnpm 10.33.0.
 
-Шаблоны для шага 2 хранятся в `infra/deploy/stage`.
+| Запуск                         | Область проверки                                                   |
+| ------------------------------ | ------------------------------------------------------------------ |
+| PR в `main` или `develop`      | Приложения выбираются по полному diff PR от общей базы до его head |
+| Push в `develop`               | Приложения выбираются по diff между `before` и `after` push        |
+| Ручной запуск CI               | Оба приложения для указанного `ref`, по умолчанию `main`           |
+| Вызов CI из релизного workflow | Оба приложения для точного SHA релизного тега                      |
 
-## Для команды
+Push в `main` не запускает CI повторно после merge.
 
-- Если ты впервые видишь раздел — начни с [ci-cd-overview.md](./ci-cd-overview.md).
+Изменения только в `apps/api` выбирают API, только в `apps/web` — web. Изменения общих `packages`, Prisma, модулей API `auth`, `common`, `teams`, общих конфигураций, зависимостей, CI и неизвестных путей выбирают оба приложения. Если diff недоступен, CI также проверяет оба приложения.
 
-## Где находится конфигурация
+Если изменены только `docs/**` или Markdown-файлы, прикладные проверки пропускаются. Workflow всё равно проверяет правила CI и формирует итоговый статус `CI`; отдельный [workflow Markdown](../../.github/workflows/markdown.yml) запускает `pnpm lint:md`.
 
-- Workflow: `.github/workflows/ci.yml`
+## Проверки выбранного приложения
 
-## Когда запускается CI
+CI устанавливает зависимости с `--frozen-lockfile` и собирает общие контракты и конфигурацию Vitest. Для каждого выбранного приложения выполняются lint, проверка типов, все unit-тесты, все e2e-тесты и сборка. Выбор приложения не сокращает набор его тестов.
 
-Workflow запускается на событиях:
+Unit-тесты должны пройти с покрытием не ниже 80% по `statements`, `branches`, `functions` и `lines`. Пороги заданы в [общей конфигурации Vitest](../../packages/vitest-config/src/base.ts).
 
-- `pull_request` в ветки `main`, `develop`
-- `push` в ветки `main`, `develop`
+API e2e используют временные PostgreSQL 16 и Redis 7 из GitHub Actions services; команда тестов применяет миграции к тестовой БД перед запуском. Web e2e выполняются в Vitest с jsdom, без запуска браузера. Сервисы БД и Redis нужны только при проверке API.
 
-Дополнительно настроен `paths-ignore`, поэтому CI не запускается при изменениях только в:
+## Команды и изменение правил
 
-- `docs/**`
-- `**/*.md`
+Команды запускаются из корня репозитория с установленными зависимостями. Например, проверки API в CI:
 
-## Почему есть проверка и на pull_request, и на push
+```bash
+pnpm --filter @repo/types --filter @repo/vitest-config build
+pnpm exec turbo run lint check-types test --filter=api...
+```
 
-- `pull_request` проверяет изменения до слияния.
-- `push` проверяет итоговое состояние целевой ветки после merge (финальный merge commit).
-- `push` также страхует от сценариев, когда изменения попали в ветку не через стандартный PR-поток.
+Для web замените `api...` на `web...`. Фильтр с `...` включает зависимости приложения. Корневая команда `pnpm type-check` запускает Turbo `check-types` во всех пакетах и приложениях, где определён этот script.
 
-## Основные quality gates
+Команды e2e и окружение берите из workflow и соответствующего `package.json`: локальный API e2e требует отдельной тестовой БД и Redis и применяет миграции. Корневая `pnpm test:e2e` дополнительно запускает Docker Compose; она не нужна для проверки самих правил CI.
 
-В CI настроены отдельные jobs:
+Чтобы изменить выбор приложений, обновите `classifyChanges` в `scripts/ci/plan.mjs` и добавьте пример пути в соседние Node-тесты. Например, новый общий каталог должен возвращать `{ api: true, web: true }`. Проверка правил из корня:
 
-1. `lint`
-2. `type-check`
-3. `test`
-4. `build`
+```bash
+pnpm test:ci
+```
 
-`build` запускается только после успешного прохождения `lint`, `type-check` и `test`.
+## Публикация и деплой
 
-## Требования к тестам и покрытию
+Образы публикуются после GitHub Release или ручного запуска с релизным тегом; порядок действий описан в [разделе публикации образов](./release-process.md#публикация-релизных-образов-в-ghcr).
 
-- Если падает хотя бы один тест, job `test` падает, а merge блокируется (при включенной branch protection).
-- Минимальный порог покрытия: 80% по `statements`, `branches`, `functions`, `lines`.
-- Порог покрытий задается в общем vitest-конфиге: `packages/vitest-config/src/base.ts`.
-
-## Какие команды выполняются
-
-В текущем CI используются скрипты из корневого `package.json`:
-
-- `pnpm lint`
-- `pnpm type-check`
-- `pnpm test`
-- `pnpm build`
-
-Для тестов также выполняется остановка тестовых контейнеров:
-
-- `pnpm docker:test-down` с `if: always()`
-
-## Быстрый разбор частых падений
-
-- Упал `lint`: нарушения ESLint/стиля.
-- Упал `type-check`: ошибки TypeScript типов.
-- Упал `test`: упал тест или покрытие ниже 80%.
-- Упал `build`: проект не собирается в одном из пакетов/приложений.
-
-## Локальная проверка перед PR
-
-Рекомендуемый минимум перед пушем:
-
-1. `pnpm lint`
-2. `pnpm type-check`
-3. `pnpm test`
-4. `pnpm build`
+Автоматический деплой отключён. Публикация образов не обновляет стенд. Итоговый статус `CI` показывает результат проверок. Обязательность успешных проверок перед merge определяется правилами репозитория.

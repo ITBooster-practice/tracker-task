@@ -32,8 +32,8 @@ describe('TeamsPageView e2e', () => {
 
 		render(<TeamsPageView />)
 
-		expect(screen.getByTestId('team-card-team-1')).toBeDefined()
-		expect(screen.getByTestId('team-card-team-2')).toBeDefined()
+		expect(screen.getByRole('button', { name: /Alpha Team/ })).toBeDefined()
+		expect(screen.getByRole('button', { name: /Beta Team/ })).toBeDefined()
 	})
 
 	it('при isLoading=true рендерит skeleton', () => {

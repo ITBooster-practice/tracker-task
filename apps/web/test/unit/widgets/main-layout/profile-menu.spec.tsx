@@ -43,9 +43,9 @@ const createWrapper = () => {
 		defaultOptions: { queries: { retry: false } },
 	})
 
-	return ({ children }: React.PropsWithChildren) => (
-		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-	)
+	return function Wrapper({ children }: React.PropsWithChildren) {
+		return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+	}
 }
 
 describe('ProfileMenu', () => {
