@@ -15,6 +15,7 @@ import { hash } from 'argon2'
 import { PrismaClient } from '../generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
+import { defaultBoardData } from '../src/boards/default-board'
 
 // Создание Prisma Client с адаптером для PostgreSQL (Prisma 7.x)
 const pool = new Pool({ connectionString: process.env['DATABASE_URL'] })
@@ -101,7 +102,9 @@ async function main() {
 				'Разработка системы управления задачами с использованием NestJS и Next.js',
 			createdById: user1.id,
 			teamId: team.id,
+			boards: { create: defaultBoardData() },
 		},
+		include: { boards: { include: { columns: true } } },
 	})
 
 	const project2 = await prisma.project.create({
@@ -110,8 +113,16 @@ async function main() {
 			description: 'Разработка мобильного клиента для трекера задач',
 			createdById: user3.id,
 			teamId: team.id,
+			boards: { create: defaultBoardData() },
 		},
+		include: { boards: { include: { columns: true } } },
 	})
+
+	function columnId(project: typeof project1, status: string) {
+		const column = project.boards[0]?.columns.find((item) => item.key === status)
+		if (!column) throw new Error(`System column ${status} is missing`)
+		return column.id
+	}
 
 	console.log(`✅ Создано проектов: 2`)
 
@@ -123,6 +134,7 @@ async function main() {
 				title: 'Настройка базы данных',
 				description: 'Настроить PostgreSQL и Prisma ORM',
 				status: 'DONE',
+				boardColumnId: columnId(project1, 'DONE'),
 				priority: 'HIGH',
 				projectId: project1.id,
 				createdById: user1.id,
@@ -132,6 +144,7 @@ async function main() {
 				title: 'Создание API эндпоинтов',
 				description: 'Реализовать CRUD операции для задач и проектов',
 				status: 'IN_PROGRESS',
+				boardColumnId: columnId(project1, 'IN_PROGRESS'),
 				priority: 'HIGH',
 				projectId: project1.id,
 				createdById: user1.id,
@@ -141,6 +154,7 @@ async function main() {
 				title: 'Разработка UI компонентов',
 				description: 'Создать переиспользуемые компоненты с shadcn/ui',
 				status: 'IN_PROGRESS',
+				boardColumnId: columnId(project1, 'IN_PROGRESS'),
 				priority: 'MEDIUM',
 				projectId: project1.id,
 				createdById: user1.id,
@@ -150,6 +164,7 @@ async function main() {
 				title: 'Написание тестов',
 				description: 'Покрыть основную функциональность unit и e2e тестами',
 				status: 'TODO',
+				boardColumnId: columnId(project1, 'TODO'),
 				priority: 'MEDIUM',
 				projectId: project1.id,
 				createdById: user1.id,
@@ -159,6 +174,7 @@ async function main() {
 				title: 'Настройка CI/CD',
 				description: 'Настроить GitHub Actions для автоматического деплоя',
 				status: 'TODO',
+				boardColumnId: columnId(project1, 'TODO'),
 				priority: 'LOW',
 				projectId: project1.id,
 				createdById: user1.id,
@@ -174,6 +190,7 @@ async function main() {
 				title: 'Исследование технологий',
 				description: 'Выбор стека для мобильной разработки (React Native vs Flutter)',
 				status: 'IN_REVIEW',
+				boardColumnId: columnId(project2, 'IN_REVIEW'),
 				priority: 'CRITICAL',
 				projectId: project2.id,
 				createdById: user3.id,
@@ -183,6 +200,7 @@ async function main() {
 				title: 'Дизайн мобильного интерфейса',
 				description: 'Создание макетов в Figma',
 				status: 'TODO',
+				boardColumnId: columnId(project2, 'TODO'),
 				priority: 'HIGH',
 				projectId: project2.id,
 				createdById: user3.id,
@@ -192,6 +210,7 @@ async function main() {
 				title: 'Прототип приложения',
 				description: 'Разработка MVP с базовым функционалом',
 				status: 'TODO',
+				boardColumnId: columnId(project2, 'TODO'),
 				priority: 'MEDIUM',
 				projectId: project2.id,
 				createdById: user3.id,

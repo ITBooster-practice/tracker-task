@@ -12,6 +12,9 @@ export function createPrismaMock() {
 		project: {
 			findUnique: vi.fn(),
 		},
+		boardColumn: {
+			findFirstOrThrow: vi.fn().mockResolvedValue({ id: 'system-column-id' }),
+		},
 		task: {
 			aggregate: vi.fn(),
 			create: vi.fn(),
@@ -27,6 +30,9 @@ export function createPrismaMock() {
 		}
 		project: {
 			findUnique: ReturnType<typeof vi.fn>
+		}
+		boardColumn: {
+			findFirstOrThrow: ReturnType<typeof vi.fn>
 		}
 		task: {
 			aggregate: ReturnType<typeof vi.fn>
