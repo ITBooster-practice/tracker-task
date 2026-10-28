@@ -72,12 +72,12 @@ export const moveTaskInColumns = (
 		return columns
 	}
 
-	const boundedIndex = clampIndex(toIndex, 0, targetColumn.tasks.length)
-	const adjustedIndex =
-		sourceLocation.columnIndex === targetColumnIndex &&
-		sourceLocation.taskIndex < boundedIndex
-			? boundedIndex - 1
-			: boundedIndex
+	const adjustedIndex = clampIndex(
+		toIndex,
+		0,
+		targetColumn.tasks.length -
+			(sourceLocation.columnIndex === targetColumnIndex ? 1 : 0),
+	)
 
 	if (
 		sourceLocation.columnIndex === targetColumnIndex &&

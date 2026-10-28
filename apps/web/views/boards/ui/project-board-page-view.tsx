@@ -1,19 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { BoardView } from '@repo/types'
-import { Button, EmptyState, Skeleton } from '@repo/ui'
+import { Button, EmptyState, Skeleton, toast } from '@repo/ui'
 import { ChevronRight } from '@repo/ui/icons'
 
 import { useBoardsList } from '@/shared/api/use-boards'
 import { useProjectDetail } from '@/shared/api/use-projects'
-import { useBoardQuery } from '@/shared/api/use-tasks'
+import { useBoardQuery, useMoveTask } from '@/shared/api/use-tasks'
 import { ROUTES, teamRoutes } from '@/shared/config'
 import { PageHeader } from '@/shared/ui/page-header'
 
 import { toBoardColumnsViewModel } from '../model/adapters'
+import type { BoardTaskMoveInput } from '../model/types'
 import { findBoardTask } from '../model/utils'
 import { Board } from './board'
 import { BoardTaskDetailsDialog } from './board-task-details-dialog'
@@ -23,11 +24,65 @@ interface ProjectBoardPageViewProps {
 	projectId: string
 }
 
-function ProjectBoardContent({ view }: { view: BoardView }) {
+function ProjectBoardContent({ view, teamId }: { view: BoardView; teamId: string }) {
 	const [openedTaskId, setOpenedTaskId] = useState<string | null>(null)
+	const moving = useRef(false)
+	const mounted = useRef(true)
+	useEffect(() => {
+		mounted.current = true
+		return () => {
+			mounted.current = false
+		}
+	}, [])
+	const moveTask = useMoveTask({
+		onError: (error) => {
+			if (!mounted.current) return
+			toast.error(
+				error.statusCode === 409
+					? 'Доска изменилась. Попробуйте переместить задачу ещё раз.'
+					: 'Не удалось переместить задачу. Попробуйте ещё раз.',
+			)
+		},
+	})
 	const columns = useMemo(() => toBoardColumnsViewModel(view), [view])
 	const selectedTask = findBoardTask(columns, openedTaskId)
 	const hasTasks = columns.some((column) => column.tasks.length > 0)
+	const handleMoveTask = ({ taskId, toColumnId, toIndex }: BoardTaskMoveInput) => {
+		if (moving.current || moveTask.isPending) return
+		const source = view.columns.find((column) =>
+			column.tasks.some((task) => task.id === taskId),
+		)
+		const target = view.columns.find((column) => column.id === toColumnId)
+		const task = source?.tasks.find((item) => item.id === taskId)
+		if (!source || !target || !task) return
+		const position = Math.min(
+			Math.max(toIndex, 0),
+			target.tasks.filter((item) => item.id !== taskId).length,
+		)
+		if (
+			source.id === target.id &&
+			source.tasks.findIndex((item) => item.id === taskId) === position
+		)
+			return
+		moving.current = true
+		void moveTask
+			.mutateAsync({
+				teamId,
+				projectId: view.board.projectId,
+				boardId: view.board.id,
+				taskId,
+				body: {
+					fromColumnId: source.id,
+					toColumnId,
+					position,
+					expectedVersion: task.version,
+				},
+			})
+			.catch(() => undefined)
+			.finally(() => {
+				moving.current = false
+			})
+	}
 
 	if (columns.length === 0) {
 		return (
@@ -50,7 +105,17 @@ function ProjectBoardContent({ view }: { view: BoardView }) {
 					description='Задачи появятся здесь после добавления в эту доску.'
 				/>
 			)}
-			<Board columns={columns} onOpenTask={setOpenedTaskId} />
+			{moveTask.isPending && (
+				<span role='status' className='sr-only'>
+					Сохраняем положение задачи
+				</span>
+			)}
+			<Board
+				columns={columns}
+				onOpenTask={setOpenedTaskId}
+				onMoveTask={handleMoveTask}
+				disableInteraction={moveTask.isPending}
+			/>
 			<BoardTaskDetailsDialog
 				task={selectedTask}
 				readOnly
@@ -144,6 +209,7 @@ function ProjectBoardPageView({ teamId, projectId }: ProjectBoardPageViewProps) 
 					<ProjectBoardContent
 						key={JSON.stringify([teamId, projectId, selectedBoard.id])}
 						view={boardQuery.data}
+						teamId={teamId}
 					/>
 				) : null}
 			</div>

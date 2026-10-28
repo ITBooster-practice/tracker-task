@@ -56,12 +56,14 @@ const getDragPlacement = (
 		return {
 			taskId: activeTaskId,
 			toColumnId: overColumnId,
-			toIndex: targetColumn.tasks.length,
+			toIndex: targetColumn.tasks.filter((task) => task.id !== activeTaskId).length,
 		} satisfies BoardTaskMoveInput
 	}
 
 	for (const column of columns) {
-		const overTaskIndex = column.tasks.findIndex((task) => task.id === overId)
+		const overTaskIndex = column.tasks
+			.filter((task) => task.id !== activeTaskId)
+			.findIndex((task) => task.id === overId)
 
 		if (overTaskIndex < 0) {
 			continue
