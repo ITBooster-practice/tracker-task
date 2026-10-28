@@ -108,13 +108,3 @@ export const CREATE_TASK_DTO = {
 export const UPDATE_TASK_DTO = {
 	title: 'Updated title',
 }
-
-export const MOVE_TASK_DTO = {
-	status: 'IN_PROGRESS' as const,
-	position: 1,
-}
-
-export const makeTask = (overrides: Partial<typeof MOCK_TASK>) => ({
-	...MOCK_TASK,
-	...overrides,
-})

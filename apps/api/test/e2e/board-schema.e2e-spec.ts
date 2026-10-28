@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { PrismaService } from '../../prisma/prisma.service'
 import { TasksService } from '../../src/tasks/tasks.service'
+import { BoardTasksService } from '../../src/tasks/board-tasks.service'
 import { defaultBoardData } from '../../src/boards/default-board'
 
 describe('Board schema (e2e)', () => {
@@ -149,14 +150,15 @@ describe('Board schema (e2e)', () => {
 		})
 	})
 
-	it('сохраняет CRUD задач и прежний ответ API после обязательной привязки к колонке', async () => {
+	it('сохраняет CRUD задач и предоставляет перемещение через ID колонок', async () => {
 		const defaultBoard = await prisma.board.create({
 			data: { projectId, ...defaultBoardData() },
 			include: { columns: true },
 		})
 		const service = new TasksService(prisma)
+		const boardService = new BoardTasksService(prisma)
 		const created = await service.create(teamId, projectId, userId, {
-			title: 'Legacy create',
+			title: 'Created task',
 		})
 		expect(created).not.toHaveProperty('boardColumnId')
 		expect(
@@ -188,15 +190,20 @@ describe('Board schema (e2e)', () => {
 		).toMatchObject({
 			boardColumnId: board.columns[0].id,
 		})
-		const moved = await service.moveTask(teamId, projectId, created.id, userId, {
-			status: 'IN_PROGRESS',
-			position: 2,
+		const target = defaultBoard.columns.find((column) => column.key === 'IN_PROGRESS')!
+		const moved = await boardService.moveTask(teamId, projectId, created.id, userId, {
+			fromColumnId: board.columns[0].id,
+			toColumnId: target.id,
+			position: 0,
 		})
-		const columns = await service.getBoard(teamId, projectId, userId)
-		const boardTask = columns.find((column) => column.status === 'IN_PROGRESS')!.tasks[0]
-		for (const task of [read, list.data[0], updated, moved, boardTask]) {
+		const view = await boardService.getBoard(teamId, projectId, defaultBoard.id, userId)
+		const boardTask = view.columns.find((column) => column.id === target.id)!.tasks[0]
+		for (const task of [read, list.data[0], updated]) {
 			expect(task.id).toBe(created.id)
 			expect(task).not.toHaveProperty('boardColumnId')
+		}
+		for (const task of [moved, boardTask]) {
+			expect(task).toMatchObject({ id: created.id, boardColumnId: target.id })
 		}
 		expect(updated.title).toBe('Updated')
 		expect(
@@ -205,7 +212,7 @@ describe('Board schema (e2e)', () => {
 			boardColumnId: defaultBoard.columns.find((column) => column.key === 'IN_PROGRESS')!
 				.id,
 		})
-		expect(moved).toMatchObject({ status: 'IN_PROGRESS', position: 2 })
+		expect(moved).toMatchObject({ status: 'IN_PROGRESS', position: 0 })
 		await service.remove(teamId, projectId, created.id, userId)
 		expect(await prisma.task.findUnique({ where: { id: created.id } })).toBeNull()
 	})
