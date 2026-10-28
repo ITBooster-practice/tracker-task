@@ -456,12 +456,13 @@ describe('Tasks (e2e)', () => {
 			const res = await request(server)
 				.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}/move`)
 				.set('Cookie', memberCookies)
-				.send({ fromColumnId, toColumnId, position: 0 })
+				.send({ fromColumnId, toColumnId, position: 0, expectedVersion: 0 })
 				.expect(200)
 
 			expect(res.body.status).toBe('IN_PROGRESS')
 			expect(res.body.position).toBe(0)
 			expect(res.body.boardColumnId).toBe(toColumnId)
+			expect(res.body.version).toBe(1)
 			const stored = await prisma.task.findUniqueOrThrow({
 				where: { id: task.id },
 				include: { boardColumn: true },

@@ -5,11 +5,20 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common'
-import type { MoveTaskToColumn } from '@repo/types'
+import type {
+	MoveTaskToColumn,
+	TaskMoveConflict,
+	TaskMoveConflictReason,
+} from '@repo/types'
 import { Prisma, TaskStatus } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 
-type OrderedTask = { id: string; boardColumnId: string; position: number }
+type OrderedTask = {
+	id: string
+	boardColumnId: string
+	position: number
+	version: number
+}
 const byPosition = (a: OrderedTask, b: OrderedTask) =>
 	a.position - b.position || a.id.localeCompare(b.id)
 
@@ -88,7 +97,7 @@ export class BoardTasksService {
 					const source = columns.find((column) => column.id === dto.fromColumnId)!
 					const target = columns.find((column) => column.id === dto.toColumnId)!
 					const tasks = await tx.$queryRaw<OrderedTask[]>(Prisma.sql`
-					SELECT "id", "boardColumnId", "position" FROM "Task"
+						SELECT "id", "boardColumnId", "position", "version" FROM "Task"
 					WHERE "projectId" = ${projectId} AND "boardColumnId" IN (${Prisma.join(ids)})
 					ORDER BY "id" FOR UPDATE
 				`)
@@ -101,8 +110,17 @@ export class BoardTasksService {
 						if (!exists) throw new NotFoundException('Задача не найдена в этом проекте')
 					}
 					if (!moving || moving.boardColumnId !== source.id) {
-						throw new ConflictException(
+						throw this.conflict(
+							taskId,
+							'SOURCE_CHANGED',
 							'Исходная колонка задачи изменилась, обновите доску',
+						)
+					}
+					if (moving.version !== dto.expectedVersion) {
+						throw this.conflict(
+							taskId,
+							'VERSION_MISMATCH',
+							'Задача изменилась, обновите доску',
 						)
 					}
 					const targetTasks = tasks
@@ -113,10 +131,16 @@ export class BoardTasksService {
 					}
 					targetTasks.splice(dto.position, 0, moving)
 					const updated = await tx.task.update({
-						where: { id: taskId, projectId, boardColumnId: source.id },
+						where: {
+							id: taskId,
+							projectId,
+							boardColumnId: source.id,
+							version: dto.expectedVersion,
+						},
 						data: {
 							boardColumnId: target.id,
 							position: dto.position,
+							version: { increment: 1 },
 							...(target.isSystem &&
 							Object.values(TaskStatus).includes(target.key as TaskStatus)
 								? { status: target.key as TaskStatus }
@@ -157,18 +181,31 @@ export class BoardTasksService {
 					(cause && typeof cause === 'object' && 'originalCode' in cause
 						? cause.originalCode
 						: undefined)
-				if (error.code === 'P2025')
-					throw new NotFoundException('Задача или колонка больше не существует')
 				if (
-					['P2003', 'P2034'].includes(error.code) ||
+					['P2003', 'P2025', 'P2034'].includes(error.code) ||
 					(error.code === 'P2010' &&
 						['23503', '40P01', '40001'].includes(String(sqlCode)))
 				) {
-					throw new ConflictException('Данные доски изменились, повторите операцию')
+					throw this.conflict(
+						taskId,
+						'WRITE_CONFLICT',
+						'Данные доски изменились, обновите доску',
+					)
 				}
 			}
 			throw error
 		}
+	}
+
+	private conflict(taskId: string, reason: TaskMoveConflictReason, message: string) {
+		const response: TaskMoveConflict = {
+			statusCode: 409,
+			code: 'TASK_MOVE_CONFLICT',
+			taskId,
+			reason,
+			message,
+		}
+		return new ConflictException(response)
 	}
 
 	private async setPositions(
@@ -181,7 +218,7 @@ export class BoardTasksService {
 				.slice(offset, offset + 500)
 				.map((task) => Prisma.sql`(${task.id}, ${task.nextPosition}::integer)`)
 			await tx.$executeRaw(Prisma.sql`
-				UPDATE "Task" AS task SET "position" = ordered.position, "updatedAt" = ${new Date()}
+				UPDATE "Task" AS task SET "position" = ordered.position, "version" = task."version" + 1, "updatedAt" = ${new Date()}
 				FROM (VALUES ${Prisma.join(rows)}) AS ordered(id, position) WHERE task."id" = ordered.id
 			`)
 		}

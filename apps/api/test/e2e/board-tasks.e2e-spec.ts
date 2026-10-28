@@ -143,18 +143,25 @@ describe('Board task payload and moves (e2e)', () => {
 			where: { boardColumnId: columnId },
 			orderBy: [{ position: 'asc' }, { id: 'asc' }],
 		})
-	const move = (
+	const move = async (
 		taskId: string,
 		fromColumnId: string,
 		toColumnId: string,
 		position = 0,
 		status = 200,
-	) =>
-		request(server)
+		expectedVersion?: number,
+	) => {
+		const version =
+			expectedVersion ??
+			(await prisma.task.findUnique({ where: { id: taskId }, select: { version: true } }))
+				?.version ??
+			0
+		return request(server)
 			.patch(`${path()}/${taskId}/move`)
 			.set('Cookie', memberCookies)
-			.send({ fromColumnId, toColumnId, position })
+			.send({ fromColumnId, toColumnId, position, expectedVersion: version })
 			.expect(status)
+	}
 	async function view(boardId: string, cookies = memberCookies) {
 		const response = await request(server)
 			.get(`${path()}/board`)
@@ -254,6 +261,7 @@ describe('Board task payload and moves (e2e)', () => {
 				fromColumnId: extraBoard.columns[0].id,
 				toColumnId: extraBoard.columns[1].id,
 				position: 0,
+				expectedVersion: moving.version,
 			})
 			.expect(404)
 		await move(moving.id, extraBoard.columns[0].id, foreign.columns[0].id, 0, 404)
@@ -287,6 +295,7 @@ describe('Board task payload and moves (e2e)', () => {
 					fromColumnId: extraBoard.columns[0].id,
 					toColumnId: extraBoard.columns[1].id,
 					position: 0,
+					expectedVersion: moving.version,
 				})
 				.expect(status)
 			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
@@ -332,6 +341,7 @@ describe('Board task payload and moves (e2e)', () => {
 		const response = await move(moving.id, source.id, target.id, 1)
 		expect(response.body).toMatchObject({
 			...moving,
+			version: moving.version + 1,
 			boardColumnId: target.id,
 			status: 'IN_PROGRESS',
 			position: 1,
@@ -396,6 +406,129 @@ describe('Board task payload and moves (e2e)', () => {
 			moving,
 		)
 	})
+
+	it('increments versions on edits and rejects moves from an older task snapshot', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Before edit', 0)
+		expect(moving.version).toBe(0)
+		expect((await view(extraBoard.id)).columns[0].tasks[0].version).toBe(0)
+		const edited = await request(server)
+			.patch(`${path()}/${moving.id}`)
+			.set('Cookie', ownerCookies)
+			.send({ title: 'After edit' })
+			.expect(200)
+		expect(edited.body).toMatchObject({ version: 1, title: 'After edit' })
+		const beforeMove = await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })
+		const stale = await move(moving.id, source.id, target.id, 0, 409, moving.version)
+		expect(stale.body).toMatchObject({
+			statusCode: 409,
+			code: 'TASK_MOVE_CONFLICT',
+			taskId: moving.id,
+			reason: 'VERSION_MISMATCH',
+		})
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+			beforeMove,
+		)
+		const fresh = await move(moving.id, source.id, target.id, 0, 200, 1)
+		expect(fresh.body).toMatchObject({
+			version: 2,
+			boardColumnId: target.id,
+			title: 'After edit',
+		})
+	})
+
+	it('allows only one of two same-column moves using the same version, including a no-op', async () => {
+		const source = extraBoard.columns[0].id
+		const moving = await task(source, 'No-op', 0)
+		const payload = {
+			fromColumnId: source,
+			toColumnId: source,
+			position: 0,
+			expectedVersion: moving.version,
+		}
+		const attempts = await Promise.all(
+			[0, 1].map(() =>
+				request(server)
+					.patch(`${path()}/${moving.id}/move`)
+					.set('Cookie', memberCookies)
+					.send(payload),
+			),
+		)
+		expect(attempts.map((response) => response.status).sort()).toEqual([200, 409])
+		expect(attempts.find((response) => response.status === 409)?.body).toMatchObject({
+			code: 'TASK_MOVE_CONFLICT',
+			reason: 'VERSION_MISMATCH',
+			taskId: moving.id,
+		})
+		const stored = await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })
+		expect(stored).toMatchObject({ boardColumnId: source, position: 0, version: 1 })
+		await move(moving.id, source, source, 0, 409, 0)
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+			stored,
+		)
+	})
+
+	it('invalidates neighbours changed by reorder and leaves untouched tasks at their version', async () => {
+		const source = extraBoard.columns[0].id
+		const a = await task(source, 'A', 0)
+		const b = await task(source, 'B', 1)
+		const c = await task(source, 'C', 2)
+		const unaffected = await task(extraBoard.columns[1].id, 'Unchanged', 0)
+		await move(a.id, source, source, 2, 200, a.version)
+		const snapshot = await list(source)
+		expect(snapshot.map((item) => [item.id, item.version])).toEqual([
+			[b.id, 1],
+			[c.id, 1],
+			[a.id, 1],
+		])
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: unaffected.id } })).toEqual(
+			unaffected,
+		)
+		const stale = await move(b.id, source, source, 2, 409, b.version)
+		expect(stale.body.reason).toBe('VERSION_MISMATCH')
+		expect(await list(source)).toEqual(snapshot)
+		await move(b.id, source, source, 2, 200, 1)
+		await expectOrder(source, [c.id, a.id, b.id])
+	})
+
+	it('invalidates task snapshots after a column deletion transfers its tasks', async () => {
+		const [source, target, next] = extraBoard.columns
+		const moving = await task(source.id, 'Transferred', 0)
+		await request(server)
+			.delete(`/boards/${extraBoard.id}/columns/${source.id}`)
+			.set('Cookie', ownerCookies)
+			.send({ targetColumnId: target.id })
+			.expect(204)
+		const transferred = await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })
+		expect(transferred).toMatchObject({ version: 1, boardColumnId: target.id })
+		const stale = await move(moving.id, target.id, next.id, 0, 409, moving.version)
+		expect(stale.body.reason).toBe('VERSION_MISMATCH')
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+			transferred,
+		)
+		await move(moving.id, target.id, next.id, 0, 200, transferred.version)
+	})
+
+	it.each([undefined, -1, 0.5, '0', 2147483648])(
+		'rejects an absent or invalid version %j without changing the task',
+		async (expectedVersion) => {
+			const [source, target] = extraBoard.columns
+			const moving = await task(source.id, 'Keep', 0)
+			await request(server)
+				.patch(`${path()}/${moving.id}/move`)
+				.set('Cookie', memberCookies)
+				.send({
+					fromColumnId: source.id,
+					toColumnId: target.id,
+					position: 0,
+					expectedVersion,
+				})
+				.expect(400)
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+		},
+	)
 
 	it.each([
 		{},
@@ -511,7 +644,22 @@ describe('Board task payload and moves (e2e)', () => {
 			}),
 		)
 		await Promise.all([movement, reads])
-		await Promise.all(tasks.map((item) => move(item.id, source.id, source.id, 2)))
+		const snapshot = await list(source.id)
+		const attempts = await Promise.all(
+			snapshot.map((item) =>
+				request(server)
+					.patch(`${path()}/${item.id}/move`)
+					.set('Cookie', memberCookies)
+					.send({
+						fromColumnId: source.id,
+						toColumnId: source.id,
+						position: 2,
+						expectedVersion: item.version,
+					}),
+			),
+		)
+		expect(attempts.some((response) => response.status === 200)).toBe(true)
+		expect(attempts.every((response) => [200, 409].includes(response.status))).toBe(true)
 		const result = await list(source.id)
 		expect(result.map((item) => item.id).sort()).toEqual(
 			tasks.map((item) => item.id).sort(),
@@ -527,10 +675,20 @@ describe('Board task payload and moves (e2e)', () => {
 				request(server)
 					.patch(`${path()}/${moving.id}/move`)
 					.set('Cookie', memberCookies)
-					.send({ fromColumnId: source.id, toColumnId: column.id, position: 0 }),
+					.send({
+						fromColumnId: source.id,
+						toColumnId: column.id,
+						position: 0,
+						expectedVersion: moving.version,
+					}),
 			),
 		)
 		expect(responses.map((response) => response.status).sort()).toEqual([200, 409])
+		expect(responses.find((response) => response.status === 409)?.body).toMatchObject({
+			code: 'TASK_MOVE_CONFLICT',
+			reason: 'SOURCE_CHANGED',
+			taskId: moving.id,
+		})
 		expect(await prisma.task.count({ where: { projectId } })).toBe(1)
 		expect(await list(source.id)).toHaveLength(0)
 	})
@@ -566,6 +724,59 @@ describe('Board task payload and moves (e2e)', () => {
 		throw new Error('Move did not wait for a task lock')
 	}
 
+	it('compares the current version after a concurrent edit releases its task lock', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Before concurrent edit', 1)
+		const ready = deferred<number>()
+		const release = deferred<void>()
+		const writer = prisma.$transaction(
+			async (tx) => {
+				await tx.task.update({
+					where: { id: moving.id },
+					data: { title: 'Concurrent edit', version: { increment: 1 } },
+				})
+				const [row] = await tx.$queryRaw<
+					{ pid: number }[]
+				>`SELECT pg_backend_pid() AS pid`
+				ready.resolve(row.pid)
+				await release.promise
+			},
+			{ timeout: 10_000 },
+		)
+		const pid = await ready.promise
+		const pending = request(server)
+			.patch(`${path()}/${moving.id}/move`)
+			.set('Cookie', memberCookies)
+			.send({
+				fromColumnId: source.id,
+				toColumnId: target.id,
+				position: 0,
+				expectedVersion: moving.version,
+			})
+			.then((response) => response)
+		try {
+			await waitForBlockedTask(pid)
+		} finally {
+			release.resolve()
+		}
+		await writer
+		expect((await pending).body).toMatchObject({
+			statusCode: 409,
+			code: 'TASK_MOVE_CONFLICT',
+			reason: 'VERSION_MISMATCH',
+			taskId: moving.id,
+		})
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+		).toMatchObject({
+			title: 'Concurrent edit',
+			boardColumnId: source.id,
+			position: 1,
+			version: 1,
+		})
+		expect(await list(target.id)).toHaveLength(0)
+	})
+
 	it('does not overwrite a concurrent column change while waiting for its lock', async () => {
 		const [source, target, escaped] = extraBoard.columns
 		const moving = await task(source.id, 'Moving', 1)
@@ -589,7 +800,12 @@ describe('Board task payload and moves (e2e)', () => {
 		const pending = request(server)
 			.patch(`${path()}/${moving.id}/move`)
 			.set('Cookie', memberCookies)
-			.send({ fromColumnId: source.id, toColumnId: target.id, position: 0 })
+			.send({
+				fromColumnId: source.id,
+				toColumnId: target.id,
+				position: 0,
+				expectedVersion: moving.version,
+			})
 			.then((response) => response)
 		try {
 			await waitForBlockedTask(pid)
@@ -610,7 +826,12 @@ describe('Board task payload and moves (e2e)', () => {
 			request(server)
 				.patch(`${path()}/${moving.id}/move`)
 				.set('Cookie', memberCookies)
-				.send({ fromColumnId: source.id, toColumnId: target.id, position: 0 }),
+				.send({
+					fromColumnId: source.id,
+					toColumnId: target.id,
+					position: 0,
+					expectedVersion: moving.version,
+				}),
 			request(server)
 				.delete(`/boards/${extraBoard.id}/columns/${source.id}`)
 				.set('Cookie', ownerCookies)
@@ -634,6 +855,7 @@ describe('Board task payload and moves (e2e)', () => {
 					fromColumnId: mainBoard.columns[0].id,
 					toColumnId: extraBoard.columns[0].id,
 					position: 0,
+					expectedVersion: moving.version,
 				}),
 			request(server)
 				.delete(`/teams/${teamId}/projects/${projectId}/boards/${extraBoard.id}`)
@@ -679,11 +901,20 @@ describe('Board task payload and moves (e2e)', () => {
 			},
 		})
 		expect(document.components?.schemas?.MoveTaskToColumnDto).toMatchObject({
-			required: ['fromColumnId', 'toColumnId', 'position'],
+			required: ['fromColumnId', 'toColumnId', 'position', 'expectedVersion'],
 			additionalProperties: false,
 		})
 		expect(document.components?.schemas?.BoardViewResponseDto).toMatchObject({
 			required: ['board', 'columns'],
+		})
+		expect(document.components?.schemas?.TaskResponseDto).toMatchObject({
+			properties: { version: { type: 'number', minimum: 0 } },
+		})
+		expect(document.components?.schemas?.TaskMoveConflictResponseDto).toMatchObject({
+			properties: {
+				code: { enum: ['TASK_MOVE_CONFLICT'] },
+				reason: { enum: ['SOURCE_CHANGED', 'VERSION_MISMATCH', 'WRITE_CONFLICT'] },
+			},
 		})
 		expect(document.components?.schemas?.MoveTaskDto).toBeUndefined()
 		expect(document.components?.schemas?.BoardColumnDto).toBeUndefined()

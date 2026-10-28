@@ -93,6 +93,7 @@ export const MOCK_TASK = {
 	status: 'TODO' as const,
 	priority: 'MEDIUM' as const,
 	position: 1,
+	version: 0,
 	dueDate: null,
 	projectId: PROJECT_ID,
 	assigneeId: null,

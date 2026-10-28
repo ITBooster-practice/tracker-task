@@ -18,11 +18,12 @@ const source = {
 	isSystem: false,
 }
 const target = { ...source, id: 'target' }
-const moving = { id: 'moving', boardColumnId: 'source', position: 7 }
+const moving = { id: 'moving', boardColumnId: 'source', position: 7, version: 0 }
 const dto: MoveTaskToColumn = {
 	fromColumnId: 'source',
 	toColumnId: 'target',
 	position: 0,
+	expectedVersion: 0,
 }
 
 function createPrismaMock() {
@@ -41,6 +42,7 @@ function createPrismaMock() {
 					id: 'moving',
 					status: 'TODO',
 					...data,
+					version: moving.version + 1,
 				})),
 		},
 		$queryRaw: vi
@@ -243,7 +245,7 @@ describe('BoardTasksService', () => {
 	})
 
 	it.each([
-		['P2025', undefined, NotFoundException],
+		['P2025', undefined, ConflictException],
 		['P2003', undefined, ConflictException],
 		['P2034', undefined, ConflictException],
 		['P2010', '23503', ConflictException],
@@ -288,4 +290,39 @@ describe('BoardTasksService', () => {
 			).rejects.toBe(error)
 		},
 	)
+
+	it('rejects a stale version without modifying tasks or positions', async () => {
+		await expect(
+			service.moveTask('team', 'project', 'moving', 'user', {
+				...dto,
+				expectedVersion: 8,
+			}),
+		).rejects.toMatchObject({
+			response: {
+				statusCode: 409,
+				code: 'TASK_MOVE_CONFLICT',
+				taskId: 'moving',
+				reason: 'VERSION_MISMATCH',
+			},
+		})
+		expect(prisma.tx.task.update).not.toHaveBeenCalled()
+		expect(prisma.tx.$executeRaw).not.toHaveBeenCalled()
+	})
+
+	it('compares and increments the version in the same task update', async () => {
+		expect(
+			await service.moveTask('team', 'project', 'moving', 'user', dto),
+		).toMatchObject({ version: 1 })
+		expect(prisma.tx.task.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: {
+					id: 'moving',
+					projectId: 'project',
+					boardColumnId: 'source',
+					version: 0,
+				},
+				data: expect.objectContaining({ version: { increment: 1 } }),
+			}),
+		)
+	})
 })

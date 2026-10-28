@@ -161,6 +161,7 @@ export class TasksService {
 			omit: taskApiOmit,
 			where: { id: taskId },
 			data: {
+				version: { increment: 1 },
 				...(dto.title !== undefined && { title: dto.title }),
 				...(dto.description !== undefined && { description: dto.description }),
 				...(dto.status !== undefined && { status: dto.status as never }),

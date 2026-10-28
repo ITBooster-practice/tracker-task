@@ -9,6 +9,7 @@ export function createTaskFixture(overrides?: Partial<Task>): Task {
 		status: 'TODO',
 		priority: 'MEDIUM',
 		position: 1,
+		version: 0,
 		projectId: 'project-1',
 		assigneeId: null,
 		dueDate: null,
