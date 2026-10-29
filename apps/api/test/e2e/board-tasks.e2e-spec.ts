@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { FEATURE_KEYS, type BoardView } from '@repo/types'
+import { FEATURE_KEYS, type BoardView, type MoveTaskToColumn } from '@repo/types'
 import type { Redis } from 'ioredis'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
 import type { Server } from 'node:http'
@@ -22,6 +22,8 @@ describe('Board task payload and moves (e2e)', () => {
 	let memberCookies: string
 	let outsiderCookies: string
 	let ownerId: string
+	let memberId: string
+	let outsiderId: string
 	let teamId: string
 	let otherTeamId: string
 	let projectId: string
@@ -49,9 +51,14 @@ describe('Board task payload and moves (e2e)', () => {
 				where: { email: 'board-tasks-owner@example.com' },
 			})
 		).id
-		const memberId = (
+		memberId = (
 			await prisma.user.findUniqueOrThrow({
 				where: { email: 'board-tasks-member@example.com' },
+			})
+		).id
+		outsiderId = (
+			await prisma.user.findUniqueOrThrow({
+				where: { email: 'board-tasks-outsider@example.com' },
 			})
 		).id
 		const adminId = (
@@ -170,6 +177,22 @@ describe('Board task payload and moves (e2e)', () => {
 			.send({ fromColumnId, toColumnId, position, expectedVersion: version })
 			.expect(status)
 	}
+	const moveWithMetadata = (
+		moving: { id: string; boardColumnId: string; version: number },
+		toColumnId: string,
+		changes: Pick<MoveTaskToColumn, 'priority' | 'assigneeId'>,
+		cookies = ownerCookies,
+	) =>
+		request(server)
+			.patch(`${path()}/${moving.id}/move`)
+			.set('Cookie', cookies)
+			.send({
+				fromColumnId: moving.boardColumnId,
+				toColumnId,
+				position: 0,
+				expectedVersion: moving.version,
+				...changes,
+			})
 	async function view(boardId: string, cookies = memberCookies) {
 		const response = await request(server)
 			.get(`${path()}/board`)
@@ -278,6 +301,161 @@ describe('Board task payload and moves (e2e)', () => {
 				?.tasks.map((item) => item.id),
 		).toEqual([moving.id])
 		await expectOrder(toColumnId, [moving.id])
+	})
+
+	it.each(['creator', 'admin', 'owner'])(
+		'atomically changes priority and column for a task %s',
+		async (role) => {
+			const [source, target] = extraBoard.columns
+			const moving = await task(source.id, 'Priority transfer', 5)
+			const neighbour = await task(target.id, 'Target neighbour', 8)
+			if (role === 'creator') {
+				await prisma.task.update({
+					where: { id: moving.id },
+					data: { createdById: memberId },
+				})
+			}
+			const cookies =
+				role === 'creator'
+					? memberCookies
+					: role === 'admin'
+						? adminCookies
+						: ownerCookies
+			const result = await moveWithMetadata(
+				moving,
+				target.id,
+				{ priority: 'LOW' },
+				cookies,
+			).expect(200)
+			expect(result.body).toMatchObject({
+				boardColumnId: target.id,
+				position: 0,
+				priority: 'LOW',
+				assigneeId: ownerId,
+				version: moving.version + 1,
+			})
+			expect(
+				await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+			).toMatchObject({
+				boardColumnId: target.id,
+				priority: 'LOW',
+				version: moving.version + 1,
+			})
+			await expectOrder(target.id, [moving.id, neighbour.id])
+		},
+	)
+
+	it.each(['assign', 'unassign'])(
+		'atomically changes assignee and system column when asked to %s',
+		async (action) => {
+			const source = extraBoard.columns[0]
+			const target = mainBoard.columns.find((column) => column.key === 'DONE')!
+			const moving = await task(source.id, 'Assignee transfer', 0)
+			const assigneeId = action === 'assign' ? memberId : null
+			const result = await moveWithMetadata(moving, target.id, { assigneeId }).expect(200)
+			expect(result.body).toMatchObject({
+				boardColumnId: target.id,
+				assigneeId,
+				status: 'DONE',
+				priority: 'HIGH',
+				version: moving.version + 1,
+			})
+			expect(
+				await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+			).toMatchObject({
+				boardColumnId: target.id,
+				assigneeId,
+				status: 'DONE',
+				version: moving.version + 1,
+			})
+			await expectOrder(source.id, [])
+			await expectOrder(target.id, [moving.id])
+		},
+	)
+
+	it.each([
+		{ priority: 'LOW' as const },
+		{ assigneeId: null },
+		{ assigneeId: 'other-user' },
+	])(
+		'keeps all tasks unchanged when a non-creator member changes metadata %j',
+		async (changes) => {
+			const [source, target] = extraBoard.columns
+			const moving = await task(source.id, 'Protected transfer', 5)
+			const neighbour = await task(target.id, 'Unchanged neighbour', 8)
+			await moveWithMetadata(moving, target.id, changes, memberCookies).expect(403)
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+			expect(
+				await prisma.task.findUniqueOrThrow({ where: { id: neighbour.id } }),
+			).toEqual(neighbour)
+		},
+	)
+
+	it('allows a non-creator member to move with unchanged metadata', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Unchanged metadata', 0)
+		await moveWithMetadata(
+			moving,
+			target.id,
+			{ priority: moving.priority, assigneeId: moving.assigneeId },
+			memberCookies,
+		).expect(200)
+		await expectOrder(target.id, [moving.id])
+	})
+
+	it('updates metadata with one version increment when column and position stay unchanged', async () => {
+		const source = extraBoard.columns[0]
+		const moving = await task(source.id, 'Metadata only', 0)
+		await moveWithMetadata(moving, source.id, {
+			priority: 'CRITICAL',
+			assigneeId: null,
+		}).expect(200)
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+		).toMatchObject({
+			boardColumnId: source.id,
+			position: 0,
+			priority: 'CRITICAL',
+			assigneeId: null,
+			version: moving.version + 1,
+		})
+	})
+
+	it('rejects missing and non-team assignees without moving or changing metadata', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Invalid assignee', 5)
+		const neighbour = await task(target.id, 'Unchanged target', 8)
+		for (const assigneeId of ['missing-user', outsiderId]) {
+			await moveWithMetadata(moving, target.id, { priority: 'LOW', assigneeId }).expect(
+				400,
+			)
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+			expect(
+				await prisma.task.findUniqueOrThrow({ where: { id: neighbour.id } }),
+			).toEqual(neighbour)
+		}
+	})
+
+	it('rejects stale metadata moves without applying any part of the request', async () => {
+		const [source, target] = extraBoard.columns
+		const moving = await task(source.id, 'Before edit', 0)
+		const edited = await prisma.task.update({
+			where: { id: moving.id },
+			data: { title: 'Concurrent edit', version: { increment: 1 } },
+		})
+		const response = await moveWithMetadata(moving, target.id, {
+			priority: 'LOW',
+			assigneeId: null,
+		}).expect(409)
+		expect(response.body.reason).toBe('VERSION_MISMATCH')
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+			edited,
+		)
+		expect(await list(target.id)).toEqual([])
 	})
 
 	it('revokes board reads and moves immediately after team membership is removed', async () => {
@@ -685,7 +863,10 @@ describe('Board task payload and moves (e2e)', () => {
 			await prisma.$executeRawUnsafe(
 				'CREATE TRIGGER test_board_move_reject_position BEFORE UPDATE ON "Task" FOR EACH ROW EXECUTE FUNCTION test_board_move_reject_position()',
 			)
-			await move(moving.id, source.id, target.id, 0, 409)
+			await moveWithMetadata(moving, target.id, {
+				priority: 'LOW',
+				assigneeId: null,
+			}).expect(409)
 			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
 				moving,
 			)
@@ -980,6 +1161,10 @@ describe('Board task payload and moves (e2e)', () => {
 		expect(document.components?.schemas?.MoveTaskToColumnDto).toMatchObject({
 			required: ['fromColumnId', 'toColumnId', 'position', 'expectedVersion'],
 			additionalProperties: false,
+			properties: {
+				priority: { enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
+				assigneeId: expect.any(Object),
+			},
 		})
 		expect(document.components?.schemas?.BoardViewResponseDto).toMatchObject({
 			required: ['board', 'columns'],

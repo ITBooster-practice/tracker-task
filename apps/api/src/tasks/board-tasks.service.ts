@@ -7,10 +7,11 @@ import {
 } from '@nestjs/common'
 import type {
 	MoveTaskToColumn,
+	Priority,
 	TaskMoveConflict,
 	TaskMoveConflictReason,
 } from '@repo/types'
-import { Prisma, TaskStatus } from 'generated/prisma/client'
+import { Prisma, TaskStatus, TeamRole } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 
 type OrderedTask = {
@@ -18,6 +19,9 @@ type OrderedTask = {
 	boardColumnId: string
 	position: number
 	version: number
+	priority: Priority
+	assigneeId: string | null
+	createdById: string
 }
 const byPosition = (a: OrderedTask, b: OrderedTask) =>
 	a.position - b.position || a.id.localeCompare(b.id)
@@ -35,6 +39,7 @@ export class BoardTasksService {
 		if (!project || project.teamId !== teamId) {
 			throw new NotFoundException('Проект не найден в этой команде')
 		}
+		return member
 	}
 
 	async getBoard(teamId: string, projectId: string, boardId: string, userId: string) {
@@ -79,7 +84,7 @@ export class BoardTasksService {
 		userId: string,
 		dto: MoveTaskToColumn,
 	) {
-		await this.assertAccess(teamId, projectId, userId)
+		const member = await this.assertAccess(teamId, projectId, userId)
 		const ids = [dto.fromColumnId, dto.toColumnId]
 		const initialColumns = await this.columns(this.prisma, projectId, ids)
 		const boardIds = [...new Set(initialColumns.map((column) => column.boardId))]
@@ -97,7 +102,7 @@ export class BoardTasksService {
 					const source = columns.find((column) => column.id === dto.fromColumnId)!
 					const target = columns.find((column) => column.id === dto.toColumnId)!
 					const tasks = await tx.$queryRaw<OrderedTask[]>(Prisma.sql`
-						SELECT "id", "boardColumnId", "position", "version" FROM "Task"
+						SELECT "id", "boardColumnId", "position", "version", "priority", "assigneeId", "createdById" FROM "Task"
 					WHERE "projectId" = ${projectId} AND "boardColumnId" IN (${Prisma.join(ids)})
 					ORDER BY "id" FOR UPDATE
 				`)
@@ -123,6 +128,29 @@ export class BoardTasksService {
 							'Задача изменилась, обновите доску',
 						)
 					}
+					const priorityChanged =
+						dto.priority !== undefined && dto.priority !== moving.priority
+					const assigneeChanged =
+						dto.assigneeId !== undefined && dto.assigneeId !== moving.assigneeId
+					if (
+						(priorityChanged || assigneeChanged) &&
+						moving.createdById !== userId &&
+						member.role !== TeamRole.ADMIN &&
+						member.role !== TeamRole.OWNER
+					) {
+						throw new ForbiddenException(
+							'Недостаточно прав для выполнения этого действия',
+						)
+					}
+					if (assigneeChanged && dto.assigneeId !== null) {
+						const assignee = await tx.teamMember.findUnique({
+							where: { teamId_userId: { teamId, userId: dto.assigneeId! } },
+							select: { id: true },
+						})
+						if (!assignee) {
+							throw new BadRequestException('Исполнитель не является участником команды')
+						}
+					}
 					const targetTasks = tasks
 						.filter((task) => task.boardColumnId === target.id && task.id !== taskId)
 						.sort(byPosition)
@@ -141,6 +169,8 @@ export class BoardTasksService {
 							boardColumnId: target.id,
 							position: dto.position,
 							version: { increment: 1 },
+							...(priorityChanged ? { priority: dto.priority } : {}),
+							...(assigneeChanged ? { assigneeId: dto.assigneeId } : {}),
 							...(target.isSystem &&
 							Object.values(TaskStatus).includes(target.key as TaskStatus)
 								? { status: target.key as TaskStatus }

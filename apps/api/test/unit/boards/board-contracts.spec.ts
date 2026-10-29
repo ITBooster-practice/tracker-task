@@ -119,6 +119,8 @@ describe('Shared board contracts', () => {
 		for (const body of [
 			{ ...canonical, status: 'TODO' },
 			{ ...canonical, extra: true },
+			{ ...canonical, groupId: 'LOW' },
+			{ ...canonical, laneId: 'assignee' },
 			{ toColumnId: 'target', position: 0 },
 			{ fromColumnId: 'source', position: 0 },
 			{ targetColumnId: 'target', position: 0 },
@@ -126,6 +128,40 @@ describe('Shared board contracts', () => {
 			{ status: 'TODO', position: 1 },
 		])
 			expect(moveTaskToColumnSchema.safeParse(body).success).toBe(false)
+	})
+
+	it('accepts optional priority and nullable assignee changes in the canonical move', () => {
+		const canonical = {
+			fromColumnId: 'source',
+			toColumnId: 'target',
+			position: 0,
+			expectedVersion: 0,
+		}
+		for (const changes of [
+			{ priority: 'LOW' },
+			{ priority: 'MEDIUM' },
+			{ priority: 'HIGH' },
+			{ priority: 'CRITICAL', assigneeId: 'user' },
+			{ assigneeId: null },
+		]) {
+			expect(moveTaskToColumnSchema.parse({ ...canonical, ...changes })).toEqual({
+				...canonical,
+				...changes,
+			})
+		}
+		for (const changes of [
+			{ priority: 'UNKNOWN' },
+			{ priority: null },
+			{ priority: 1 },
+			{ assigneeId: '' },
+			{ assigneeId: ' ' },
+			{ assigneeId: 1 },
+			{ assigneeId: [] },
+		]) {
+			expect(moveTaskToColumnSchema.safeParse({ ...canonical, ...changes }).success).toBe(
+				false,
+			)
+		}
 	})
 
 	it.each([undefined, -1, 0.5, '0', 2_147_483_648])(
