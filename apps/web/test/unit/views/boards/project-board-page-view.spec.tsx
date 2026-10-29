@@ -1,6 +1,7 @@
 import '@/test/mocks/api/boards-service.mock'
 import '@/test/mocks/api/tasks-service.mock'
 import '@/test/mocks/api/projects-service.mock'
+import '@/test/mocks/api/team-members-service.mock'
 
 import { boardsServiceMock } from '@/test/mocks/api/boards-service.mock'
 import {
@@ -16,6 +17,8 @@ import {
 	resetTasksServiceMock,
 	tasksServiceMock,
 } from '@/test/mocks/api/tasks-service.mock'
+import { createTaskFixture } from '@/test/mocks/api/tasks.fixtures'
+import { teamMembersServiceMock } from '@/test/mocks/api/team-members-service.mock'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
@@ -25,12 +28,14 @@ import type { BoardListItem, BoardTask, BoardView } from '@repo/types'
 
 import type { Board } from '@/views/boards/ui/board'
 import type { BoardTaskDetailsDialog } from '@/views/boards/ui/board-task-details-dialog'
+import type { BoardTaskFormDialog } from '@/views/boards/ui/board-task-form-dialog'
 import { ProjectBoardPageView } from '@/views/boards/ui/project-board-page-view'
 import { boardsKeys } from '@/shared/api/use-boards'
 import { tasksKeys } from '@/shared/api/use-tasks'
 
-const { boardState, toastError } = vi.hoisted(() => ({
+const { boardState, formState, toastError } = vi.hoisted(() => ({
 	boardState: { current: null as ComponentProps<typeof Board> | null },
+	formState: { current: null as ComponentProps<typeof BoardTaskFormDialog> | null },
 	toastError: vi.fn(),
 }))
 
@@ -50,6 +55,32 @@ vi.mock('@repo/ui', () => ({
 		<button {...props}>{children}</button>
 	),
 	Skeleton: () => <span />,
+	ConfirmDialog: ({
+		open,
+		title,
+		onConfirm,
+		onOpenChange,
+		isPending,
+		children,
+	}: {
+		open: boolean
+		title: string
+		onConfirm: () => void
+		onOpenChange: (open: boolean) => void
+		isPending: boolean
+		children: React.ReactNode
+	}) =>
+		open ? (
+			<section role='dialog' aria-label={title}>
+				{children}
+				<button disabled={isPending} onClick={onConfirm}>
+					{isPending ? 'Удаляем…' : 'Удалить'}
+				</button>
+				<button disabled={isPending} onClick={() => onOpenChange(false)}>
+					Отмена
+				</button>
+			</section>
+		) : null,
 	EmptyState: ({
 		title,
 		description,
@@ -94,15 +125,41 @@ vi.mock('@/views/boards/ui/board-task-details-dialog', () => ({
 	BoardTaskDetailsDialog: ({
 		task,
 		readOnly,
+		showActivity,
+		onEditTask,
+		onDeleteTask,
 		onOpenChange,
 	}: ComponentProps<typeof BoardTaskDetailsDialog>) =>
 		task ? (
-			<div role='dialog' data-readonly={readOnly}>
+			<div
+				role='dialog'
+				data-readonly={Boolean(readOnly)}
+				data-activity={Boolean(showActivity)}
+			>
 				<p>{task.description}</p>
 				<span>{task.version}</span>
+				<button onClick={() => onEditTask?.(task)}>Редактировать</button>
+				<button onClick={() => onDeleteTask?.(task)}>Удалить задачу</button>
 				<button onClick={() => onOpenChange(false)}>Закрыть</button>
 			</div>
 		) : null,
+}))
+
+vi.mock('@/views/boards/ui/board-task-form-dialog', () => ({
+	BoardTaskFormDialog: (props: ComponentProps<typeof BoardTaskFormDialog>) => {
+		formState.current = props
+		return props.open ? (
+			<section
+				role='dialog'
+				aria-label={props.mode === 'create' ? 'Создать задачу' : 'Редактировать задачу'}
+			>
+				{props.error && <p role='alert'>{props.error}</p>}
+				<button disabled={props.isPending} onClick={() => props.onOpenChange(false)}>
+					Отмена
+				</button>
+			</section>
+		) : null
+	},
 }))
 
 function deferred<T>() {
@@ -117,6 +174,8 @@ function deferred<T>() {
 
 const liveView = (projectId = 'project-1') => {
 	const view = createBoardViewFixture('board-1', projectId)
+	view.board.isDefault = true
+	view.columns[0]!.isSystem = true
 	view.board.name = 'Реальная доска'
 	view.columns[0]!.title = 'Работа из API'
 	view.columns[0]!.tasks[0]!.title = 'Задача из API'
@@ -148,6 +207,12 @@ describe('ProjectBoardPageView', () => {
 	beforeEach(() => {
 		toastError.mockReset()
 		boardState.current = null
+		formState.current = null
+		teamMembersServiceMock.getMembers.mockReset()
+		teamMembersServiceMock.getMembers.mockResolvedValue({
+			data: [],
+			meta: { page: 1, limit: 100, total: 0, totalPages: 0 },
+		})
 		boardsServiceMock.getAll.mockReset()
 		resetTasksServiceMock()
 		resetProjectsServiceMock()
@@ -208,11 +273,241 @@ describe('ProjectBoardPageView', () => {
 		).toBe('/teams/team-1/projects/project-1')
 		expect(screen.getByTestId('board').getAttribute('data-movable')).toBe('true')
 		fireEvent.click(screen.getByText('Задача из API'))
-		expect(screen.getByRole('dialog').getAttribute('data-readonly')).toBe('true')
+		expect(screen.getByRole('dialog').getAttribute('data-readonly')).toBe('false')
+		expect(screen.getByRole('dialog').getAttribute('data-activity')).toBe('false')
 		expect(screen.getByText('Описание из API')).toBeDefined()
 		expect(screen.getByText('7')).toBeDefined()
 		fireEvent.click(screen.getByText('Закрыть'))
 		expect(screen.queryByRole('dialog')).toBeNull()
+	})
+
+	it('создаёт карточку через API и ждёт обновления доски без повторного POST', async () => {
+		const before = liveView()
+		before.columns[0]!.tasks = []
+		const after = structuredClone(before)
+		after.columns[0]!.tasks = [
+			{ ...liveView().columns[0]!.tasks[0]!, id: 'created', title: 'Новая карточка' },
+		]
+		const post = deferred<ReturnType<typeof createTaskFixture>>()
+		const refresh = deferred<BoardView>()
+		tasksServiceMock.getBoard
+			.mockResolvedValueOnce(before)
+			.mockReturnValueOnce(refresh.promise)
+		tasksServiceMock.create.mockReturnValueOnce(post.promise)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('На доске пока нет задач')
+		fireEvent.click(screen.getByRole('button', { name: 'Создать задачу' }))
+		const values = {
+			title: 'Новая карточка',
+			description: 'Контекст',
+			type: 'BUG' as const,
+			priority: 'HIGH' as const,
+			boardColumnId: 'board-1-column',
+			assigneeId: 'real-user',
+			dueDate: '2026-11-15',
+			tags: [],
+		}
+		act(() => {
+			formState.current!.onSubmit(values)
+			formState.current!.onSubmit(values)
+		})
+		await waitFor(() =>
+			expect(tasksServiceMock.create).toHaveBeenCalledExactlyOnceWith(
+				'team-1',
+				'project-1',
+				{
+					title: 'Новая карточка',
+					description: 'Контекст',
+					type: 'BUG',
+					priority: 'HIGH',
+					status: 'TODO',
+					assigneeId: 'real-user',
+					dueDate: '2026-11-15T00:00:00.000Z',
+				},
+			),
+		)
+		expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('true')
+		await act(async () => post.resolve(createTaskFixture({ id: 'created' })))
+		await waitFor(() => expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(2))
+		expect(formState.current!.open).toBe(true)
+		expect(formState.current!.isPending).toBe(true)
+		await act(async () => refresh.resolve(after))
+		await screen.findByText('Новая карточка')
+		await waitFor(() => expect(formState.current!.open).toBe(false))
+	})
+
+	it('редактирует задачу в произвольной колонке и очищает исполнителя и дедлайн без смены статуса', async () => {
+		const before = liveView()
+		before.columns[0]!.isSystem = false
+		before.columns[0]!.key = 'CUSTOM'
+		const task = before.columns[0]!.tasks[0]!
+		task.assigneeId = 'user-2'
+		task.dueDate = '2026-11-15T18:30:00.000Z'
+		const after = structuredClone(before)
+		Object.assign(after.columns[0]!.tasks[0]!, {
+			title: 'Изменённая карточка',
+			assigneeId: null,
+			dueDate: null,
+			version: 8,
+		})
+		tasksServiceMock.getBoard.mockResolvedValueOnce(before).mockResolvedValueOnce(after)
+		tasksServiceMock.update.mockResolvedValue(
+			createTaskFixture({ title: 'Изменённая карточка', version: 8 }),
+		)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		fireEvent.click(await screen.findByText('Задача из API'))
+		fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }))
+		expect(formState.current!.allowColumnChange).toBe(false)
+		expect(formState.current!.showTags).toBe(false)
+		act(() =>
+			formState.current!.onSubmit({
+				title: 'Изменённая карточка',
+				description: '',
+				type: 'STORY',
+				priority: 'LOW',
+				boardColumnId: task.boardColumnId,
+				assigneeId: '',
+				dueDate: '',
+				tags: [],
+			}),
+		)
+		await waitFor(() =>
+			expect(tasksServiceMock.update).toHaveBeenCalledExactlyOnceWith(
+				'team-1',
+				'project-1',
+				task.id,
+				{
+					title: 'Изменённая карточка',
+					description: '',
+					type: 'STORY',
+					priority: 'LOW',
+					assigneeId: null,
+					dueDate: null,
+				},
+			),
+		)
+		await waitFor(() => expect(formState.current!.open).toBe(false))
+		expect(screen.getByText('Изменённая карточка')).toBeDefined()
+		expect(tasksServiceMock.move).not.toHaveBeenCalled()
+	})
+
+	it('оставляет форму при ошибке и сохраняет исходное время дедлайна после повтора', async () => {
+		const view = liveView()
+		view.columns[0]!.tasks[0]!.dueDate = '2026-11-15T18:30:00.000Z'
+		tasksServiceMock.getBoard.mockResolvedValue(view)
+		tasksServiceMock.update
+			.mockRejectedValueOnce({ statusCode: 403, message: 'Forbidden' })
+			.mockResolvedValueOnce(createTaskFixture())
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		fireEvent.click(await screen.findByText('Задача из API'))
+		fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }))
+		const values = {
+			title: 'Обновление',
+			description: '',
+			priority: 'MEDIUM' as const,
+			boardColumnId: 'board-1-column',
+			assigneeId: '',
+			dueDate: '2026-11-15',
+			tags: [],
+		}
+		act(() => formState.current!.onSubmit(values))
+		await screen.findByRole('alert')
+		expect(formState.current!.open).toBe(true)
+		expect(formState.current!.isPending).toBe(false)
+		act(() => formState.current!.onSubmit(values))
+		await waitFor(() => expect(formState.current!.open).toBe(false))
+		expect(tasksServiceMock.update).toHaveBeenLastCalledWith(
+			'team-1',
+			'project-1',
+			'task-1',
+			expect.objectContaining({ dueDate: '2026-11-15T18:30:00.000Z' }),
+		)
+	})
+
+	it('удаляет после подтверждения, показывает ошибку и обновляет доску после повтора', async () => {
+		const view = liveView()
+		const after = structuredClone(view)
+		after.columns[0]!.tasks = []
+		const remove = deferred<void>()
+		tasksServiceMock.getBoard.mockResolvedValueOnce(view).mockResolvedValueOnce(after)
+		tasksServiceMock.delete
+			.mockRejectedValueOnce({ statusCode: 403, message: 'Forbidden' })
+			.mockReturnValueOnce(remove.promise)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		fireEvent.click(await screen.findByText('Задача из API'))
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить задачу' }))
+		expect(tasksServiceMock.delete).not.toHaveBeenCalled()
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
+		await screen.findByRole('alert')
+		expect(screen.getByRole('dialog', { name: 'Удалить задачу?' })).toBeDefined()
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
+		await waitFor(() => expect(tasksServiceMock.delete).toHaveBeenCalledTimes(2))
+		expect(screen.getByRole('button', { name: 'Удаляем…' })).toHaveProperty(
+			'disabled',
+			true,
+		)
+		await act(async () => remove.resolve())
+		await screen.findByText('На доске пока нет задач')
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+		expect(tasksServiceMock.delete).toHaveBeenLastCalledWith(
+			'team-1',
+			'project-1',
+			'task-1',
+		)
+	})
+
+	it('запоздавший ответ создания не закрывает форму другого проекта и не меняет его кэш', async () => {
+		const post = deferred<ReturnType<typeof createTaskFixture>>()
+		tasksServiceMock.create.mockReturnValueOnce(post.promise)
+		const first = liveView()
+		const second = liveView('project-2')
+		second.board.name = 'Вторая доска'
+		tasksServiceMock.getBoard.mockImplementation(async (_team, projectId) =>
+			projectId === 'project-1' ? first : second,
+		)
+		boardsServiceMock.getAll.mockImplementation(async (_team, projectId) => [
+			createBoardListItemFixture({ projectId, isDefault: true }),
+		])
+		const { rerender } = render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' />,
+			{ wrapper: Wrapper },
+		)
+		fireEvent.click(await screen.findByRole('button', { name: 'Создать задачу' }))
+		act(() =>
+			formState.current!.onSubmit({
+				title: 'Первая',
+				description: '',
+				priority: 'LOW',
+				boardColumnId: 'board-1-column',
+				assigneeId: '',
+				dueDate: '',
+				tags: [],
+			}),
+		)
+		await waitFor(() => expect(tasksServiceMock.create).toHaveBeenCalledTimes(1))
+		rerender(<ProjectBoardPageView teamId='team-1' projectId='project-2' />)
+		await screen.findByRole('heading', { name: 'Вторая доска' })
+		fireEvent.click(screen.getByRole('button', { name: 'Создать задачу' }))
+		await act(async () => post.resolve(createTaskFixture({ title: 'Первая' })))
+		await waitFor(() =>
+			expect(
+				client.getQueryState(tasksKeys.board('team-1', 'project-1', 'board-1'))
+					?.isInvalidated,
+			).toBe(true),
+		)
+		expect(formState.current!.open).toBe(true)
+		expect(formState.current!.isPending).toBe(false)
+		expect(
+			client.getQueryData(tasksKeys.board('team-1', 'project-2', 'board-1')),
+		).toEqual(second)
 	})
 
 	it('сохраняет перенос с исходной версией, блокируя повтор до обновления доски', async () => {

@@ -13,6 +13,7 @@ import {
 	teamMembersKeys,
 	useChangeMemberRole,
 	useRemoveTeamMember,
+	useTeamMemberOptions,
 	useTeamMembers,
 } from '@/shared/api/use-team-members'
 import { teamsKeys } from '@/shared/api/use-teams'
@@ -36,6 +37,33 @@ describe('use-team-members hooks', () => {
 
 	beforeEach(() => {
 		resetTeamMembersServiceMock()
+	})
+
+	it('загружает все страницы исполнителей только при открытой форме', async () => {
+		const first = createTeamMemberFixture({ userId: 'user-1' })
+		const last = createTeamMemberFixture({ userId: 'user-2' })
+		teamMembersServiceMock.getMembers
+			.mockResolvedValueOnce({
+				data: [first],
+				meta: { page: 1, limit: 100, total: 101, totalPages: 2 },
+			})
+			.mockResolvedValueOnce({
+				data: [last],
+				meta: { page: 2, limit: 100, total: 101, totalPages: 2 },
+			})
+		const { result, rerender, unmount } = renderHook(
+			({ open }) => useTeamMemberOptions('team-1', open),
+			{ wrapper: createWrapper(), initialProps: { open: false } },
+		)
+		expect(teamMembersServiceMock.getMembers).not.toHaveBeenCalled()
+		rerender({ open: true })
+		await waitFor(() => expect(result.current.isSuccess).toBe(true))
+		expect(result.current.data).toEqual([first, last])
+		expect(teamMembersServiceMock.getMembers).toHaveBeenNthCalledWith(2, 'team-1', {
+			page: 2,
+			limit: 100,
+		})
+		unmount()
 	})
 
 	it('useTeamMembers запрашивает участников команды', async () => {
