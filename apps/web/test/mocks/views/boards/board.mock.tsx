@@ -41,6 +41,8 @@ interface DndContextMockProps {
 }
 
 interface BoardColumnMockProps {
+	onDelete?: () => void
+	dragHandle?: React.ReactNode
 	onEditTitle?: () => void
 	titleEditor?: React.ReactNode
 	editTitleDisabled?: boolean
@@ -183,6 +185,8 @@ vi.mock('@dnd-kit/core', () => {
 		},
 		PointerSensor: 'PointerSensor',
 		TouchSensor: 'TouchSensor',
+		KeyboardSensor: 'KeyboardSensor',
+		closestCenter: 'closestCenter',
 		closestCorners: 'closestCorners',
 		useSensor: (sensor: unknown, options?: unknown) => {
 			boardMockState.sensorCalls.push({ options, sensor })
@@ -191,6 +195,17 @@ vi.mock('@dnd-kit/core', () => {
 		useSensors: (...sensors: unknown[]) => sensors,
 	}
 })
+
+vi.mock('@dnd-kit/sortable', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@dnd-kit/sortable')>()),
+	SortableContext: ({ children }: React.PropsWithChildren) => <>{children}</>,
+	useSortable: () => ({
+		attributes: {},
+		listeners: {},
+		setNodeRef: () => undefined,
+		setActivatorNodeRef: () => undefined,
+	}),
+}))
 
 vi.mock('@/views/boards/ui/board-column', () => ({
 	BoardColumn: (props: BoardColumnMockProps) => {
@@ -202,6 +217,16 @@ vi.mock('@/views/boards/ui/board-column', () => ({
 				data-disabled={String(Boolean(props.disabled))}
 				data-testid={`board-column-${props.column.id}`}
 			>
+				{props.dragHandle}
+				{props.onDelete && (
+					<button
+						disabled={props.editTitleDisabled}
+						onClick={props.onDelete}
+						aria-label={`Удалить колонку «${props.column.title}»`}
+					>
+						Удалить
+					</button>
+				)}
 				{props.titleEditor ??
 					(props.onEditTitle && (
 						<button

@@ -269,6 +269,117 @@ describe('ProjectBoardPageView', () => {
 		client.clear()
 	})
 
+	it('удаляет колонку с переносом и показывает новые статусы и версии задач из API', async () => {
+		const before = movableView()
+		before.columns[0]!.isSystem = false
+		const task = before.columns[0]!.tasks[0]!
+		const moved = {
+			...task,
+			boardColumnId: 'target',
+			status: 'DONE' as const,
+			version: task.version + 1,
+			position: 0,
+		}
+		const after = {
+			...before,
+			columns: [{ ...before.columns[1]!, position: 0, tasks: [moved] }],
+		}
+		tasksServiceMock.getBoard.mockResolvedValueOnce(before).mockResolvedValue(after)
+		boardColumnsServiceMock.delete.mockResolvedValue(undefined)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		await act(async () => {
+			await boardState.current!.onDeleteColumn!(before.columns[0]!.id, 'target')
+		})
+		expect(boardColumnsServiceMock.delete).toHaveBeenCalledExactlyOnceWith(
+			'board-1',
+			before.columns[0]!.id,
+			{ targetColumnId: 'target' },
+		)
+		await waitFor(() =>
+			expect(screen.queryByRole('heading', { name: 'Работа из API' })).toBeNull(),
+		)
+		expect(boardState.current!.columns).toHaveLength(1)
+		expect(boardState.current!.columns[0]!.tasks[0]).toMatchObject({
+			boardColumnId: 'target',
+			status: 'DONE',
+			version: 8,
+		})
+	})
+
+	it('сохраняет порядок системных колонок и блокирует другие операции до обновления API', async () => {
+		const before = movableView()
+		const after = {
+			...before,
+			columns: [
+				{ ...before.columns[1]!, position: 0 },
+				{ ...before.columns[0]!, position: 1 },
+			],
+		}
+		const request = deferred<ReturnType<typeof createBoardListItemFixture>['columns']>()
+		boardColumnsServiceMock.reorder.mockReturnValue(request.promise)
+		tasksServiceMock.getBoard.mockResolvedValueOnce(before).mockResolvedValue(after)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		let result!: Promise<void>
+		act(() => {
+			result = boardState.current!.onReorderColumns!(['target', before.columns[0]!.id])
+		})
+		await waitFor(() => expect(boardColumnsServiceMock.reorder).toHaveBeenCalledTimes(1))
+		await act(async () => {
+			await expect(boardState.current!.onCreateColumn!('Дубль')).rejects.toThrow()
+		})
+		expect(boardState.current!.columnActionsDisabled).toBe(true)
+		await act(async () => {
+			request.resolve(after.columns)
+			await result
+		})
+		expect(boardColumnsServiceMock.reorder).toHaveBeenCalledExactlyOnceWith('board-1', {
+			columnIds: ['target', before.columns[0]!.id],
+		})
+		await waitFor(() =>
+			expect(boardState.current!.columns.map((column) => column.id)).toEqual([
+				'target',
+				before.columns[0]!.id,
+			]),
+		)
+		expect(boardState.current!.columns[1]!.tasks[0]!.version).toBe(7)
+	})
+
+	it('запоздалое удаление не обновляет доску другого проекта', async () => {
+		const request = deferred<void>()
+		boardColumnsServiceMock.delete.mockReturnValue(request.promise)
+		const { rerender } = render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' />,
+			{ wrapper: Wrapper },
+		)
+		await screen.findByText('Задача из API')
+		let result!: Promise<void>
+		act(() => {
+			result = boardState.current!.onDeleteColumn!('source', 'target')
+		})
+		await waitFor(() => expect(boardColumnsServiceMock.delete).toHaveBeenCalledTimes(1))
+		const other = liveView('project-2')
+		other.columns[0]!.title = 'Другой проект'
+		boardsServiceMock.getAll.mockResolvedValue([
+			createBoardListItemFixture({ projectId: 'project-2', isDefault: true }),
+		])
+		tasksServiceMock.getBoard.mockResolvedValue(other)
+		rerender(<ProjectBoardPageView teamId='team-1' projectId='project-2' />)
+		await screen.findByRole('heading', { name: 'Другой проект' })
+		const calls = tasksServiceMock.getBoard.mock.calls.length
+		await act(async () => {
+			request.resolve()
+			await result
+		})
+		expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(calls)
+		expect(screen.getByRole('heading', { name: 'Другой проект' })).toBeDefined()
+	})
+
 	it('создаёт колонку с техническим ключом и блокирует повторные изменения до обновления доски', async () => {
 		const before = movableView()
 		const after = structuredClone(before)
@@ -295,12 +406,10 @@ describe('ProjectBoardPageView', () => {
 			result = boardState.current!.onCreateColumn!('Проверка')
 		})
 		await waitFor(() => expect(boardColumnsServiceMock.create).toHaveBeenCalledTimes(1))
-		expect(boardColumnsServiceMock.create).toHaveBeenCalledWith(
-			'team-1',
-			'project-1',
-			'board-1',
-			{ title: 'Проверка', key: expect.stringMatching(/^column_[0-9a-f-]{36}$/) },
-		)
+		expect(boardColumnsServiceMock.create).toHaveBeenCalledWith('board-1', {
+			title: 'Проверка',
+			key: expect.stringMatching(/^column_[0-9a-f-]{36}$/),
+		})
 		await act(async () => {
 			await expect(boardState.current!.onCreateColumn!('Дубль')).rejects.toThrow()
 		})
@@ -342,8 +451,6 @@ describe('ProjectBoardPageView', () => {
 			await boardState.current!.onRenameColumn!(before.columns[0]!.id, 'Новый этап')
 		})
 		expect(boardColumnsServiceMock.update).toHaveBeenCalledExactlyOnceWith(
-			'team-1',
-			'project-1',
 			'board-1',
 			before.columns[0]!.id,
 			{ title: 'Новый этап' },

@@ -29,6 +29,7 @@ interface ConfirmDialogProps {
 	confirmDisabled?: boolean
 	showCloseButton?: boolean
 	className?: string
+	onCloseAutoFocus?: React.ComponentProps<typeof DialogContent>['onCloseAutoFocus']
 	onConfirm: () => void | Promise<void>
 }
 
@@ -46,6 +47,7 @@ function ConfirmDialog({
 	confirmDisabled = false,
 	showCloseButton = false,
 	className,
+	onCloseAutoFocus,
 	onConfirm,
 }: ConfirmDialogProps) {
 	const handleOpenChange = (nextOpen: boolean) => {
@@ -59,6 +61,7 @@ function ConfirmDialog({
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent
+				onCloseAutoFocus={onCloseAutoFocus}
 				showCloseButton={showCloseButton}
 				className={cn(
 					'gap-0 border-border bg-card p-0 shadow-[0_30px_80px_-34px_rgba(0,0,0,0.55)] sm:max-w-[420px]',

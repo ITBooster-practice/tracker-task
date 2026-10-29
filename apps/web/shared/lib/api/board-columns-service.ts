@@ -1,32 +1,41 @@
-import type { BoardColumn, CreateColumn, UpdateColumn } from '@repo/types'
+import type {
+	BoardColumn,
+	CreateColumn,
+	DeleteColumn,
+	ReorderColumns,
+	UpdateColumn,
+} from '@repo/types'
 
 import { client } from './client'
 
-const columnsPath = (teamId: string, projectId: string, boardId: string) =>
-	`/teams/${teamId}/projects/${projectId}/boards/${boardId}/columns`
+const columnsPath = (boardId: string) => `/boards/${boardId}/columns`
 
 export const boardColumnsService = {
-	create: async (
-		teamId: string,
-		projectId: string,
-		boardId: string,
-		data: CreateColumn,
-	): Promise<BoardColumn> => {
-		const response = await client.post<BoardColumn>(
-			columnsPath(teamId, projectId, boardId),
-			data,
-		)
+	create: async (boardId: string, data: CreateColumn): Promise<BoardColumn> => {
+		const response = await client.post<BoardColumn>(columnsPath(boardId), data)
 		return response.data
 	},
 	update: async (
-		teamId: string,
-		projectId: string,
 		boardId: string,
 		columnId: string,
 		data: UpdateColumn,
 	): Promise<BoardColumn> => {
 		const response = await client.patch<BoardColumn>(
-			`${columnsPath(teamId, projectId, boardId)}/${columnId}`,
+			`${columnsPath(boardId)}/${columnId}`,
+			data,
+		)
+		return response.data
+	},
+	delete: async (
+		boardId: string,
+		columnId: string,
+		data: DeleteColumn,
+	): Promise<void> => {
+		await client.delete(`${columnsPath(boardId)}/${columnId}`, { data })
+	},
+	reorder: async (boardId: string, data: ReorderColumns): Promise<BoardColumn[]> => {
+		const response = await client.patch<BoardColumn[]>(
+			`${columnsPath(boardId)}/reorder`,
 			data,
 		)
 		return response.data

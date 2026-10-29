@@ -137,6 +137,8 @@ function BoardCard({
 			ref={setNodeRef}
 			style={style}
 			data-testid={`board-task-${task.id}`}
+			{...attributes}
+			{...listeners}
 			onClick={() => onOpenTask(task.id)}
 			onKeyDown={(event) => {
 				if (event.key === 'Enter' || event.key === ' ') {
@@ -149,8 +151,6 @@ function BoardCard({
 					? 'Открыть задачу'
 					: 'Клик открывает задачу. Зажмите и потяните, чтобы перенести её.'
 			}
-			{...attributes}
-			{...listeners}
 			className={cn('select-none outline-none', {
 				'cursor-grab active:cursor-grabbing': !disabled,
 				'cursor-default': disabled,

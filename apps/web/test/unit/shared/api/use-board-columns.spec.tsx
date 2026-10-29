@@ -22,6 +22,8 @@ import type { BoardView } from '@repo/types'
 import { boardsKeys } from '@/shared/api/boards-keys'
 import {
 	useCreateBoardColumn,
+	useDeleteBoardColumn,
+	useReorderBoardColumns,
 	useUpdateBoardColumn,
 } from '@/shared/api/use-board-columns'
 import { tasksKeys, useBoardQuery } from '@/shared/api/use-tasks'
@@ -45,6 +47,98 @@ afterEach(() => {
 	cleanup()
 	client.clear()
 })
+
+it('удаление обновляет задачи, детали и доски только текущего проекта', async () => {
+	const keys = [
+		tasksKeys.board('team-1', 'project-1', 'board-1'),
+		tasksKeys.board('team-1', 'project-1', 'other-board'),
+		tasksKeys.list('team-1', 'project-1'),
+		tasksKeys.detail('team-1', 'project-1', 'task'),
+		boardsKeys.list('team-1', 'project-1'),
+	]
+	const foreign = [
+		tasksKeys.board('team-2', 'project-1', 'board-1'),
+		tasksKeys.list('team-1', 'other-project'),
+		tasksKeys.detail('team-1', 'other-project', 'task'),
+		boardsKeys.list('team-1', 'other-project'),
+	]
+	for (const key of [...keys, ...foreign]) client.setQueryData(key, { cached: true })
+	boardColumnsServiceMock.delete.mockResolvedValue(undefined)
+	const { result } = renderHook(() => useDeleteBoardColumn(), { wrapper: Wrapper })
+	await act(async () => {
+		await result.current.mutateAsync({
+			...context,
+			columnId: 'source',
+			data: { targetColumnId: 'target' },
+		})
+	})
+	expect(boardColumnsServiceMock.delete).toHaveBeenCalledExactlyOnceWith(
+		'board-1',
+		'source',
+		{ targetColumnId: 'target' },
+	)
+	for (const key of keys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+	for (const key of foreign) expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+})
+
+it('перестановка обновляет только свою доску и список, не меняя задачи в кеше', async () => {
+	const key = tasksKeys.board('team-1', 'project-1', 'board-1')
+	const list = boardsKeys.list('team-1', 'project-1')
+	const other = tasksKeys.board('team-1', 'project-1', 'other')
+	const task = tasksKeys.detail('team-1', 'project-1', 'task')
+	for (const queryKey of [key, list, other, task])
+		client.setQueryData(queryKey, { cached: true })
+	boardColumnsServiceMock.reorder.mockResolvedValue([])
+	const { result } = renderHook(() => useReorderBoardColumns(), { wrapper: Wrapper })
+	await act(async () => {
+		await result.current.mutateAsync({
+			...context,
+			data: { columnIds: ['second', 'first'] },
+		})
+	})
+	expect(boardColumnsServiceMock.reorder).toHaveBeenCalledExactlyOnceWith('board-1', {
+		columnIds: ['second', 'first'],
+	})
+	expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+	expect(client.getQueryState(list)?.isInvalidated).toBe(true)
+	for (const queryKey of [other, task])
+		expect(client.getQueryState(queryKey)?.isInvalidated).toBe(false)
+	expect(client.getQueryData(key)).toEqual({ cached: true })
+})
+
+it.each([400, 403, 404, 409, 503])(
+	'ошибка изменения структуры %s сохраняет кеш и обновляет его при конфликте',
+	async (statusCode) => {
+		const key = tasksKeys.board('team-1', 'project-1', 'board-1')
+		const view = createBoardViewFixture()
+		client.setQueryData(key, view)
+		const error = { statusCode, message: 'API error' }
+		boardColumnsServiceMock.reorder.mockRejectedValue(error)
+		boardColumnsServiceMock.delete.mockRejectedValue(error)
+		const { result } = renderHook(
+			() => ({ reorder: useReorderBoardColumns(), remove: useDeleteBoardColumn() }),
+			{ wrapper: Wrapper },
+		)
+		await act(async () => {
+			await expect(
+				result.current.reorder.mutateAsync({ ...context, data: { columnIds: ['id'] } }),
+			).rejects.toEqual(error)
+			await expect(
+				result.current.remove.mutateAsync({
+					...context,
+					columnId: 'source',
+					data: { targetColumnId: 'target' },
+				}),
+			).rejects.toEqual(error)
+		})
+		expect(client.getQueryData(key)).toEqual(view)
+		await waitFor(() =>
+			expect(client.getQueryState(key)?.isInvalidated).toBe(
+				[400, 404, 409].includes(statusCode),
+			),
+		)
+	},
+)
 
 it.each(['create', 'update'] as const)(
 	'%s обновляет только выбранную доску и список её проекта',
@@ -85,16 +179,12 @@ it.each(['create', 'update'] as const)(
 			expect(client.getQueryState(key)?.isInvalidated).toBe(false)
 		expect(client.getQueryData(otherKey)).toEqual(view)
 		if (operation === 'create')
-			expect(boardColumnsServiceMock.create).toHaveBeenCalledExactlyOnceWith(
-				'team-1',
-				'project-1',
-				'board-1',
-				{ key: 'column_random', title: 'Проверка' },
-			)
+			expect(boardColumnsServiceMock.create).toHaveBeenCalledExactlyOnceWith('board-1', {
+				key: 'column_random',
+				title: 'Проверка',
+			})
 		else
 			expect(boardColumnsServiceMock.update).toHaveBeenCalledExactlyOnceWith(
-				'team-1',
-				'project-1',
 				'board-1',
 				column.id,
 				{ title: 'Проверка' },

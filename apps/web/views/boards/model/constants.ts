@@ -5,6 +5,7 @@ import type { BoardColumn, BoardColumnId, BoardTask, BoardTypeFilter } from './t
 export const BOARD_FILTER_ALL = 'ALL' as const
 export const BOARD_RECENT_LABEL = 'Только что'
 export const BOARD_COLUMN_CONTAINER_PREFIX = 'board-column'
+export const BOARD_COLUMN_ORDER_PREFIX = 'board-column-order'
 export const BOARD_ASSIGNEE_ALL_OPTION_LABEL = 'Все исполнители'
 
 export const BOARD_PRIORITY_LABELS: Record<BoardTask['priority'], string> = {
