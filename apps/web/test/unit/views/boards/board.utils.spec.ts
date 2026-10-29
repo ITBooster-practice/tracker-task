@@ -1,118 +1,44 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { createBoardColumnsFixture } from '@/test/mocks/views/boards/board-ui.fixtures'
+import { describe, expect, it } from 'vitest'
 
-import { boardMock } from '@/views/boards/model/mock-data'
-import { useBoardStore } from '@/views/boards/model/store'
-import {
-	buildBoardAssigneeOptions,
-	buildBoardStats,
-	findBoardTask,
-	hasBoardActiveFilters,
-	moveTaskInColumns,
-} from '@/views/boards/model/utils'
+import { findBoardTask, moveTaskInColumns } from '@/views/boards/model/utils'
 
 describe('board utils', () => {
-	beforeEach(() => {
-		useBoardStore.getState().resetBoard()
-	})
-
-	it('moveTaskInColumns переставляет задачу внутри той же колонки', () => {
-		const initialColumns = useBoardStore.getState().columns
-		const nextColumns = moveTaskInColumns(initialColumns, {
-			taskId: 'task-102',
-			toColumnId: 'BACKLOG',
+	it('переставляет задачу внутри колонки, не меняя исходные данные', () => {
+		const columns = createBoardColumnsFixture()
+		const original = structuredClone(columns)
+		const next = moveTaskInColumns(columns, {
+			taskId: 'task-b',
+			toColumnId: 'TODO',
 			toIndex: 0,
 		})
 
-		const backlogTaskIds =
-			nextColumns
-				.find((column) => column.id === 'BACKLOG')
-				?.tasks.map((task) => task.id) ?? []
-
-		expect(backlogTaskIds).toEqual(['task-102', 'task-101'])
+		expect(next[0]!.tasks.map((task) => task.id)).toEqual(['task-b', 'task-a'])
+		expect(columns).toEqual(original)
 	})
 
-	it('moveTaskInColumns возвращает исходную ссылку для неизвестной задачи', () => {
-		const initialColumns = useBoardStore.getState().columns
-		const nextColumns = moveTaskInColumns(initialColumns, {
-			taskId: 'task-missing',
-			toColumnId: 'DONE',
-			toIndex: 0,
-		})
-
-		expect(nextColumns).toBe(initialColumns)
-	})
-
-	it('buildBoardAssigneeOptions добавляет "Все исполнители" и убирает дубликаты', () => {
-		const options = buildBoardAssigneeOptions(
-			boardMock.columns.flatMap((column) => column.tasks),
-		)
-
-		expect(options[0]).toEqual({
-			label: 'Все исполнители',
-			value: 'ALL',
-		})
-		expect(options.map((option) => option.value)).toEqual([
-			'ALL',
-			'anna',
-			'alexey',
-			'maria',
-			'denis',
-		])
-	})
-
-	it('hasBoardActiveFilters корректно определяет активные фильтры', () => {
+	it('возвращает исходную ссылку для отсутствующей задачи или колонки', () => {
+		const columns = createBoardColumnsFixture()
 		expect(
-			hasBoardActiveFilters({
-				query: '',
-				type: 'ALL',
-				assignee: 'ALL',
+			moveTaskInColumns(columns, {
+				taskId: 'missing-task',
+				toColumnId: 'DONE',
+				toIndex: 0,
 			}),
-		).toBe(false)
-
+		).toBe(columns)
 		expect(
-			hasBoardActiveFilters({
-				query: ' review ',
-				type: 'ALL',
-				assignee: 'ALL',
+			moveTaskInColumns(columns, {
+				taskId: 'task-a',
+				toColumnId: 'missing-column',
+				toIndex: 0,
 			}),
-		).toBe(true)
-
-		expect(
-			hasBoardActiveFilters({
-				query: '',
-				type: 'BUG',
-				assignee: 'ALL',
-			}),
-		).toBe(true)
+		).toBe(columns)
 	})
 
-	it('findBoardTask находит задачу по id и возвращает null для отсутствующей', () => {
-		const columns = useBoardStore.getState().columns
-
-		expect(findBoardTask(columns, 'task-105')?.key).toBe('SPR-105')
+	it('находит задачу по id и возвращает null для отсутствующей', () => {
+		const columns = createBoardColumnsFixture()
+		expect(findBoardTask(columns, 'task-done')?.key).toBe('TT-3')
 		expect(findBoardTask(columns, 'missing-task')).toBeNull()
 		expect(findBoardTask(columns, null)).toBeNull()
-	})
-
-	it('buildBoardStats считает прогресс и ключевые статусы', () => {
-		const stats = buildBoardStats(useBoardStore.getState().columns)
-
-		expect(stats).toEqual([
-			{
-				label: 'Прогресс',
-				value: '22%',
-				helper: '2 из 9 задач завершены',
-			},
-			{
-				label: 'В работе',
-				value: '2',
-				helper: 'Карточки, над которыми команда работает сейчас',
-			},
-			{
-				label: 'На ревью',
-				value: '1',
-				helper: 'Финальная проверка перед закрытием',
-			},
-		])
 	})
 })

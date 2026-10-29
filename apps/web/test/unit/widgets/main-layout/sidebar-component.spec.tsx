@@ -72,7 +72,7 @@ vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
 				items: [
 					{
 						title: 'Доска',
-						href: '/boards',
+						href: '/teams/team-1/projects/project-1/board',
 						routeId: 'boards',
 						icon: () => <span />,
 					},

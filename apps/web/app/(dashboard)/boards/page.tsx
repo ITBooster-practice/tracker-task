@@ -1,14 +1,7 @@
-import { FEATURE_KEYS } from '@repo/types'
+import { redirect } from 'next/navigation'
 
-import { BoardsPageView } from '@/views/boards'
-import { FeatureGate } from '@/features/feature-flags'
-import { requireServerFeature } from '@/shared/lib/feature-flags/server'
+import { ROUTES } from '@/shared/config/routes'
 
-export default async function BoardsPage() {
-	await requireServerFeature(FEATURE_KEYS.BOARDS)
-	return (
-		<FeatureGate feature={FEATURE_KEYS.BOARDS}>
-			<BoardsPageView />
-		</FeatureGate>
-	)
+export default function LegacyBoardsRedirectPage() {
+	redirect(ROUTES.teams)
 }
