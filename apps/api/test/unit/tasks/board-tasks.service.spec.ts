@@ -18,7 +18,15 @@ const source = {
 	isSystem: false,
 }
 const target = { ...source, id: 'target' }
-const moving = { id: 'moving', boardColumnId: 'source', position: 7, version: 0 }
+const moving = {
+	id: 'moving',
+	boardColumnId: 'source',
+	position: 7,
+	version: 0,
+	priority: 'HIGH' as const,
+	assigneeId: 'assignee',
+	createdById: 'creator',
+}
 const dto: MoveTaskToColumn = {
 	fromColumnId: 'source',
 	toColumnId: 'target',
@@ -34,12 +42,13 @@ function createPrismaMock() {
 				.mockResolvedValue({ id: 'board', name: 'Development', columns: [] }),
 		},
 		boardColumn: { findMany: vi.fn().mockResolvedValue([source, target]) },
+		teamMember: { findUnique: vi.fn().mockResolvedValue({ id: 'assignee-member' }) },
 		task: {
 			findUnique: vi.fn().mockResolvedValue({ id: 'moving' }),
 			update: vi
 				.fn()
 				.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
-					id: 'moving',
+					...moving,
 					status: 'TODO',
 					...data,
 					version: moving.version + 1,
@@ -154,6 +163,115 @@ describe('BoardTasksService', () => {
 		expect(
 			await service.moveTask('team', 'project', 'moving', 'user', dto),
 		).toMatchObject({ boardColumnId: 'target', position: 0, status: 'TODO' })
+	})
+
+	it.each([
+		['MEMBER', 'creator'],
+		['ADMIN', 'user'],
+		['OWNER', 'user'],
+	])(
+		'allows %s/%s to change priority and column in one versioned update',
+		async (role, userId) => {
+			prisma.teamMember.findUnique.mockResolvedValue({ role })
+			expect(
+				await service.moveTask('team', 'project', 'moving', userId, {
+					...dto,
+					priority: 'LOW',
+				}),
+			).toMatchObject({ boardColumnId: 'target', priority: 'LOW', version: 1 })
+			expect(prisma.tx.task.update).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					where: expect.objectContaining({ version: 0 }),
+					data: expect.objectContaining({
+						boardColumnId: 'target',
+						priority: 'LOW',
+						version: { increment: 1 },
+					}),
+				}),
+			)
+		},
+	)
+
+	it.each(['new-assignee', null])(
+		'changes column and assignee %j together for a creator',
+		async (assigneeId) => {
+			expect(
+				await service.moveTask('team', 'project', 'moving', 'creator', {
+					...dto,
+					assigneeId,
+				}),
+			).toMatchObject({ boardColumnId: 'target', assigneeId, version: 1 })
+			expect(prisma.tx.task.update).toHaveBeenCalledTimes(1)
+			if (assigneeId) {
+				expect(prisma.tx.teamMember.findUnique).toHaveBeenCalledWith({
+					where: { teamId_userId: { teamId: 'team', userId: assigneeId } },
+					select: { id: true },
+				})
+			} else {
+				expect(prisma.tx.teamMember.findUnique).not.toHaveBeenCalled()
+			}
+		},
+	)
+
+	it.each([{ priority: 'LOW' as const }, { assigneeId: 'other' }, { assigneeId: null }])(
+		'rejects metadata changes %j by a member who did not create the task',
+		async (changes) => {
+			await expect(
+				service.moveTask('team', 'project', 'moving', 'user', { ...dto, ...changes }),
+			).rejects.toThrow(ForbiddenException)
+			expect(prisma.tx.task.update).not.toHaveBeenCalled()
+			expect(prisma.tx.$executeRaw).not.toHaveBeenCalled()
+		},
+	)
+
+	it('allows ordinary members to move with unchanged priority and assignee', async () => {
+		await service.moveTask('team', 'project', 'moving', 'user', {
+			...dto,
+			priority: moving.priority,
+			assigneeId: moving.assigneeId,
+		})
+		const data = prisma.tx.task.update.mock.calls[0][0].data
+		expect(data).not.toHaveProperty('priority')
+		expect(data).not.toHaveProperty('assigneeId')
+		expect(prisma.tx.teamMember.findUnique).not.toHaveBeenCalled()
+	})
+
+	it('rejects an assignee outside the team before writing any task or position', async () => {
+		prisma.tx.teamMember.findUnique.mockResolvedValue(null)
+		await expect(
+			service.moveTask('team', 'project', 'moving', 'creator', {
+				...dto,
+				priority: 'LOW',
+				assigneeId: 'outsider',
+			}),
+		).rejects.toThrow(BadRequestException)
+		expect(prisma.tx.task.update).not.toHaveBeenCalled()
+		expect(prisma.tx.$executeRaw).not.toHaveBeenCalled()
+	})
+
+	it('updates metadata when the column and position stay unchanged', async () => {
+		prisma.boardColumn.findMany.mockResolvedValue([source])
+		prisma.tx.boardColumn.findMany.mockResolvedValue([source])
+		prisma.tx.$queryRaw
+			.mockReset()
+			.mockResolvedValueOnce([{ id: 'board' }])
+			.mockResolvedValue([{ ...moving, position: 0 }])
+		expect(
+			await service.moveTask('team', 'project', 'moving', 'creator', {
+				...dto,
+				toColumnId: source.id,
+				priority: 'CRITICAL',
+				assigneeId: null,
+			}),
+		).toMatchObject({
+			boardColumnId: 'source',
+			position: 0,
+			priority: 'CRITICAL',
+			assigneeId: null,
+			version: 1,
+		})
+		expect(prisma.tx.task.update).toHaveBeenCalledTimes(1)
+		expect(prisma.tx.$executeRaw).not.toHaveBeenCalled()
 	})
 
 	it('synchronizes status only for a known system target', async () => {
@@ -296,6 +414,8 @@ describe('BoardTasksService', () => {
 			service.moveTask('team', 'project', 'moving', 'user', {
 				...dto,
 				expectedVersion: 8,
+				priority: 'LOW',
+				assigneeId: null,
 			}),
 		).rejects.toMatchObject({
 			response: {

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PrioritySchema } from '../../tasks/schemas/create-task.schema'
 import { columnPositionSchema } from './column.schema'
 
 export const moveTaskToColumnSchema = z
@@ -6,6 +7,8 @@ export const moveTaskToColumnSchema = z
 		fromColumnId: z.string().trim().min(1),
 		toColumnId: z.string().trim().min(1),
 		position: columnPositionSchema,
+		priority: PrioritySchema.optional(),
+		assigneeId: z.string().trim().min(1).nullable().optional(),
 		expectedVersion: z
 			.number()
 			.int()
