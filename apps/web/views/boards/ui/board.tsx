@@ -51,6 +51,7 @@ interface BoardProps {
 	columnActionsDisabled?: boolean
 	onDeleteColumn?: (columnId: string, targetColumnId: string) => Promise<void>
 	onReorderColumns?: (columnIds: string[]) => Promise<void>
+	dragScope?: string
 }
 
 const getColumnIdFromDroppableId = (droppableId: string) => {
@@ -123,6 +124,7 @@ function Board({
 	columnActionsDisabled = false,
 	onDeleteColumn,
 	onReorderColumns,
+	dragScope,
 }: BoardProps) {
 	const [isAddingColumn, setIsAddingColumn] = useState(false)
 	const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
@@ -188,6 +190,15 @@ function Board({
 	const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
 	const [previewColumns, setPreviewColumns] = useState(columns)
 	const latestPlacementRef = useRef<BoardTaskMoveInput | null>(null)
+	const previousDragScope = useRef(dragScope)
+	useEffect(() => {
+		if (previousDragScope.current === dragScope) return
+		previousDragScope.current = dragScope
+		setActiveTaskId(null)
+		setActiveColumnId(null)
+		setPreviewColumns(columns)
+		latestPlacementRef.current = null
+	}, [columns, dragScope])
 
 	useEffect(() => {
 		if (activeTaskId === null) {

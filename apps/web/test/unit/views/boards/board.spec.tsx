@@ -16,6 +16,32 @@ describe('Board', () => {
 
 	afterEach(cleanup)
 
+	it('смена фильтров отменяет начатое перетаскивание без запроса переноса', () => {
+		const move = vi.fn()
+		const columns = createBoardColumnsFixture()
+		const { rerender } = render(
+			<Board
+				columns={columns}
+				onOpenTask={() => undefined}
+				onMoveTask={move}
+				dragScope='all'
+			/>,
+		)
+		fireEvent.click(screen.getByTestId('drag-start'))
+		expect(screen.getByTestId('overlay-card-task-a')).toBeDefined()
+		rerender(
+			<Board
+				columns={columns}
+				onOpenTask={() => undefined}
+				onMoveTask={move}
+				dragScope='HIGH'
+			/>,
+		)
+		fireEvent.click(screen.getByTestId('drag-end-column'))
+		expect(move).not.toHaveBeenCalled()
+		expect(screen.queryByTestId('overlay-card-task-a')).toBeNull()
+	})
+
 	it.each([false, true])(
 		'сохраняет полный порядок колонок и восстанавливает его при ошибке (%s)',
 		async (fail) => {
