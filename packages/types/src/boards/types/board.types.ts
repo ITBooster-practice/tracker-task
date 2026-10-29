@@ -21,6 +21,7 @@ export interface BoardColumn {
 
 export interface BoardListItem extends Board {
 	columns: BoardColumn[]
+	taskCount: number
 }
 import type { Task } from '../../tasks/types/task.types'
 

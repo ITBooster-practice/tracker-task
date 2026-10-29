@@ -52,4 +52,7 @@ export class BoardResponseDto {
 export class BoardListItemResponseDto extends BoardResponseDto {
 	@ApiProperty({ type: [BoardColumnResponseDto] })
 	columns: BoardColumnResponseDto[]
+
+	@ApiProperty({ example: 0, minimum: 0 })
+	taskCount: number
 }

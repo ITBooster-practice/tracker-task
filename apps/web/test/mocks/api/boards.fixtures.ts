@@ -8,6 +8,7 @@ export function createBoardListItemFixture(
 	const view = createBoardViewFixture(overrides?.id, overrides?.projectId)
 	return {
 		...view.board,
+		taskCount: view.columns.reduce((total, column) => total + column.tasks.length, 0),
 		columns: view.columns.map((column) => ({
 			id: column.id,
 			boardId: column.boardId,

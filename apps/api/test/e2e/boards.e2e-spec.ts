@@ -142,6 +142,7 @@ describe('Boards (e2e)', () => {
 			projectId,
 			isDefault: true,
 			name: 'Основная доска',
+			taskCount: 0,
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 		})
@@ -162,9 +163,63 @@ describe('Boards (e2e)', () => {
 		).toBe(true)
 	})
 
+	it('считает задачи отдельно для каждой доски и обновляет счётчик после переноса и удаления', async () => {
+		const first = await createBoard('Первая')
+		const second = await createBoard('Вторая')
+		const task = await prisma.task.create({
+			data: {
+				title: 'Задача',
+				projectId,
+				boardColumnId: first.columns[0].id,
+				createdById: ownerId,
+			},
+		})
+		const counts = async () => {
+			const response = await request(server)
+				.get(path())
+				.set('Cookie', memberCookies)
+				.expect(200)
+			const boards = response.body as BoardListItem[]
+			expect(
+				boards.every((board) =>
+					board.columns.every((column) => !('_count' in column) && !('tasks' in column)),
+				),
+			).toBe(true)
+			return Object.fromEntries(boards.map((board) => [board.id, board.taskCount]))
+		}
+		expect(await counts()).toEqual({ [defaultBoardId]: 0, [first.id]: 1, [second.id]: 0 })
+		await request(server)
+			.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}/move`)
+			.set('Cookie', ownerCookies)
+			.send({
+				fromColumnId: first.columns[0].id,
+				toColumnId: second.columns[0].id,
+				position: 0,
+				expectedVersion: task.version,
+			})
+			.expect(200)
+		expect(await counts()).toEqual({ [defaultBoardId]: 0, [first.id]: 0, [second.id]: 1 })
+		const renamed = await request(server)
+			.patch(`${path()}/${second.id}`)
+			.set('Cookie', ownerCookies)
+			.send({ name: 'Переименована' })
+			.expect(200)
+		expect(renamed.body).toMatchObject({ taskCount: 1 })
+		await request(server)
+			.delete(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
+			.set('Cookie', ownerCookies)
+			.expect(204)
+		expect(await counts()).toEqual({ [defaultBoardId]: 0, [first.id]: 0, [second.id]: 0 })
+	})
+
 	it('creates a regular board and initializes editable columns without changing the default', async () => {
 		const board = await createBoard('  Поддержка  ')
-		expect(board).toMatchObject({ name: 'Поддержка', projectId, isDefault: false })
+		expect(board).toMatchObject({
+			name: 'Поддержка',
+			projectId,
+			isDefault: false,
+			taskCount: 0,
+		})
 		expect(board.columns).toHaveLength(4)
 		expect(
 			board.columns.every((column) => !column.isSystem && column.boardId === board.id),
@@ -488,6 +543,7 @@ describe('Boards (e2e)', () => {
 		})
 		expect(document.components?.schemas?.BoardListItemResponseDto).toMatchObject({
 			properties: {
+				taskCount: { type: 'number', minimum: 0 },
 				columns: {
 					type: 'array',
 					items: { $ref: expect.stringContaining('BoardColumnResponseDto') },
