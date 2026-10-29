@@ -11,10 +11,33 @@ const assigneeOptions = [
 	{ label: 'Без исполнителя', value: 'UNASSIGNED' },
 	{ label: 'Анна', value: 'anna' },
 ]
+const groupingProps = { grouping: 'none' as const, onGroupingChange: () => undefined }
 afterEach(cleanup)
+it('переключает группировку отдельно от сброса фильтров', () => {
+	const change = vi.fn()
+	render(
+		<BoardToolbar
+			{...groupingProps}
+			onGroupingChange={change}
+			filters={emptyProjectBoardFilters}
+			assigneeOptions={assigneeOptions}
+			onChange={() => undefined}
+			onReset={() => undefined}
+		/>,
+	)
+	fireEvent.change(screen.getByRole('combobox', { name: 'Группировка' }), {
+		target: { value: 'assignee' },
+	})
+	expect(change).toHaveBeenCalledExactlyOnceWith('assignee')
+	expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toHaveProperty(
+		'disabled',
+		true,
+	)
+})
 it('показывает связанные подписи полей и блокирует сброс без фильтров', () => {
 	render(
 		<BoardToolbar
+			{...groupingProps}
 			filters={emptyProjectBoardFilters}
 			assigneeOptions={assigneeOptions}
 			onChange={() => undefined}
@@ -34,6 +57,7 @@ it('передаёт изменения поиска, всех фильтров 
 		reset = vi.fn()
 	render(
 		<BoardToolbar
+			{...groupingProps}
 			filters={{ ...emptyProjectBoardFilters, priority: 'HIGH' }}
 			assigneeOptions={assigneeOptions}
 			onChange={change}
@@ -62,6 +86,7 @@ it('передаёт изменения поиска, всех фильтров 
 it('объясняет загрузку и ошибку исполнителей и позволяет повторить', () => {
 	const retry = vi.fn()
 	const props = {
+		...groupingProps,
 		filters: emptyProjectBoardFilters,
 		assigneeOptions,
 		onChange: () => undefined,

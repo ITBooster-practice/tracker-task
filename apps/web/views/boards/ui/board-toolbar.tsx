@@ -12,6 +12,7 @@ import {
 } from '@repo/ui'
 import { Search, X } from '@repo/ui/icons'
 
+import type { BoardGrouping } from '../model/board-swimlanes'
 import {
 	BOARD_FILTER_ALL,
 	BOARD_PRIORITY_LABELS,
@@ -25,6 +26,8 @@ import {
 import type { BoardTypeFilter } from '../model/types'
 
 interface BoardToolbarProps {
+	grouping: BoardGrouping
+	onGroupingChange: (value: BoardGrouping) => void
 	filters: ProjectBoardFilters
 	assigneeOptions: Array<{ label: string; value: string }>
 	onChange: (patch: Partial<ProjectBoardFilters>, replace?: boolean) => void
@@ -36,6 +39,8 @@ interface BoardToolbarProps {
 }
 
 export function BoardToolbar({
+	grouping,
+	onGroupingChange,
 	filters,
 	assigneeOptions,
 	onChange,
@@ -48,7 +53,7 @@ export function BoardToolbar({
 	const id = useId()
 	return (
 		<section aria-label='Фильтры доски' className='space-y-3'>
-			<div className='grid grid-cols-2 items-end gap-4 xl:grid-cols-[minmax(200px,1fr)_minmax(160px,220px)_minmax(140px,200px)_minmax(140px,200px)_auto]'>
+			<div className='grid grid-cols-2 items-end gap-4 xl:grid-cols-3 2xl:grid-cols-[minmax(200px,1fr)_minmax(160px,220px)_minmax(140px,200px)_minmax(140px,200px)_minmax(160px,200px)_auto]'>
 				<div className='col-span-2 min-w-0 space-y-2 xl:col-span-1'>
 					<Label htmlFor={`${id}-query`}>Поиск задач</Label>
 					<div className='relative min-w-0'>
@@ -123,6 +128,23 @@ export function BoardToolbar({
 									{option.label}
 								</SelectItem>
 							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<div className='min-w-0 space-y-2'>
+					<Label htmlFor={`${id}-grouping`}>Группировка</Label>
+					<Select
+						name='Группировка'
+						value={grouping}
+						onValueChange={(value) => onGroupingChange(value as BoardGrouping)}
+					>
+						<SelectTrigger id={`${id}-grouping`} className='w-full min-w-0'>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value='none'>Без группировки</SelectItem>
+							<SelectItem value='priority'>По приоритету</SelectItem>
+							<SelectItem value='assignee'>По исполнителю</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>

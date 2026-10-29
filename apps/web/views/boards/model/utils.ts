@@ -52,7 +52,7 @@ export const findBoardTask = (columns: BoardColumn[], taskId: string | null) => 
 
 export const moveTaskInColumns = (
 	columns: BoardColumn[],
-	{ taskId, toColumnId, toIndex }: BoardTaskMoveInput,
+	{ taskId, toColumnId, toIndex, priority, assigneeId }: BoardTaskMoveInput,
 ) => {
 	const sourceLocation = findTaskLocation(columns, taskId)
 
@@ -81,7 +81,13 @@ export const moveTaskInColumns = (
 
 	if (
 		sourceLocation.columnIndex === targetColumnIndex &&
-		adjustedIndex === sourceLocation.taskIndex
+		adjustedIndex === sourceLocation.taskIndex &&
+		(priority === undefined ||
+			columns[sourceLocation.columnIndex]!.tasks[sourceLocation.taskIndex]!.priority ===
+				priority) &&
+		(assigneeId === undefined ||
+			columns[sourceLocation.columnIndex]!.tasks[sourceLocation.taskIndex]!.assigneeId ===
+				assigneeId)
 	) {
 		return columns
 	}
@@ -106,6 +112,8 @@ export const moveTaskInColumns = (
 
 	nextTargetColumn.tasks.splice(adjustedIndex, 0, {
 		...task,
+		...(priority !== undefined && { priority }),
+		...(assigneeId !== undefined && { assigneeId }),
 		boardColumnId: toColumnId,
 		status: getBoardColumnTaskStatus(nextTargetColumn, task.status),
 	})

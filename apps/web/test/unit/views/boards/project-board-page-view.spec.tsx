@@ -42,10 +42,11 @@ import { ProjectBoardPageView } from '@/views/boards/ui/project-board-page-view'
 import { boardsKeys } from '@/shared/api/use-boards'
 import { tasksKeys } from '@/shared/api/use-tasks'
 
-const { boardState, formState, toastError, routerPush } = vi.hoisted(() => ({
+const { boardState, formState, toastError, toastInfo, routerPush } = vi.hoisted(() => ({
 	boardState: { current: null as ComponentProps<typeof Board> | null },
 	formState: { current: null as ComponentProps<typeof BoardTaskFormDialog> | null },
 	toastError: vi.fn(),
+	toastInfo: vi.fn(),
 	routerPush: vi.fn(),
 }))
 
@@ -64,7 +65,7 @@ vi.mock('next/link', () => ({
 	),
 }))
 vi.mock('@repo/ui', () => ({
-	toast: { error: toastError },
+	toast: { error: toastError, info: toastInfo },
 	cn: (...values: unknown[]) =>
 		values.filter((value) => typeof value === 'string').join(' '),
 	Button: ({
@@ -253,6 +254,7 @@ describe('ProjectBoardPageView', () => {
 		resetBoardHistoryMock()
 		resetBoardColumnsServiceMock()
 		toastError.mockReset()
+		toastInfo.mockReset()
 		routerPush.mockReset()
 		boardState.current = null
 		formState.current = null
@@ -278,6 +280,190 @@ describe('ProjectBoardPageView', () => {
 	afterEach(() => {
 		cleanup()
 		client.clear()
+	})
+
+	it('меняет группировку без записи задач и сохраняет фильтры в URL', async () => {
+		resetBoardHistoryMock(
+			'/teams/team-1/projects/project-1/board?priority=HIGH&extra=keep',
+		)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByRole('combobox', { name: 'Группировка' })
+		fireEvent.change(screen.getByRole('combobox', { name: 'Группировка' }), {
+			target: { value: 'priority' },
+		})
+		expect(boardState.current!.grouping).toBe('priority')
+		expect(boardState.current!.lanes!.map((lane) => lane.priority)).toEqual([
+			'CRITICAL',
+			'HIGH',
+			'MEDIUM',
+			'LOW',
+		])
+		fireEvent.click(screen.getByRole('button', { name: 'Сбросить фильтры' }))
+		expect(window.location.search).toBe('?extra=keep&groupBy=priority')
+		expect(tasksServiceMock.move).not.toHaveBeenCalled()
+		expect(tasksServiceMock.update).not.toHaveBeenCalled()
+		expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(1)
+	})
+
+	it('передаёт приоритет и полный индекс группы одним запросом переноса', async () => {
+		resetBoardHistoryMock(
+			'/teams/team-1/projects/project-1/board?groupBy=priority&type=BUG',
+		)
+		const view = movableView()
+		const task = view.columns[0]!.tasks[0]!
+		task.priority = 'HIGH'
+		task.type = 'BUG'
+		view.columns[1]!.tasks = ['hidden', 'anchor', 'tail'].map((id, index) => ({
+			...task,
+			id,
+			title: id,
+			boardColumnId: 'target',
+			position: index,
+			priority: id === 'anchor' ? 'LOW' : 'MEDIUM',
+			type: id === 'anchor' ? 'BUG' : 'TASK',
+		}))
+		tasksServiceMock.getBoard.mockResolvedValue(view)
+		tasksServiceMock.move.mockResolvedValue({
+			...task,
+			boardColumnId: 'target',
+			priority: 'LOW',
+			position: 1,
+			version: 8,
+		})
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		act(
+			() =>
+				void boardState.current!.onMoveTask!({
+					taskId: task.id,
+					toColumnId: 'target',
+					toIndex: 0,
+					priority: 'LOW',
+				}),
+		)
+		await waitFor(() =>
+			expect(tasksServiceMock.move).toHaveBeenCalledExactlyOnceWith(
+				'team-1',
+				'project-1',
+				task.id,
+				{
+					fromColumnId: view.columns[0]!.id,
+					toColumnId: 'target',
+					position: 1,
+					expectedVersion: 7,
+					priority: 'LOW',
+				},
+			),
+		)
+	})
+
+	it('сохраняет снятие исполнителя при неизменных колонке и позиции', async () => {
+		resetBoardHistoryMock('/teams/team-1/projects/project-1/board?groupBy=assignee')
+		const view = liveView(),
+			task = view.columns[0]!.tasks[0]!
+		task.assigneeId = 'anna'
+		tasksServiceMock.getBoard.mockResolvedValue(view)
+		tasksServiceMock.move.mockResolvedValue({ ...task, assigneeId: null, version: 8 })
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		act(
+			() =>
+				void boardState.current!.onMoveTask!({
+					taskId: task.id,
+					toColumnId: view.columns[0]!.id,
+					toIndex: 0,
+					assigneeId: null,
+				}),
+		)
+		await waitFor(() =>
+			expect(tasksServiceMock.move).toHaveBeenCalledExactlyOnceWith(
+				'team-1',
+				'project-1',
+				task.id,
+				{
+					fromColumnId: view.columns[0]!.id,
+					toColumnId: view.columns[0]!.id,
+					position: 0,
+					expectedVersion: 7,
+					assigneeId: null,
+				},
+			),
+		)
+	})
+
+	it.each([403, 409])(
+		'при ошибке группы %s откатывает метаданные и порядок',
+		async (statusCode) => {
+			const view = movableView()
+			view.columns[0]!.tasks[0]!.priority = 'HIGH'
+			const request = deferred<BoardTask>()
+			tasksServiceMock.move.mockReturnValue(request.promise)
+			tasksServiceMock.getBoard.mockResolvedValue(view)
+			render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+				wrapper: Wrapper,
+			})
+			await screen.findByText('Задача из API')
+			const key = tasksKeys.board('team-1', 'project-1', 'board-1')
+			act(
+				() =>
+					void boardState.current!.onMoveTask!({
+						taskId: view.columns[0]!.tasks[0]!.id,
+						toColumnId: 'target',
+						toIndex: 0,
+						priority: 'LOW',
+					}),
+			)
+			await waitFor(() =>
+				expect(client.getQueryData<BoardView>(key)!.columns[1]!.tasks[0]!.priority).toBe(
+					'LOW',
+				),
+			)
+			await act(async () => request.reject({ statusCode, message: 'Failed' }))
+			await waitFor(() => expect(client.getQueryData(key)).toEqual(view))
+			expect(toastError).toHaveBeenCalledWith(
+				statusCode === 403
+					? 'Недостаточно прав для изменения задачи.'
+					: 'Доска изменилась. Попробуйте переместить задачу ещё раз.',
+			)
+		},
+	)
+
+	it('сообщает, когда перенос в другую группу скрывает карточку активным фильтром', async () => {
+		resetBoardHistoryMock(
+			'/teams/team-1/projects/project-1/board?groupBy=priority&priority=HIGH',
+		)
+		const before = liveView()
+		before.columns[0]!.tasks[0]!.priority = 'HIGH'
+		const after = structuredClone(before)
+		after.columns[0]!.tasks[0]!.priority = 'LOW'
+		after.columns[0]!.tasks[0]!.version = 8
+		tasksServiceMock.getBoard.mockResolvedValueOnce(before).mockResolvedValue(after)
+		tasksServiceMock.move.mockResolvedValue(after.columns[0]!.tasks[0]!)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		act(
+			() =>
+				void boardState.current!.onMoveTask!({
+					taskId: before.columns[0]!.tasks[0]!.id,
+					toColumnId: before.columns[0]!.id,
+					toIndex: 0,
+					priority: 'LOW',
+				}),
+		)
+		await waitFor(() =>
+			expect(toastInfo).toHaveBeenCalledWith(
+				'Задача перемещена и скрыта текущими фильтрами.',
+			),
+		)
+		expect(window.location.search).toContain('priority=HIGH')
 	})
 
 	it('совмещает URL-фильтры с поиском, сохраняет полный кеш и сбрасывает только параметры отбора', async () => {
@@ -353,12 +539,13 @@ describe('ProjectBoardPageView', () => {
 		expect(boardState.current!.columns[1]!.tasks.map((task) => task.id)).toEqual([
 			'visible',
 		])
-		act(() =>
-			boardState.current!.onMoveTask!({
-				taskId: view.columns[0]!.tasks[0]!.id,
-				toColumnId: 'target',
-				toIndex: 0,
-			}),
+		act(
+			() =>
+				void boardState.current!.onMoveTask!({
+					taskId: view.columns[0]!.tasks[0]!.id,
+					toColumnId: 'target',
+					toIndex: 0,
+				}),
 		)
 		await waitFor(() =>
 			expect(tasksServiceMock.move).toHaveBeenCalledWith(
@@ -539,12 +726,13 @@ describe('ProjectBoardPageView', () => {
 		await act(async () => {
 			await expect(boardState.current!.onCreateColumn!('Дубль')).rejects.toThrow()
 		})
-		act(() =>
-			boardState.current!.onMoveTask!({
-				taskId: before.columns[0]!.tasks[0]!.id,
-				toColumnId: 'target',
-				toIndex: 0,
-			}),
+		act(
+			() =>
+				void boardState.current!.onMoveTask!({
+					taskId: before.columns[0]!.tasks[0]!.id,
+					toColumnId: 'target',
+					toIndex: 0,
+				}),
 		)
 		expect(tasksServiceMock.move).not.toHaveBeenCalled()
 		await act(async () => {
@@ -1006,7 +1194,7 @@ describe('ProjectBoardPageView', () => {
 		await act(async () => patch.resolve(moved))
 		await waitFor(() => expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(2))
 		expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('true')
-		act(() => boardState.current!.onMoveTask!(input))
+		act(() => void boardState.current!.onMoveTask!(input))
 		expect(tasksServiceMock.move).toHaveBeenCalledTimes(1)
 		await act(async () => refresh.resolve(after))
 		await waitFor(() =>
@@ -1016,12 +1204,13 @@ describe('ProjectBoardPageView', () => {
 		back.columns[0]!.tasks[0]!.version = 9
 		tasksServiceMock.getBoard.mockResolvedValueOnce(back)
 		tasksServiceMock.move.mockResolvedValueOnce(back.columns[0]!.tasks[0]!)
-		act(() =>
-			boardState.current!.onMoveTask!({
-				taskId: 'task-1',
-				toColumnId: 'board-1-column',
-				toIndex: 0,
-			}),
+		act(
+			() =>
+				void boardState.current!.onMoveTask!({
+					taskId: 'task-1',
+					toColumnId: 'board-1-column',
+					toIndex: 0,
+				}),
 		)
 		await waitFor(() =>
 			expect(tasksServiceMock.move).toHaveBeenLastCalledWith(
@@ -1054,12 +1243,13 @@ describe('ProjectBoardPageView', () => {
 				wrapper: Wrapper,
 			})
 			await screen.findByText('Задача из API')
-			act(() =>
-				boardState.current!.onMoveTask!({
-					taskId: 'task-1',
-					toColumnId: 'target',
-					toIndex: 0,
-				}),
+			act(
+				() =>
+					void boardState.current!.onMoveTask!({
+						taskId: 'task-1',
+						toColumnId: 'target',
+						toIndex: 0,
+					}),
 			)
 			await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
 			await act(async () => patch.reject({ statusCode, message: 'Move failed' }))
@@ -1109,12 +1299,13 @@ describe('ProjectBoardPageView', () => {
 			{ wrapper: Wrapper },
 		)
 		await screen.findByText('Задача из API')
-		act(() =>
-			boardState.current!.onMoveTask!({
-				taskId: 'task-1',
-				toColumnId: 'target',
-				toIndex: 0,
-			}),
+		act(
+			() =>
+				void boardState.current!.onMoveTask!({
+					taskId: 'task-1',
+					toColumnId: 'target',
+					toIndex: 0,
+				}),
 		)
 		await waitFor(() => expect(tasksServiceMock.move).toHaveBeenCalledTimes(1))
 		rerender(<ProjectBoardPageView teamId='team-2' projectId='project-2' />)

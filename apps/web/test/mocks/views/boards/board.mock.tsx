@@ -7,6 +7,7 @@ import type {
 } from '@/views/boards/model/types'
 
 interface DragStartMockEvent {
+	activatorEvent?: { type: string }
 	active: {
 		id: string
 	}
@@ -41,6 +42,7 @@ interface DndContextMockProps {
 }
 
 interface BoardColumnMockProps {
+	headerOnly?: boolean
 	onDelete?: () => void
 	dragHandle?: React.ReactNode
 	onEditTitle?: () => void
@@ -187,6 +189,7 @@ vi.mock('@dnd-kit/core', () => {
 		TouchSensor: 'TouchSensor',
 		KeyboardSensor: 'KeyboardSensor',
 		closestCenter: 'closestCenter',
+		pointerWithin: 'pointerWithin',
 		closestCorners: 'closestCorners',
 		useSensor: (sensor: unknown, options?: unknown) => {
 			boardMockState.sensorCalls.push({ options, sensor })
@@ -237,14 +240,33 @@ vi.mock('@/views/boards/ui/board-column', () => ({
 							Переименовать
 						</button>
 					))}
-				{props.column.tasks.map((task) => (
-					<button key={task.id} type='button' onClick={() => props.onOpenTask(task.id)}>
-						{task.title}
-					</button>
-				))}
+				{!props.headerOnly &&
+					props.column.tasks.map((task) => (
+						<button key={task.id} type='button' onClick={() => props.onOpenTask(task.id)}>
+							{task.title}
+						</button>
+					))}
 			</section>
 		)
 	},
+}))
+
+vi.mock('@/views/boards/ui/board-column-tasks', () => ({
+	BoardColumnTasks: ({
+		column,
+		lane,
+		onOpenTask,
+	}: React.ComponentProps<
+		typeof import('@/views/boards/ui/board-column-tasks').BoardColumnTasks
+	>) => (
+		<div role='group' aria-label={`${lane?.label}: ${column.title}`}>
+			{column.tasks.map((task) => (
+				<button key={task.id} onClick={() => onOpenTask(task.id)}>
+					{task.title}
+				</button>
+			))}
+		</div>
+	),
 }))
 
 vi.mock('@/views/boards/ui/board-card', () => ({

@@ -17,6 +17,23 @@ afterEach(() => {
 	cleanup()
 	vi.restoreAllMocks()
 })
+
+it('сохраняет режим отдельно от фильтров и восстанавливает его через URL', async () => {
+	const { result } = renderHook(() => useProjectBoardFilters())
+	act(() => {
+		result.current.setGrouping('priority')
+		result.current.update({ priority: 'HIGH' })
+	})
+	expect(result.current.grouping).toBe('priority')
+	act(() => result.current.reset())
+	expect(result.current.grouping).toBe('priority')
+	expect(window.location.search).toContain('groupBy=priority')
+	act(() => result.current.setGrouping('assignee'))
+	act(() => window.history.back())
+	await waitFor(() => expect(result.current.grouping).toBe('priority'))
+	act(() => result.current.setGrouping('none'))
+	expect(new URLSearchParams(window.location.search).has('groupBy')).toBe(false)
+})
 it('восстанавливает фильтры из URL и сохраняет boardId и другие параметры при быстрых изменениях', () => {
 	const { result } = renderHook(() => useProjectBoardFilters())
 	act(() => {

@@ -6,6 +6,7 @@ import {
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { boardCellId, buildBoardLanes } from '@/views/boards/model/board-swimlanes'
 import type { BoardTaskMoveInput } from '@/views/boards/model/types'
 import { Board } from '@/views/boards/ui/board'
 
@@ -15,6 +16,71 @@ describe('Board', () => {
 	})
 
 	afterEach(cleanup)
+
+	it('группы содержат уникальные карточки, а действия шапок не повторяются', () => {
+		const columns = createBoardColumnsFixture(),
+			lanes = buildBoardLanes('priority', columns, [])
+		render(
+			<Board
+				columns={columns}
+				grouping='priority'
+				lanes={lanes}
+				onOpenTask={() => undefined}
+				onRenameColumn={async () => undefined}
+				onCreateColumn={async () => undefined}
+			/>,
+		)
+		expect(screen.getAllByText('Проверить карточку задачи')).toHaveLength(1)
+		expect(screen.getAllByRole('button', { name: /Переименовать колонку/ })).toHaveLength(
+			2,
+		)
+		expect(screen.getAllByRole('button', { name: 'Добавить колонку' })).toHaveLength(1)
+		for (const lane of lanes)
+			expect(screen.getByRole('heading', { name: lane.label })).toBeDefined()
+	})
+
+	it.each([false, true])(
+		'перенос в другую группу задаёт метаданные, drop снаружи не сохраняет (%s)',
+		(outside) => {
+			const columns = createBoardColumnsFixture(),
+				lanes = buildBoardLanes('priority', columns, []),
+				move = vi.fn()
+			const low = lanes.find((lane) => lane.priority === 'LOW')!
+			render(
+				<Board
+					columns={columns}
+					grouping='priority'
+					lanes={lanes}
+					onOpenTask={() => undefined}
+					onMoveTask={move}
+				/>,
+			)
+			act(() =>
+				getBoardUnitMockState().dndContextProps!.onDragStart({
+					active: { id: 'task-a' },
+				}),
+			)
+			const event = {
+				active: { id: 'task-a', rect: { current: { translated: null } } },
+				over: { id: boardCellId(low, 'DONE'), rect: { top: 0, height: 100 } },
+			}
+			act(() => getBoardUnitMockState().dndContextProps!.onDragOver(event))
+			act(() =>
+				getBoardUnitMockState().dndContextProps!.onDragEnd({
+					...event,
+					over: outside ? null : event.over,
+				}),
+			)
+			if (outside) expect(move).not.toHaveBeenCalled()
+			else
+				expect(move).toHaveBeenCalledExactlyOnceWith({
+					taskId: 'task-a',
+					toColumnId: 'DONE',
+					toIndex: 0,
+					priority: 'LOW',
+				})
+		},
+	)
 
 	it('смена фильтров отменяет начатое перетаскивание без запроса переноса', () => {
 		const move = vi.fn()
