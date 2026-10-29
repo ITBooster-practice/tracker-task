@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 
 import {
 	Button,
@@ -20,262 +20,236 @@ import {
 	Textarea,
 } from '@repo/ui'
 
-import { BOARD_PRIORITY_LABELS } from '../model/constants'
+import { BOARD_PRIORITY_LABELS, BOARD_TYPE_OPTIONS } from '../model/constants'
 import type {
 	BoardAssignee,
 	BoardColumn,
-	BoardColumnId,
 	BoardTask,
 	BoardTaskFormValues,
 } from '../model/types'
 
-type BoardTaskFormMode = 'create' | 'edit'
-
 interface BoardTaskFormDialogProps {
 	open: boolean
-	mode: BoardTaskFormMode
+	mode: 'create' | 'edit'
 	task: BoardTask | null
 	columns: readonly Pick<BoardColumn, 'id' | 'key' | 'title'>[]
 	assignees: BoardAssignee[]
+	showTags?: boolean
+	allowColumnChange?: boolean
+	isPending?: boolean
+	error?: string | null
+	assigneesPending?: boolean
+	assigneesError?: boolean
+	onRetryAssignees?: () => void
 	onOpenChange: (open: boolean) => void
 	onSubmit: (values: BoardTaskFormValues) => void
 }
 
-interface BoardTaskFormState {
-	title: string
-	description: string
-	boardColumnId: BoardColumnId
-	priority: BoardTask['priority']
-	assigneeId: string
-	dueDate: string
-	tags: string
-}
-
-const DEFAULT_TASK_FORM_STATE: BoardTaskFormState = {
-	title: '',
-	description: '',
-	boardColumnId: '',
-	priority: 'MEDIUM',
-	assigneeId: '',
-	dueDate: '',
-	tags: '',
-}
-
-const TASK_FORM_TEXT = {
-	createTitle: 'Создать задачу',
-	editTitle: 'Редактировать задачу',
-	createDescription: 'Новая задача будет добавлена на доску локально.',
-	editDescription: 'Изменения применятся к карточке сразу после сохранения.',
-	createSubmit: 'Создать',
-	editSubmit: 'Сохранить',
-	cancel: 'Отмена',
-	title: 'Название',
-	description: 'Описание',
-	status: 'Колонка',
-	priority: 'Приоритет',
-	assignee: 'Исполнитель',
-	dueDate: 'Дедлайн',
-	tags: 'Теги',
-} as const
-
-const TASK_PRIORITY_OPTIONS = (
-	Object.entries(BOARD_PRIORITY_LABELS) as Array<[BoardTask['priority'], string]>
-).map(([value, label]) => ({
-	value,
-	label,
-}))
-
-const getInitialFormState = (
-	task: BoardTask | null,
-	assignees: BoardAssignee[],
-	columns: BoardTaskFormDialogProps['columns'],
-): BoardTaskFormState => {
-	if (task) {
-		return {
-			title: task.title,
-			description: task.description ?? '',
-			boardColumnId: task.boardColumnId,
-			priority: task.priority,
-			assigneeId: task.assigneeId ?? '',
-			dueDate: task.dueDate?.slice(0, 10) ?? '',
-			tags: task.tags.join(', '),
-		}
-	}
-
-	return {
-		...DEFAULT_TASK_FORM_STATE,
-		boardColumnId:
-			columns.find((column) => column.key === 'TODO')?.id ?? columns[0]?.id ?? '',
-		assigneeId: assignees[0]?.id ?? '',
-	}
-}
-
-const normalizeTags = (value: string) =>
-	value
-		.split(',')
-		.map((tag) => tag.trim())
-		.filter(Boolean)
-
-function BoardTaskFormDialog({
+function BoardTaskForm({
 	open,
 	mode,
 	task,
 	columns,
 	assignees,
+	showTags = true,
+	allowColumnChange = true,
+	isPending = false,
+	error,
+	assigneesPending = false,
+	assigneesError = false,
+	onRetryAssignees,
 	onOpenChange,
 	onSubmit,
 }: BoardTaskFormDialogProps) {
-	const [formState, setFormState] = useState<BoardTaskFormState>(() =>
-		getInitialFormState(task, assignees, columns),
-	)
-
-	useEffect(() => {
-		if (!open) {
-			return
-		}
-
-		setFormState(getInitialFormState(task, assignees, columns))
-	}, [assignees, columns, open, task])
-
+	const [formState, setFormState] = useState(() => ({
+		title: task?.title ?? '',
+		type: task?.type ?? 'TASK',
+		description: task?.description ?? '',
+		boardColumnId:
+			task?.boardColumnId ??
+			columns.find((column) => column.key === 'TODO')?.id ??
+			columns[0]?.id ??
+			'',
+		priority: task?.priority ?? 'MEDIUM',
+		assigneeId: task?.assigneeId ?? '',
+		dueDate: task?.dueDate?.slice(0, 10) ?? '',
+		tags: task?.tags.join(', ') ?? '',
+	}))
 	const isCreateMode = mode === 'create'
 	const isSubmitDisabled =
-		formState.title.trim().length === 0 ||
+		isPending ||
+		!formState.title.trim() ||
+		formState.title.trim().length > 255 ||
+		formState.description.length > 5000 ||
 		!columns.some((column) => column.id === formState.boardColumnId)
-
-	const selectedStatusLabel = useMemo(
-		() => columns.find((column) => column.id === formState.boardColumnId)?.title,
-		[columns, formState.boardColumnId],
-	)
-	const selectedPriorityLabel = BOARD_PRIORITY_LABELS[formState.priority]
+	const selectedColumnLabel = columns.find(
+		(column) => column.id === formState.boardColumnId,
+	)?.title
 	const selectedAssigneeLabel =
 		assignees.find((assignee) => assignee.id === formState.assigneeId)?.name ??
-		'Без исполнителя'
+		(task?.assigneeId === formState.assigneeId ? task?.assignee?.name : undefined) ??
+		(formState.assigneeId ? 'Назначенный участник' : 'Без исполнителя')
 
-	const updateField = <Field extends keyof BoardTaskFormState>(
+	const updateField = <Field extends keyof typeof formState>(
 		field: Field,
-		value: BoardTaskFormState[Field],
-	) => {
-		setFormState((currentState) => ({
-			...currentState,
-			[field]: value,
-		}))
-	}
+		value: (typeof formState)[Field],
+	) => setFormState((current) => ({ ...current, [field]: value }))
 
 	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
-
-		if (isSubmitDisabled) {
-			return
-		}
-
+		if (isSubmitDisabled) return
 		onSubmit({
+			...formState,
 			title: formState.title.trim(),
 			description: formState.description.trim(),
-			boardColumnId: formState.boardColumnId,
-			priority: formState.priority,
-			assigneeId: formState.assigneeId,
-			dueDate: formState.dueDate,
-			tags: normalizeTags(formState.tags),
+			tags: formState.tags
+				.split(',')
+				.map((tag) => tag.trim())
+				.filter(Boolean),
 		})
 	}
 
 	return (
-		<DialogDrawer open={open} onOpenChange={onOpenChange}>
-			<DialogDrawerContent className='max-h-[min(760px,calc(100vh-1.5rem))] overflow-hidden rounded-[24px] border-border bg-card p-0 shadow-[0_30px_90px_-48px_rgba(15,23,42,0.8)] sm:max-w-[680px]'>
+		<DialogDrawer
+			open={open}
+			onOpenChange={(nextOpen) => {
+				if (!isPending) onOpenChange(nextOpen)
+			}}
+		>
+			<DialogDrawerContent className='max-h-[min(760px,calc(100dvh-2rem))] overflow-hidden rounded-[var(--radius-surface)] border-border bg-card p-0 shadow-lg sm:max-w-[680px]'>
 				<form
 					onSubmit={handleSubmit}
 					className='grid max-h-[inherit] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden'
 				>
 					<DialogDrawerHeader className='px-5 pt-5 pb-3 text-left sm:px-6'>
-						<DialogDrawerTitle className='text-[20px] font-semibold tracking-tight'>
-							{isCreateMode ? TASK_FORM_TEXT.createTitle : TASK_FORM_TEXT.editTitle}
+						<DialogDrawerTitle className='text-lg leading-7 font-semibold'>
+							{isCreateMode ? 'Создать задачу' : 'Редактировать задачу'}
 						</DialogDrawerTitle>
-						<DialogDrawerDescription className='text-[13px] leading-5'>
+						<DialogDrawerDescription className='text-sm leading-5'>
 							{isCreateMode
-								? TASK_FORM_TEXT.createDescription
-								: TASK_FORM_TEXT.editDescription}
+								? 'Новая задача появится в выбранной колонке основной доски.'
+								: 'Изменения сохранятся в проекте.'}
 						</DialogDrawerDescription>
 					</DialogDrawerHeader>
-
-					<div className='min-h-0 space-y-4 overflow-y-auto px-5 py-2 sm:px-6'>
+					<fieldset
+						disabled={isPending}
+						aria-busy={isPending}
+						className='min-h-0 space-y-4 overflow-y-auto px-5 py-2 sm:px-6'
+					>
 						<div className='space-y-2'>
-							<Label htmlFor='board-task-title'>{TASK_FORM_TEXT.title}</Label>
+							<Label htmlFor='board-task-title'>Название</Label>
 							<Input
 								id='board-task-title'
+								required
+								maxLength={255}
 								value={formState.title}
 								onChange={(event) => updateField('title', event.target.value)}
-								placeholder='Например, подготовить релизный checklist'
+								placeholder='Например, подготовить релиз'
 							/>
 						</div>
-
 						<div className='space-y-2'>
-							<Label htmlFor='board-task-description'>{TASK_FORM_TEXT.description}</Label>
+							<Label htmlFor='board-task-description'>Описание</Label>
 							<Textarea
 								id='board-task-description'
+								maxLength={5000}
 								value={formState.description}
 								onChange={(event) => updateField('description', event.target.value)}
 								rows={4}
-								placeholder='Кратко опишите контекст и ожидаемый результат'
-								className='min-h-[112px] resize-y'
+								placeholder='Контекст и ожидаемый результат'
+								className='min-h-28 resize-y'
 							/>
 						</div>
-
 						<div className='grid gap-4 sm:grid-cols-2'>
+							{allowColumnChange && (
+								<div className='space-y-2'>
+									<Label htmlFor='board-task-column'>Колонка</Label>
+									<Select
+										value={formState.boardColumnId}
+										onValueChange={(value) => updateField('boardColumnId', value)}
+									>
+										<SelectTrigger id='board-task-column'>
+											<SelectValue placeholder={selectedColumnLabel} />
+										</SelectTrigger>
+										<SelectContent>
+											{columns.map((column) => (
+												<SelectItem key={column.id} value={column.id}>
+													{column.title}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							)}
 							<div className='space-y-2'>
-								<Label>{TASK_FORM_TEXT.status}</Label>
+								<Label htmlFor='board-task-type'>Тип задачи</Label>
 								<Select
-									value={formState.boardColumnId}
+									value={formState.type}
 									onValueChange={(value) =>
-										updateField('boardColumnId', value as BoardColumnId)
+										updateField('type', value as BoardTask['type'])
 									}
 								>
-									<SelectTrigger>
-										<SelectValue placeholder={selectedStatusLabel} />
+									<SelectTrigger id='board-task-type'>
+										<SelectValue
+											placeholder={
+												BOARD_TYPE_OPTIONS.find(
+													(option) => option.value === formState.type,
+												)?.label
+											}
+										/>
 									</SelectTrigger>
 									<SelectContent>
-										{columns.map((column) => (
-											<SelectItem key={column.id} value={column.id}>
-												{column.title}
-											</SelectItem>
-										))}
+										{BOARD_TYPE_OPTIONS.filter((option) => option.value !== 'ALL').map(
+											(option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											),
+										)}
 									</SelectContent>
 								</Select>
 							</div>
-
 							<div className='space-y-2'>
-								<Label>{TASK_FORM_TEXT.priority}</Label>
+								<Label htmlFor='board-task-priority'>Приоритет</Label>
 								<Select
 									value={formState.priority}
 									onValueChange={(value) =>
 										updateField('priority', value as BoardTask['priority'])
 									}
 								>
-									<SelectTrigger>
-										<SelectValue placeholder={selectedPriorityLabel} />
+									<SelectTrigger id='board-task-priority'>
+										<SelectValue
+											placeholder={BOARD_PRIORITY_LABELS[formState.priority]}
+										/>
 									</SelectTrigger>
 									<SelectContent>
-										{TASK_PRIORITY_OPTIONS.map((priority) => (
-											<SelectItem key={priority.value} value={priority.value}>
-												{priority.label}
+										{Object.entries(BOARD_PRIORITY_LABELS).map(([value, label]) => (
+											<SelectItem key={value} value={value}>
+												{label}
 											</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
 							</div>
-
 							<div className='space-y-2'>
-								<Label>{TASK_FORM_TEXT.assignee}</Label>
+								<Label htmlFor='board-task-assignee'>Исполнитель</Label>
 								<Select
+									disabled={assigneesPending || assigneesError}
 									value={formState.assigneeId || '__unassigned__'}
 									onValueChange={(value) =>
 										updateField('assigneeId', value === '__unassigned__' ? '' : value)
 									}
 								>
-									<SelectTrigger>
+									<SelectTrigger id='board-task-assignee'>
 										<SelectValue placeholder={selectedAssigneeLabel} />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value='__unassigned__'>Без исполнителя</SelectItem>
+										{formState.assigneeId &&
+											!assignees.some((item) => item.id === formState.assigneeId) && (
+												<SelectItem value={formState.assigneeId}>
+													{selectedAssigneeLabel}
+												</SelectItem>
+											)}
 										{assignees.map((assignee) => (
 											<SelectItem key={assignee.id} value={assignee.id}>
 												{assignee.name}
@@ -284,9 +258,8 @@ function BoardTaskFormDialog({
 									</SelectContent>
 								</Select>
 							</div>
-
 							<div className='space-y-2'>
-								<Label htmlFor='board-task-dueDate'>{TASK_FORM_TEXT.dueDate}</Label>
+								<Label htmlFor='board-task-dueDate'>Дедлайн</Label>
 								<Input
 									id='board-task-dueDate'
 									type='date'
@@ -295,30 +268,59 @@ function BoardTaskFormDialog({
 								/>
 							</div>
 						</div>
-
-						<div className='space-y-2'>
-							<Label htmlFor='board-task-tags'>{TASK_FORM_TEXT.tags}</Label>
-							<Input
-								id='board-task-tags'
-								value={formState.tags}
-								onChange={(event) => updateField('tags', event.target.value)}
-								placeholder='ui, backend, urgent'
-							/>
-						</div>
-					</div>
-
+						{assigneesPending && (
+							<p role='status' className='text-sm text-muted-foreground'>
+								Загружаем участников…
+							</p>
+						)}
+						{assigneesError && (
+							<p role='alert' className='text-sm text-destructive'>
+								Не удалось загрузить участников.{' '}
+								<Button type='button' variant='link' onClick={onRetryAssignees}>
+									Повторить
+								</Button>
+							</p>
+						)}
+						{showTags && (
+							<div className='space-y-2'>
+								<Label htmlFor='board-task-tags'>Теги</Label>
+								<Input
+									id='board-task-tags'
+									value={formState.tags}
+									onChange={(event) => updateField('tags', event.target.value)}
+									placeholder='ui, backend, urgent'
+								/>
+							</div>
+						)}
+						{error && (
+							<p role='alert' className='text-sm text-destructive'>
+								{error}
+							</p>
+						)}
+					</fieldset>
 					<DialogDrawerFooter className='border-t border-border px-5 py-4 sm:px-6'>
-						<Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
-							{TASK_FORM_TEXT.cancel}
+						<Button
+							type='button'
+							variant='outline'
+							disabled={isPending}
+							onClick={() => onOpenChange(false)}
+						>
+							Отмена
 						</Button>
-						<Button type='submit' disabled={isSubmitDisabled}>
-							{isCreateMode ? TASK_FORM_TEXT.createSubmit : TASK_FORM_TEXT.editSubmit}
+						<Button type='submit' disabled={Boolean(isSubmitDisabled)}>
+							{isPending ? 'Сохраняем…' : isCreateMode ? 'Создать' : 'Сохранить'}
 						</Button>
 					</DialogDrawerFooter>
 				</form>
 			</DialogDrawerContent>
 		</DialogDrawer>
 	)
+}
+
+function BoardTaskFormDialog(props: BoardTaskFormDialogProps) {
+	return props.open ? (
+		<BoardTaskForm key={props.task?.id ?? props.mode} {...props} />
+	) : null
 }
 
 export { BoardTaskFormDialog }

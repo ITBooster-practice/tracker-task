@@ -72,6 +72,7 @@ export interface BoardTaskMoveInput {
 
 export interface BoardTaskFormValues {
 	title: string
+	type?: TaskType
 	description: string
 	boardColumnId: BoardColumnId
 	priority: Priority

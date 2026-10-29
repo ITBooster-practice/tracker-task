@@ -97,7 +97,7 @@ const createBoardTaskFromValues = (
 		key: `${BOARD_TASK_KEY_PREFIX}-${taskNumber}`,
 		title: values.title,
 		description: values.description,
-		type: DEFAULT_TASK_TYPE,
+		type: values.type ?? DEFAULT_TASK_TYPE,
 		priority: values.priority,
 		boardColumnId: values.boardColumnId,
 		tags: values.tags,
@@ -278,6 +278,7 @@ export const useBoardStore = create<BoardStoreState>((set) => ({
 				(task) => ({
 					...task,
 					title: values.title,
+					type: values.type ?? task.type,
 					description: values.description,
 					priority: values.priority,
 					boardColumnId: values.boardColumnId,

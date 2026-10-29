@@ -102,7 +102,7 @@ describe('BoardTaskFormDialog', () => {
 		})
 		fireEvent.click(screen.getByTestId('select-TODO-change'))
 		fireEvent.click(screen.getByTestId('select-MEDIUM-change'))
-		fireEvent.click(screen.getByTestId('select-alexey-change'))
+		fireEvent.click(screen.getByTestId('select-__unassigned__-change'))
 		fireEvent.change(screen.getByLabelText('Дедлайн'), {
 			target: { value: '2026-05-10' },
 		})
@@ -113,6 +113,7 @@ describe('BoardTaskFormDialog', () => {
 
 		expect(submittedValues).toEqual({
 			title: 'Новая задача',
+			type: 'TASK',
 			description: 'Описание задачи',
 			boardColumnId: 'IN_REVIEW',
 			priority: 'HIGH',
@@ -160,6 +161,52 @@ describe('BoardTaskFormDialog', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
 		expect(isOpen).toBe(false)
+	})
+
+	it('сохраняет черновик при обновлении участников и доски, показывает ошибку и блокирует повторную отправку', () => {
+		let submitCalls = 0
+		let closeCalls = 0
+		const props = {
+			open: true,
+			mode: 'create' as const,
+			task: null,
+			columns,
+			assignees: [],
+			showTags: false,
+			onOpenChange: () => {
+				closeCalls += 1
+			},
+			onSubmit: () => {
+				submitCalls += 1
+			},
+		}
+		const { rerender } = render(<BoardTaskFormDialog {...props} />)
+		fireEvent.change(screen.getByLabelText('Название'), {
+			target: { value: 'Мой черновик' },
+		})
+		rerender(
+			<BoardTaskFormDialog
+				{...props}
+				columns={[...columns]}
+				assignees={assignees}
+				error='Сервер недоступен'
+			/>,
+		)
+		expect(screen.getByDisplayValue('Мой черновик')).toBeDefined()
+		expect(screen.getByRole('alert').textContent).toBe('Сервер недоступен')
+		expect(screen.queryByLabelText('Теги')).toBeNull()
+		rerender(<BoardTaskFormDialog {...props} isPending />)
+		fireEvent.submit(screen.getByLabelText('Название').closest('form')!)
+		fireEvent.click(screen.getByTestId('close-form'))
+		expect(screen.getByRole('button', { name: 'Сохраняем…' })).toHaveProperty(
+			'disabled',
+			true,
+		)
+		expect(submitCalls).toBe(0)
+		expect(closeCalls).toBe(0)
+		rerender(<BoardTaskFormDialog {...props} open={false} />)
+		rerender(<BoardTaskFormDialog {...props} />)
+		expect(screen.getByLabelText('Название')).toHaveProperty('value', '')
 	})
 
 	it('не отправляет форму без обязательных полей', () => {

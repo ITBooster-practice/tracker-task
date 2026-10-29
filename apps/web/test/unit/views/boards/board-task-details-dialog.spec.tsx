@@ -25,6 +25,7 @@ function setClipboardWriteMock(writeText: (value: string) => Promise<void>) {
 function renderDialog({
 	commentDraft = '',
 	readOnly = false,
+	showActivity,
 	isSubmitDisabled = false,
 	onCommentDraftChange = () => undefined,
 	onDeleteTask = () => undefined,
@@ -37,6 +38,7 @@ function renderDialog({
 }: {
 	commentDraft?: string
 	readOnly?: boolean
+	showActivity?: boolean
 	isSubmitDisabled?: boolean
 	onCommentDraftChange?: (value: string) => void
 	onDeleteTask?: (task: BoardTask) => void
@@ -48,6 +50,7 @@ function renderDialog({
 	return render(
 		<BoardTaskDetailsDialog
 			readOnly={readOnly}
+			showActivity={showActivity}
 			task={task}
 			commentDraft={commentDraft}
 			isSubmitDisabled={isSubmitDisabled}
@@ -73,6 +76,15 @@ describe('BoardTaskDetailsDialog', () => {
 		expect(screen.getByText('Описание задачи для unit-теста board UI.')).toBeDefined()
 		expect(screen.queryByRole('button', { name: 'Редактировать' })).toBeNull()
 		expect(screen.queryByRole('button', { name: 'Удалить задачу' })).toBeNull()
+		expect(screen.queryByRole('button', { name: /Комментарии/ })).toBeNull()
+		expect(screen.queryByRole('button', { name: /История/ })).toBeNull()
+		expect(screen.queryByLabelText('Новый комментарий')).toBeNull()
+	})
+
+	it('показывает действия с API-задачей без незагруженных комментариев и истории', () => {
+		renderDialog({ showActivity: false })
+		expect(screen.getByRole('button', { name: 'Редактировать' })).toBeDefined()
+		expect(screen.getByRole('button', { name: 'Удалить задачу' })).toBeDefined()
 		expect(screen.queryByRole('button', { name: /Комментарии/ })).toBeNull()
 		expect(screen.queryByRole('button', { name: /История/ })).toBeNull()
 		expect(screen.queryByLabelText('Новый комментарий')).toBeNull()

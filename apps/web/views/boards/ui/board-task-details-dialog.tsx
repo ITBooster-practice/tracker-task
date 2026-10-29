@@ -35,15 +35,8 @@ import type { BoardTask } from '../model/types'
 
 const boardTaskDialogContentClassName = (isDesktop: boolean) =>
 	isDesktop
-		? "max-h-[min(720px,calc(100vh-1.5rem))] w-[min(980px,calc(100vw-1.5rem))] max-w-[980px] sm:max-w-[980px] overflow-hidden rounded-[24px] border border-white/10 bg-[#0b1220] p-0 text-slate-50 shadow-[0_48px_140px_-52px_rgba(2,6,23,0.95)] [&_[data-slot='dialog-close']]:top-4 [&_[data-slot='dialog-close']]:right-4 [&_[data-slot='dialog-close']]:border-0 [&_[data-slot='dialog-close']]:bg-transparent [&_[data-slot='dialog-close']]:p-0 [&_[data-slot='dialog-close']]:text-slate-400 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-none [&_[data-slot='dialog-close']]:hover:bg-transparent [&_[data-slot='dialog-close']]:hover:text-white"
-		: 'max-h-[80vh] overflow-hidden rounded-t-[24px] border border-white/10 bg-[#0b1220] p-0 text-slate-50'
-
-const BOARD_TASK_PRIORITY_TEXT_CLASS_NAMES = {
-	LOW: 'text-slate-300',
-	MEDIUM: 'text-sky-400',
-	HIGH: 'text-amber-300',
-	CRITICAL: 'text-rose-400',
-} as const
+		? 'max-h-[min(720px,calc(100dvh-2rem))] w-full overflow-hidden rounded-[var(--radius-surface)] border-border bg-card p-0 text-card-foreground shadow-lg sm:max-w-[980px]'
+		: 'max-h-[80dvh] overflow-hidden border-border bg-card p-0 text-card-foreground'
 
 type BoardTaskDialogPanel = 'comments' | 'history'
 
@@ -52,6 +45,8 @@ interface BoardTaskDetailsDialogProps {
 	commentDraft?: string
 	isSubmitDisabled?: boolean
 	readOnly?: boolean
+	showActivity?: boolean
+	actionsDisabled?: boolean
 	onCommentDraftChange?: (value: string) => void
 	onDeleteTask?: (task: BoardTask) => void
 	onEditTask?: (task: BoardTask) => void
@@ -64,6 +59,8 @@ function BoardTaskDetailsDialog({
 	commentDraft = '',
 	isSubmitDisabled = true,
 	readOnly = false,
+	showActivity = !readOnly,
+	actionsDisabled = false,
 	onCommentDraftChange,
 	onDeleteTask,
 	onEditTask,
@@ -100,25 +97,22 @@ function BoardTaskDetailsDialog({
 				{task ? (
 					<form
 						onSubmit={onSubmitComment}
-						className='grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden'
+						className='grid max-h-[inherit] min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden'
 					>
 						<DialogDrawerHeader className='relative gap-0 px-5 pt-4 pb-0 sm:px-6 lg:px-7 lg:pt-5'>
 							<div className='pr-14 sm:pr-18'>
 								<div className='flex flex-wrap items-center gap-2.5'>
-									<TaskTypeBadge
-										type={task.type}
-										className='h-6 rounded-full border-white/10 bg-sky-500/18 px-2.5 text-[10px] font-semibold text-sky-100'
-									/>
-									<span className='text-[12px] font-medium tracking-[0.04em] text-slate-400'>
+									<TaskTypeBadge type={task.type} className='text-xs' />
+									<span className='text-xs font-medium break-all text-muted-foreground'>
 										{task.key}
 									</span>
 								</div>
 
-								<DialogDrawerTitle className='mt-3 text-[18px] leading-[1.18] font-semibold tracking-[-0.025em] text-white sm:text-[19px] lg:max-w-[980px] lg:text-[20px]'>
+								<DialogDrawerTitle className='mt-3 text-lg leading-7 font-semibold text-foreground'>
 									{task.title}
 								</DialogDrawerTitle>
 								<DialogDrawerDescription className='sr-only'>
-									{readOnly
+									{!showActivity
 										? 'Детали задачи и описание.'
 										: 'Детали задачи, описание, комментарии и история изменений.'}
 								</DialogDrawerDescription>
@@ -128,22 +122,22 @@ function BoardTaskDetailsDialog({
 											type='button'
 											variant='outline'
 											size='sm'
+											disabled={actionsDisabled}
 											onClick={() => onEditTask?.(task)}
-											className='h-8 rounded-[12px] border-sky-400/30 bg-sky-400/10 px-3 text-[12px] text-sky-100 hover:bg-sky-400/15 hover:text-white'
 										>
-											<Pencil className='size-3.5' />
+											<Pencil className='size-4' />
 											Редактировать
 										</Button>
 									) : null}
 									{canDeleteTask ? (
 										<Button
 											type='button'
-											variant='outline'
+											variant='destructive'
 											size='sm'
+											disabled={actionsDisabled}
 											onClick={() => onDeleteTask?.(task)}
-											className='h-8 rounded-[12px] border-rose-400/30 bg-rose-400/10 px-3 text-[12px] text-rose-100 hover:bg-rose-400/15 hover:text-white'
 										>
-											<Trash2 className='size-3.5' />
+											<Trash2 className='size-4' />
 											Удалить задачу
 										</Button>
 									) : null}
@@ -155,93 +149,90 @@ function BoardTaskDetailsDialog({
 								variant='outline'
 								size='icon-lg'
 								onClick={() => void handleCopyTaskKey()}
-								className='absolute top-4 right-12 size-11 rounded-[18px] border-sky-500/70 bg-sky-500/8 text-slate-50 shadow-[0_0_0_1px_rgba(59,130,246,0.15)] hover:bg-sky-500/12 hover:text-white'
+								className='absolute top-4 right-12'
 								aria-label='Скопировать ключ задачи'
 							>
 								<Copy className='size-4' />
 							</Button>
 						</DialogDrawerHeader>
 
-						<div className='flex min-h-0 flex-col overflow-hidden px-5 py-3 sm:px-6 lg:px-7 lg:py-3.5'>
+						<div className='flex min-h-0 flex-col overflow-y-auto px-5 py-3 sm:px-6'>
 							<section className='grid gap-x-5 gap-y-2 sm:grid-cols-2 md:grid-cols-4'>
 								<div>
-									<p className='text-[11px] font-medium text-slate-400'>Статус</p>
-									<p className='mt-0.5 text-[14px] font-semibold text-white'>
+									<p className='text-xs font-medium text-muted-foreground'>Статус</p>
+									<p className='mt-0.5 text-[14px] font-semibold text-foreground'>
 										{BOARD_COLUMN_TITLES[task.status]}
 									</p>
 								</div>
 
 								<div>
-									<p className='text-[11px] font-medium text-slate-400'>Приоритет</p>
-									<div
-										className={cn(
-											'mt-0.5 inline-flex items-center gap-1.5 text-[14px] font-medium',
-											BOARD_TASK_PRIORITY_TEXT_CLASS_NAMES[task.priority],
-										)}
-									>
+									<p className='text-xs font-medium text-muted-foreground'>Приоритет</p>
+									<div className='mt-1 inline-flex items-center gap-1.5 text-sm font-medium'>
 										<TaskPriorityBadge priority={task.priority} />
 										<span>{BOARD_PRIORITY_LABELS[task.priority]}</span>
 									</div>
 								</div>
 
 								<div>
-									<p className='text-[11px] font-medium text-slate-400'>Исполнитель</p>
+									<p className='text-xs font-medium text-muted-foreground'>Исполнитель</p>
 									<div className='mt-0.5 inline-flex items-center gap-2'>
-										<Avatar className='size-6 border border-white/10 bg-white/5'>
-											<AvatarFallback className='bg-white/6 text-[10px] font-semibold text-slate-200'>
+										<Avatar className='size-6 border border-border bg-muted'>
+											<AvatarFallback className='bg-muted text-xs font-semibold text-foreground'>
 												{task.assignee?.initials ?? '—'}
 											</AvatarFallback>
 										</Avatar>
-										<span className='text-[14px] font-semibold text-white'>
+										<span className='text-[14px] font-semibold text-foreground'>
 											{task.assignee?.name ?? 'Без исполнителя'}
 										</span>
 									</div>
 								</div>
 
 								<div>
-									<p className='text-[11px] font-medium text-slate-400'>Дедлайн</p>
-									<p className='mt-0.5 text-[14px] font-medium text-white'>
+									<p className='text-xs font-medium text-muted-foreground'>Дедлайн</p>
+									<p className='mt-0.5 text-[14px] font-medium text-foreground'>
 										{task.dueDate?.slice(0, 10) ?? 'Не указан'}
 									</p>
 								</div>
 							</section>
 
-							<div className='mt-3 flex flex-wrap items-center gap-1.5'>
-								<span className='inline-flex size-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300'>
-									<Tag className='size-3.25' />
-								</span>
-								{task.tags.map((tag) => (
-									<span
-										key={tag}
-										className='rounded-full border border-white/8 bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium text-slate-200'
-									>
-										{tag}
+							{task.tags.length > 0 && (
+								<div className='mt-3 flex flex-wrap items-center gap-1.5'>
+									<span className='inline-flex size-6 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground'>
+										<Tag className='size-4' />
 									</span>
-								))}
-							</div>
+									{task.tags.map((tag) => (
+										<span
+											key={tag}
+											className='rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground'
+										>
+											{tag}
+										</span>
+									))}
+								</div>
+							)}
 
-							<Separator className='my-3 bg-white/10' />
+							<Separator className='my-3 bg-muted' />
 
 							<section className='mt-0.5 flex min-h-0 flex-1 flex-col'>
-								<h3 className='text-[14px] font-semibold text-white'>Описание</h3>
-								<p className='mt-2 max-w-none text-[13px] leading-6 text-slate-300'>
+								<h3 className='text-lg font-semibold text-foreground'>Описание</h3>
+								<p className='mt-2 max-w-none text-base leading-6 whitespace-pre-wrap break-words text-foreground'>
 									{task.description || 'Описание не добавлено'}
 								</p>
 							</section>
 
-							{!readOnly && (
+							{showActivity && (
 								<>
-									<Separator className='my-3 bg-white/10' />
+									<Separator className='my-3 bg-muted' />
 									<section>
-										<div className='inline-flex rounded-[14px] border border-white/10 bg-white/6 p-1'>
+										<div className='inline-flex rounded-[14px] border border-border bg-muted p-1'>
 											<button
 												type='button'
 												onClick={() => setActivePanel('comments')}
 												className={cn(
-													'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium transition-colors',
+													'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-sm font-medium transition-colors',
 													activePanel === 'comments'
-														? 'bg-[#0f1729] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
-														: 'text-slate-400 hover:text-white',
+														? 'bg-muted text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+														: 'text-muted-foreground hover:text-foreground',
 												)}
 											>
 												<MessageSquare className='size-4' />
@@ -251,10 +242,10 @@ function BoardTaskDetailsDialog({
 												type='button'
 												onClick={() => setActivePanel('history')}
 												className={cn(
-													'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium transition-colors',
+													'inline-flex h-8.5 items-center gap-2 rounded-[10px] px-3 text-sm font-medium transition-colors',
 													activePanel === 'history'
-														? 'bg-[#0f1729] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
-														: 'text-slate-400 hover:text-white',
+														? 'bg-muted text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+														: 'text-muted-foreground hover:text-foreground',
 												)}
 											>
 												<History className='size-4' />
@@ -268,24 +259,24 @@ function BoardTaskDetailsDialog({
 													task.comments.map((comment) => (
 														<div
 															key={comment.id}
-															className='rounded-[14px] border border-white/8 bg-white/[0.04] px-3 py-2.5'
+															className='rounded-[14px] border border-border bg-muted px-3 py-2.5'
 														>
 															<div className='flex items-start gap-3'>
-																<Avatar className='size-6.5 border border-white/10 bg-white/5'>
-																	<AvatarFallback className='bg-white/6 text-[10px] font-semibold text-slate-200'>
+																<Avatar className='size-6.5 border border-border bg-muted'>
+																	<AvatarFallback className='bg-muted text-xs font-semibold text-foreground'>
 																		{comment.author.initials}
 																	</AvatarFallback>
 																</Avatar>
 																<div className='min-w-0 flex-1'>
 																	<div className='flex flex-wrap items-center gap-2'>
-																		<span className='text-[11px] font-semibold text-white'>
+																		<span className='text-xs font-semibold text-foreground'>
 																			{comment.author.name}
 																		</span>
-																		<span className='text-[10px] text-slate-500'>
+																		<span className='text-xs text-foreground0'>
 																			{comment.createdAtLabel}
 																		</span>
 																	</div>
-																	<p className='mt-0.5 text-[12px] leading-5 text-slate-300'>
+																	<p className='mt-0.5 text-[12px] leading-5 text-muted-foreground'>
 																		{comment.content}
 																	</p>
 																</div>
@@ -293,7 +284,7 @@ function BoardTaskDetailsDialog({
 														</div>
 													))
 												) : (
-													<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-[13px] font-medium text-slate-500'>
+													<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-sm font-medium text-foreground0'>
 														Комментариев нет
 													</div>
 												)
@@ -301,22 +292,22 @@ function BoardTaskDetailsDialog({
 												task.history.map((entry) => (
 													<div
 														key={entry.id}
-														className='rounded-[14px] border border-white/8 bg-white/[0.04] px-3 py-2.5'
+														className='rounded-[14px] border border-border bg-muted px-3 py-2.5'
 													>
 														<div className='flex items-start gap-3'>
-															<span className='mt-0.5 inline-flex size-6.5 items-center justify-center rounded-full border border-slate-400/15 bg-white/[0.05] text-slate-300'>
-																<UserRound className='size-3.25' />
+															<span className='mt-0.5 inline-flex size-6.5 items-center justify-center rounded-full border border-slate-400/15 bg-muted text-muted-foreground'>
+																<UserRound className='size-4' />
 															</span>
 															<div className='min-w-0 flex-1'>
 																<div className='flex flex-wrap items-center gap-2'>
-																	<span className='text-[11px] font-semibold text-white'>
+																	<span className='text-xs font-semibold text-foreground'>
 																		{entry.actor?.name ?? 'Система'}
 																	</span>
-																	<span className='text-[10px] text-slate-500'>
+																	<span className='text-xs text-foreground0'>
 																		{entry.createdAtLabel}
 																	</span>
 																</div>
-																<p className='mt-0.5 text-[12px] leading-5 text-slate-300'>
+																<p className='mt-0.5 text-[12px] leading-5 text-muted-foreground'>
 																	{entry.action}
 																</p>
 															</div>
@@ -324,7 +315,7 @@ function BoardTaskDetailsDialog({
 													</div>
 												))
 											) : (
-												<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-[13px] font-medium text-slate-500'>
+												<div className='flex min-h-[88px] items-center justify-center rounded-[16px] px-4 text-center text-sm font-medium text-foreground0'>
 													История пока пуста
 												</div>
 											)}
@@ -334,8 +325,8 @@ function BoardTaskDetailsDialog({
 							)}
 						</div>
 
-						{!readOnly && activePanel === 'comments' ? (
-							<DialogDrawerFooter className='border-t border-white/10 px-5 py-2.5 sm:px-6 lg:px-7'>
+						{showActivity && activePanel === 'comments' ? (
+							<DialogDrawerFooter className='border-t border-border px-5 py-2.5 sm:px-6 lg:px-7'>
 								<div className='flex w-full items-end gap-2.5'>
 									<Textarea
 										id='task-comment'
@@ -344,13 +335,13 @@ function BoardTaskDetailsDialog({
 										onChange={(event) => onCommentDraftChange?.(event.target.value)}
 										placeholder='Написать комментарий...'
 										rows={1}
-										className='min-h-[42px] max-h-[84px] flex-1 resize-y rounded-[14px] border-white/10 bg-[#0a101c] px-3 py-2 text-[13px] text-slate-100 placeholder:text-slate-500 focus-visible:border-sky-500/50 focus-visible:ring-sky-500/20'
+										className='min-h-[42px] max-h-[84px] flex-1 resize-y rounded-[14px] border-border bg-muted px-3 py-2 text-sm text-foreground placeholder:text-foreground0 focus-visible:border-sky-500/50 focus-visible:ring-sky-500/20'
 									/>
 									<Button
 										type='submit'
 										disabled={isSubmitDisabled}
 										size='icon-lg'
-										className='size-10 shrink-0 rounded-[14px] bg-indigo-500 text-white shadow-[0_18px_40px_-20px_rgba(99,102,241,0.85)] hover:bg-indigo-400'
+										className='size-10 shrink-0 rounded-[14px] bg-indigo-500 text-foreground shadow-[0_18px_40px_-20px_rgba(99,102,241,0.85)] hover:bg-indigo-400'
 										aria-label='Отправить комментарий'
 									>
 										<Send className='size-4' />

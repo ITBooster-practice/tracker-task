@@ -36,6 +36,25 @@ export const useTeamMembers = (teamId: string, params?: PaginationParams) => {
 	})
 }
 
+export const useTeamMemberOptions = (teamId: string, enabled: boolean) =>
+	useQuery({
+		queryKey: [...teamMembersKeys.lists(), teamId, 'options'],
+		enabled: Boolean(teamId) && enabled,
+		queryFn: async ({ signal }) => {
+			const members: TeamMember[] = []
+			let page = 1
+			let totalPages = 1
+			do {
+				signal.throwIfAborted()
+				const result = await teamMembersService.getMembers(teamId, { page, limit: 100 })
+				members.push(...result.data)
+				totalPages = result.meta.totalPages
+				page += 1
+			} while (page <= totalPages)
+			return members
+		},
+	})
+
 export const useChangeMemberRole = (teamId: string) => {
 	const queryClient = useQueryClient()
 

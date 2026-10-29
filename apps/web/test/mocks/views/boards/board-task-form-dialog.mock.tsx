@@ -6,6 +6,7 @@ vi.mock('@repo/ui', () => {
 		HIGH: 'LOW',
 		MEDIUM: 'HIGH',
 		alexey: 'anna',
+		__unassigned__: 'anna',
 	}
 
 	return {
