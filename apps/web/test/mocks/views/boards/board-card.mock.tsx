@@ -74,6 +74,9 @@ vi.mock('@dnd-kit/utilities', () => ({
 }))
 
 vi.mock('@repo/ui', () => ({
+	Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
+		<button {...props}>{children}</button>
+	),
 	Avatar: ({ children, className }: React.PropsWithChildren<{ className?: string }>) => (
 		<div className={className}>{children}</div>
 	),

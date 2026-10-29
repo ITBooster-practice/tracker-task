@@ -79,6 +79,30 @@ describe('BoardCard', () => {
 		expect(openedTaskIds).toEqual(['task-a', 'task-a'])
 	})
 
+	it('отделяет управление переносом в группе от открытия карточки', () => {
+		let opened = 0
+		render(
+			<BoardCard
+				task={createTaskFixture()}
+				boardColumnId='TODO'
+				laneKey='priority-high'
+				onOpenTask={() => {
+					opened++
+				}}
+			/>,
+		)
+		const handle = screen.getByRole('button', {
+			name: 'Переместить задачу «Проверить карточку задачи»',
+		})
+		fireEvent.click(handle)
+		fireEvent.keyDown(handle, { key: ' ', code: 'Space' })
+		fireEvent.keyDown(handle, { key: 'Enter', code: 'Enter' })
+		expect(opened).toBe(0)
+		expect(handle.getAttribute('aria-describedby')).toBeTruthy()
+		fireEvent.keyDown(screen.getByTestId('board-task-task-a'), { key: 'Enter' })
+		expect(opened).toBe(1)
+	})
+
 	it('передаёт disabled в sortable и показывает dragging class', () => {
 		setBoardCardIsDragging(true)
 

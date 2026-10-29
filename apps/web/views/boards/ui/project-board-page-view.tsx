@@ -41,6 +41,7 @@ import { isApiError } from '@/shared/lib/api/utils'
 import { PageHeader } from '@/shared/ui/page-header'
 
 import { toBoardColumnsViewModel } from '../model/adapters'
+import { buildBoardLanes, laneColumns } from '../model/board-swimlanes'
 import {
 	filterProjectBoardColumns,
 	fullBoardMovePosition,
@@ -94,6 +95,8 @@ function ProjectBoardContent({
 		isPending: filtersPending,
 		update: updateFilters,
 		reset: resetFilters,
+		grouping,
+		setGrouping,
 	} = useProjectBoardFilters()
 	const searchInput = useRef<HTMLInputElement>(null)
 	const clearFilters = () => {
@@ -130,9 +133,11 @@ function ProjectBoardContent({
 		onError: (error) => {
 			if (!mounted.current) return
 			toast.error(
-				error.statusCode === 409
-					? 'Доска изменилась. Попробуйте переместить задачу ещё раз.'
-					: 'Не удалось переместить задачу. Попробуйте ещё раз.',
+				error.statusCode === 403
+					? 'Недостаточно прав для изменения задачи.'
+					: error.statusCode === 409
+						? 'Доска изменилась. Попробуйте переместить задачу ещё раз.'
+						: 'Не удалось переместить задачу. Попробуйте ещё раз.',
 			)
 		},
 	})
@@ -144,6 +149,13 @@ function ProjectBoardContent({
 		() => filterProjectBoardColumns(columns, effectiveFilters),
 		[columns, effectiveFilters],
 	)
+	const lanes = useMemo(
+		() => buildBoardLanes(grouping, columns, assignees),
+		[grouping, columns, assignees],
+	)
+	const dragScope = JSON.stringify([grouping, filters])
+	const latestDragScope = useRef(dragScope)
+	latestDragScope.current = dragScope
 	const assigneeOptions = useMemo(
 		() => projectBoardAssigneeOptions(columns, assignees, filters.assignee),
 		[columns, assignees, filters.assignee],
@@ -302,7 +314,13 @@ function ProjectBoardContent({
 	}
 	const selectedTask = findBoardTask(columns, openedTaskId)
 	const hasTasks = columns.some((column) => column.tasks.length > 0)
-	const handleMoveTask = ({ taskId, toColumnId, toIndex }: BoardTaskMoveInput) => {
+	const handleMoveTask = ({
+		taskId,
+		toColumnId,
+		toIndex,
+		priority,
+		assigneeId,
+	}: BoardTaskMoveInput) => {
 		if (
 			moving.current ||
 			moveTask.isPending ||
@@ -318,9 +336,13 @@ function ProjectBoardContent({
 		const target = view.columns.find((column) => column.id === toColumnId)
 		const task = source?.tasks.find((item) => item.id === taskId)
 		if (!source || !target || !task) return
+		const targetProjection =
+			priority !== undefined || assigneeId !== undefined
+				? laneColumns(visibleColumns, { priority, assigneeId })
+				: visibleColumns
 		const position = fullBoardMovePosition(
 			columns,
-			visibleColumns,
+			targetProjection,
 			taskId,
 			toColumnId,
 			toIndex,
@@ -328,11 +350,14 @@ function ProjectBoardContent({
 		if (position === null || position < 0) return
 		if (
 			source.id === target.id &&
-			source.tasks.findIndex((item) => item.id === taskId) === position
+			source.tasks.findIndex((item) => item.id === taskId) === position &&
+			(priority === undefined || priority === task.priority) &&
+			(assigneeId === undefined || assigneeId === task.assigneeId)
 		)
 			return
 		moving.current = true
-		void moveTask
+		const requestScope = dragScope
+		return moveTask
 			.mutateAsync({
 				teamId,
 				projectId: view.board.projectId,
@@ -343,7 +368,19 @@ function ProjectBoardContent({
 					toColumnId,
 					position,
 					expectedVersion: task.version,
+					...(priority !== undefined && priority !== task.priority && { priority }),
+					...(assigneeId !== undefined &&
+						assigneeId !== task.assigneeId && { assigneeId }),
 				},
+			})
+			.then((moved) => {
+				if (!mounted.current || latestDragScope.current !== requestScope) return
+				const projected = filterProjectBoardColumns(
+					[{ ...target, tasks: [{ ...findBoardTask(columns, taskId)!, ...moved }] }],
+					effectiveFilters,
+				)
+				if (!projected[0]!.tasks.length)
+					toast.info('Задача перемещена и скрыта текущими фильтрами.')
 			})
 			.catch(() => undefined)
 			.finally(() => {
@@ -364,6 +401,8 @@ function ProjectBoardContent({
 				) : undefined,
 			)}
 			<BoardToolbar
+				grouping={grouping}
+				onGroupingChange={setGrouping}
 				filters={filters}
 				assigneeOptions={assigneeOptions}
 				onChange={updateFilters}
@@ -419,11 +458,13 @@ function ProjectBoardContent({
 				</span>
 			)}
 			<Board
+				grouping={grouping}
+				lanes={lanes}
 				columns={visibleColumns}
 				onOpenTask={setOpenedTaskId}
 				onMoveTask={handleMoveTask}
 				disableInteraction={moveTask.isPending || isMutating || filtersPending}
-				dragScope={JSON.stringify(effectiveFilters)}
+				dragScope={dragScope}
 				onCreateColumn={handleCreateColumn}
 				onRenameColumn={handleRenameColumn}
 				onDeleteColumn={handleDeleteColumn}

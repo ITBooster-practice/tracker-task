@@ -1,15 +1,13 @@
-import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useEffect, useRef, type ReactNode } from 'react'
 
-import { Button, cn } from '@repo/ui'
+import { Button } from '@repo/ui'
 import { Pencil, Plus, Trash2 } from '@repo/ui/icons'
 
-import { getBoardColumnContainerId } from '../model/constants'
 import type { BoardColumn } from '../model/types'
-import { BoardCard } from './board-card'
+import { BoardColumnTasks } from './board-column-tasks'
 
 interface BoardColumnProps {
+	headerOnly?: boolean
 	column: BoardColumn
 	onOpenTask: (taskId: string) => void
 	onCreateTask?: () => void
@@ -33,6 +31,7 @@ function BoardColumn({
 	editTitleDisabled = false,
 	dragHandle,
 	onDelete,
+	headerOnly = false,
 }: BoardColumnProps) {
 	const editTrigger = useRef<HTMLButtonElement>(null)
 	const wasEditing = useRef(false)
@@ -41,14 +40,6 @@ function BoardColumn({
 		if (wasEditing.current && !isEditingTitle) editTrigger.current?.focus()
 		wasEditing.current = isEditingTitle
 	}, [isEditingTitle])
-	const { isOver, setNodeRef } = useDroppable({
-		id: getBoardColumnContainerId(column.id),
-		data: {
-			type: 'column',
-			boardColumnId: column.id,
-		},
-		disabled,
-	})
 
 	return (
 		<section className='flex w-[260px] shrink-0 flex-col'>
@@ -105,37 +96,14 @@ function BoardColumn({
 				)}
 			</header>
 
-			<div
-				ref={setNodeRef}
-				className={cn(
-					'flex min-h-[320px] flex-1 flex-col rounded-[var(--radius-surface)] p-2 transition-colors duration-200',
-					isOver && 'bg-primary/5',
-				)}
-			>
-				<SortableContext
-					items={column.tasks.map((task) => task.id)}
-					strategy={verticalListSortingStrategy}
-				>
-					<div className='flex min-h-full flex-col gap-2'>
-						{column.tasks.length > 0 ? (
-							column.tasks.map((task) => (
-								<BoardCard
-									key={task.id}
-									task={task}
-									boardColumnId={column.id}
-									onOpenTask={onOpenTask}
-									disabled={disabled}
-									isActiveDragItem={activeDragTaskId === task.id}
-								/>
-							))
-						) : (
-							<div className='flex min-h-[100px] flex-1 items-center justify-center rounded-[var(--radius-surface)] border border-dashed border-border bg-background/40 px-4 text-center text-sm leading-5 text-muted-foreground'>
-								{disabled ? 'Нет задач' : 'Перетащите карточку сюда'}
-							</div>
-						)}
-					</div>
-				</SortableContext>
-			</div>
+			{!headerOnly && (
+				<BoardColumnTasks
+					column={column}
+					onOpenTask={onOpenTask}
+					activeDragTaskId={activeDragTaskId}
+					disabled={disabled}
+				/>
+			)}
 		</section>
 	)
 }

@@ -3,6 +3,7 @@ import type {
 	BoardTask as ApiBoardTask,
 	Board,
 	BoardColumnWithTasks,
+	MoveTaskToColumn,
 	Priority,
 	TaskType,
 } from '@repo/types'
@@ -64,7 +65,10 @@ export interface BoardFilters {
 	assignee: BoardAssigneeFilter
 }
 
-export interface BoardTaskMoveInput {
+export interface BoardTaskMoveInput extends Pick<
+	MoveTaskToColumn,
+	'priority' | 'assigneeId'
+> {
 	taskId: string
 	toColumnId: BoardColumnId
 	toIndex: number

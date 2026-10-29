@@ -1,8 +1,9 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useId, type ReactNode } from 'react'
 
-import { Avatar, AvatarFallback, Card, CardContent, cn } from '@repo/ui'
-import { MessageSquare, SquareCheckBig } from '@repo/ui/icons'
+import { Avatar, AvatarFallback, Button, Card, CardContent, cn } from '@repo/ui'
+import { GripVertical, MessageSquare, SquareCheckBig } from '@repo/ui/icons'
 
 import { TaskPriorityBadge, TaskTypeBadge } from '@/entities/task'
 
@@ -15,12 +16,14 @@ interface BoardCardProps {
 	disabled?: boolean
 	isActiveDragItem?: boolean
 	isDragOverlay?: boolean
+	laneKey?: string
 }
 
 function BoardCardBody({
 	task,
 	isDragOverlay = false,
-}: Pick<BoardCardProps, 'task' | 'isDragOverlay'>) {
+	dragHandle,
+}: Pick<BoardCardProps, 'task' | 'isDragOverlay'> & { dragHandle?: ReactNode }) {
 	return (
 		<Card
 			className={cn(
@@ -65,6 +68,7 @@ function BoardCardBody({
 				</div>
 
 				<div className='flex items-center justify-between gap-2'>
+					{dragHandle}
 					<div className='flex min-w-0 flex-wrap gap-1'>
 						{task.tags.map((tag) => (
 							<span
@@ -87,11 +91,17 @@ function BoardCardBody({
 	)
 }
 
-function BoardCardPlaceholder({ task }: Pick<BoardCardProps, 'task'>) {
+function BoardCardPlaceholder({
+	task,
+	hasDragHandle,
+}: Pick<BoardCardProps, 'task'> & { hasDragHandle?: boolean }) {
 	return (
 		<div className='relative'>
 			<div className='pointer-events-none opacity-0'>
-				<BoardCardBody task={task} />
+				<BoardCardBody
+					task={task}
+					dragHandle={hasDragHandle ? <span className='size-8 shrink-0' /> : undefined}
+				/>
 			</div>
 			<div className='absolute inset-0 rounded-[calc(var(--radius-surface)-4px)] border border-dashed border-primary/45 bg-primary/8 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]' />
 		</div>
@@ -105,17 +115,27 @@ function BoardCard({
 	disabled = false,
 	isActiveDragItem = false,
 	isDragOverlay = false,
+	laneKey,
 }: BoardCardProps) {
-	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-		useSortable({
-			id: task.id,
-			data: {
-				type: 'task',
-				taskId: task.id,
-				boardColumnId,
-			},
-			disabled: disabled || isDragOverlay,
-		})
+	const instructionsId = useId()
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		setActivatorNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({
+		id: task.id,
+		data: {
+			type: 'task',
+			taskId: task.id,
+			boardColumnId,
+			laneKey,
+		},
+		disabled: disabled || isDragOverlay,
+	})
 
 	const style = isDragOverlay
 		? undefined
@@ -127,7 +147,7 @@ function BoardCard({
 	if (isActiveDragItem) {
 		return (
 			<div ref={setNodeRef} style={style} data-testid={`board-task-${task.id}`}>
-				<BoardCardPlaceholder task={task} />
+				<BoardCardPlaceholder task={task} hasDragHandle={Boolean(laneKey)} />
 			</div>
 		)
 	}
@@ -157,7 +177,38 @@ function BoardCard({
 				'opacity-85': isDragging,
 			})}
 		>
-			<BoardCardBody task={task} isDragOverlay={isDragOverlay} />
+			{laneKey && !isDragOverlay && (
+				<span id={instructionsId} className='sr-only'>
+					Нажмите Пробел, чтобы взять задачу. Стрелки перемещают её между карточками,
+					группами и колонками. Пробел или Enter сохраняет перенос, Escape отменяет.
+				</span>
+			)}
+			<BoardCardBody
+				task={task}
+				isDragOverlay={isDragOverlay}
+				dragHandle={
+					laneKey && !isDragOverlay ? (
+						<Button
+							id={`board-task-handle-${task.id}`}
+							ref={setActivatorNodeRef}
+							type='button'
+							variant='ghost'
+							size='icon-sm'
+							disabled={disabled}
+							{...attributes}
+							aria-label={`Переместить задачу «${task.title}»`}
+							aria-describedby={instructionsId}
+							onClick={(event) => event.stopPropagation()}
+							onKeyDown={(event) => {
+								event.stopPropagation()
+								listeners?.onKeyDown?.(event)
+							}}
+						>
+							<GripVertical aria-hidden='true' />
+						</Button>
+					) : undefined
+				}
+			/>
 		</div>
 	)
 }

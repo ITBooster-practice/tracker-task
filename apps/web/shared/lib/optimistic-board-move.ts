@@ -3,7 +3,14 @@ import { TaskStatusSchema, type BoardView, type MoveTaskToColumn } from '@repo/t
 export function optimisticBoardMove(
 	view: BoardView,
 	taskId: string,
-	{ fromColumnId, toColumnId, position, expectedVersion }: MoveTaskToColumn,
+	{
+		fromColumnId,
+		toColumnId,
+		position,
+		expectedVersion,
+		priority,
+		assigneeId,
+	}: MoveTaskToColumn,
 ): BoardView {
 	const source = view.columns.find((column) => column.id === fromColumnId)
 	const target = view.columns.find((column) => column.id === toColumnId)
@@ -13,6 +20,8 @@ export function optimisticBoardMove(
 	const status = target.isSystem ? TaskStatusSchema.safeParse(target.key) : null
 	const movedTask = {
 		...task,
+		...(priority !== undefined && { priority }),
+		...(assigneeId !== undefined && { assigneeId }),
 		boardColumnId: toColumnId,
 		status: status?.success ? status.data : task.status,
 	}
