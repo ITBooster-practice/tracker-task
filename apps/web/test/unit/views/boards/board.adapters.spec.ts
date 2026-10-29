@@ -8,12 +8,7 @@ import {
 	toBoardCardViewModel,
 	toBoardColumnsViewModel,
 } from '@/views/boards/model/adapters'
-import {
-	buildBoardAssigneeOptions,
-	buildBoardStats,
-	filterBoardColumns,
-	moveTaskInColumns,
-} from '@/views/boards/model/utils'
+import { moveTaskInColumns } from '@/views/boards/model/utils'
 
 const assignee = { id: 'user-1', name: 'Анна Ким', initials: 'АК' }
 
@@ -118,17 +113,6 @@ describe('board API adapters', () => {
 			expect(column).toMatchObject(view.columns[index]!)
 		}
 		expect(columns[2]!.tasks).toEqual([])
-		expect(buildBoardStats(columns).map((stat) => stat.value)).toEqual(['50%', '0', '1'])
-		expect(
-			buildBoardAssigneeOptions(columns.flatMap((column) => column.tasks)).map(
-				(option) => option.value,
-			),
-		).toEqual(['ALL', assignee.id])
-		expect(
-			filterBoardColumns(columns, { type: 'TASK', query: '', assignee: assignee.id })
-				.flatMap((column) => column.tasks)
-				.map((task) => task.id),
-		).toEqual(['assigned'])
 		const moved = moveTaskInColumns(columns, {
 			taskId: 'unassigned',
 			toColumnId: 'custom-empty',

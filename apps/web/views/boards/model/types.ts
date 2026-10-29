@@ -1,7 +1,6 @@
 import type {
 	BoardColumn as ApiBoardColumn,
 	BoardTask as ApiBoardTask,
-	Board,
 	BoardColumnWithTasks,
 	MoveTaskToColumn,
 	Priority,
@@ -11,7 +10,6 @@ import type {
 export type BoardColumnId = ApiBoardColumn['id']
 
 export type BoardTypeFilter = 'ALL' | TaskType
-export type BoardAssigneeFilter = 'ALL' | string
 
 export interface BoardAssignee {
 	id: string
@@ -53,18 +51,6 @@ export interface BoardColumn extends Omit<BoardColumnWithTasks, 'tasks'> {
 	tasks: BoardTask[]
 }
 
-export interface BoardInfo extends Board {
-	projectName: string
-	periodLabel: string
-	goal: string
-}
-
-export interface BoardFilters {
-	query: string
-	type: BoardTypeFilter
-	assignee: BoardAssigneeFilter
-}
-
 export interface BoardTaskMoveInput extends Pick<
 	MoveTaskToColumn,
 	'priority' | 'assigneeId'
@@ -83,10 +69,4 @@ export interface BoardTaskFormValues {
 	assigneeId: string
 	dueDate: string
 	tags: string[]
-}
-
-export interface BoardStat {
-	label: string
-	value: string
-	helper: string
 }
