@@ -44,13 +44,15 @@ export class UpdateTaskDto extends createZodDto(updateTaskSchema) {
 
 	@ApiPropertyOptional({
 		example: 'user-uuid',
-		description: 'ID исполнителя',
+		description: 'ID исполнителя; null снимает назначение',
+		nullable: true,
 	})
-	assigneeId?: string
+	assigneeId?: string | null
 
 	@ApiPropertyOptional({
 		example: '2025-12-31T23:59:59.000Z',
-		description: 'Дедлайн задачи в формате ISO 8601',
+		description: 'Дедлайн задачи в формате ISO 8601; null удаляет дедлайн',
+		nullable: true,
 	})
-	dueDate?: string
+	dueDate?: string | null
 }

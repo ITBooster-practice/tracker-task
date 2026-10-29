@@ -579,6 +579,35 @@ describe('Tasks (e2e)', () => {
 	})
 
 	describe('PATCH /teams/:teamId/projects/:projectId/tasks/:taskId', () => {
+		it('200 — null очищает исполнителя и дедлайн, отсутствие полей сохраняет значения', async () => {
+			const owner = await prisma.teamMember.findFirstOrThrow({
+				where: { teamId, role: 'OWNER' },
+			})
+			const task = await createTask(ownerCookies, {
+				assigneeId: owner.userId,
+				dueDate: '2026-11-15T18:30:00.000Z',
+			})
+			const endpoint = `/teams/${teamId}/projects/${projectId}/tasks/${task.id}`
+			const retained = await request(server)
+				.patch(endpoint)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Новое название' })
+				.expect(200)
+			expect(retained.body).toMatchObject({
+				assigneeId: owner.userId,
+				dueDate: '2026-11-15T18:30:00.000Z',
+			})
+			const cleared = await request(server)
+				.patch(endpoint)
+				.set('Cookie', ownerCookies)
+				.send({ assigneeId: null, dueDate: null })
+				.expect(200)
+			expect(cleared.body).toMatchObject({ assigneeId: null, dueDate: null })
+			expect(
+				await prisma.task.findUniqueOrThrow({ where: { id: task.id } }),
+			).toMatchObject({ assigneeId: null, dueDate: null })
+		})
+
 		it('200 — синхронизирует колонку со статусом при обычном PATCH', async () => {
 			const task = await createTask(ownerCookies)
 			for (const status of ['IN_PROGRESS', 'IN_REVIEW', 'DONE', 'TODO']) {
