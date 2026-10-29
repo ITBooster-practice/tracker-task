@@ -1,6 +1,7 @@
 import '@/test/mocks/api/tasks-service.mock'
 
 import {
+	createBoardListItemFixture,
 	createBoardTaskFixture,
 	createBoardViewFixture,
 } from '@/test/mocks/api/boards.fixtures'
@@ -15,9 +16,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { BoardView, Task, TaskMoveConflict } from '@repo/types'
 
+import { boardsKeys } from '@/shared/api/boards-keys'
 import {
 	tasksKeys,
 	useBoardQuery,
+	useCreateTask,
+	useDeleteTask,
 	useMoveTask,
 	useTaskDetail,
 	useTasksList,
@@ -89,6 +93,55 @@ describe('board task queries', () => {
 			},
 		})
 	})
+
+	it.each(['create', 'update', 'delete', 'move'] as const)(
+		'обновляет счётчики списка досок после %s только в текущем проекте',
+		async (operation) => {
+			const key = boardsKeys.list('team-1', 'project-1')
+			const other = boardsKeys.list('team-2', 'project-1')
+			const list = [createBoardListItemFixture({ taskCount: 1 })]
+			client.setQueryData(key, list)
+			client.setQueryData(other, list)
+			tasksServiceMock.create.mockResolvedValue(createTaskFixture())
+			tasksServiceMock.update.mockResolvedValue(createTaskFixture())
+			tasksServiceMock.delete.mockResolvedValue(undefined)
+			tasksServiceMock.move.mockResolvedValue(createBoardTaskFixture())
+			const { result } = renderHook(
+				() => ({
+					create: useCreateTask(),
+					update: useUpdateTask(),
+					delete: useDeleteTask(),
+					move: useMoveTask(),
+				}),
+				{ wrapper: Wrapper },
+			)
+			await act(async () => {
+				if (operation === 'create')
+					await result.current.create.mutateAsync({
+						teamId: 'team-1',
+						projectId: 'project-1',
+						data: { title: 'Новая' },
+					})
+				else if (operation === 'update')
+					await result.current.update.mutateAsync({
+						teamId: 'team-1',
+						projectId: 'project-1',
+						taskId: 'task-1',
+						data: { title: 'Название' },
+					})
+				else if (operation === 'delete')
+					await result.current.delete.mutateAsync({
+						teamId: 'team-1',
+						projectId: 'project-1',
+						taskId: 'task-1',
+					})
+				else await result.current.move.mutateAsync(variables)
+			})
+			expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+			expect(client.getQueryState(other)?.isInvalidated).toBe(false)
+			expect(client.getQueryData(other)).toEqual(list)
+		},
+	)
 
 	afterEach(() => {
 		cleanup()

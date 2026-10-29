@@ -22,6 +22,8 @@ import { tasksService } from '@/shared/lib/api/tasks-service'
 import type { ApiError } from '@/shared/lib/api/types'
 import { optimisticBoardMove } from '@/shared/lib/optimistic-board-move'
 
+import { boardsKeys } from './boards-keys'
+
 export const tasksKeys = {
 	all: ['tasks'] as const,
 	lists: () => [...tasksKeys.all, 'list'] as const,
@@ -47,6 +49,7 @@ const refreshProjectTasks = async (
 	projectId: string,
 ) => {
 	const keys = [
+		boardsKeys.list(teamId, projectId),
 		tasksKeys.projectLists(teamId, projectId),
 		tasksKeys.projectBoards(teamId, projectId),
 		tasksKeys.projectDetails(teamId, projectId),
