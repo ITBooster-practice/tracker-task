@@ -10,7 +10,23 @@ import { boardData } from './default-board'
 import { CreateBoardDto } from './dto/create-board.dto'
 import { UpdateBoardDto } from './dto/update-board.dto'
 
-const boardInclude = { columns: { orderBy: { position: 'asc' } } } as const
+const boardInclude = {
+	columns: {
+		orderBy: { position: 'asc' },
+		include: { _count: { select: { tasks: true } } },
+	},
+} as const
+
+const toBoardListItem = (
+	board: Prisma.BoardGetPayload<{ include: typeof boardInclude }>,
+) => {
+	let taskCount = 0
+	const columns = board.columns.map(({ _count, ...column }) => {
+		taskCount += _count.tasks
+		return column
+	})
+	return { ...board, taskCount, columns }
+}
 
 @Injectable()
 export class BoardsService {
@@ -40,20 +56,22 @@ export class BoardsService {
 
 	async findAll(teamId: string, projectId: string, userId: string) {
 		await this.assertAccess(teamId, projectId, userId)
-		return this.prisma.board.findMany({
+		const boards = await this.prisma.board.findMany({
 			where: { projectId },
 			include: boardInclude,
 			orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
 		})
+		return boards.map(toBoardListItem)
 	}
 
 	async create(teamId: string, projectId: string, userId: string, dto: CreateBoardDto) {
 		await this.assertAccess(teamId, projectId, userId, true)
 		try {
-			return await this.prisma.board.create({
+			const board = await this.prisma.board.create({
 				data: { projectId, ...boardData(dto.name) },
 				include: boardInclude,
 			})
+			return toBoardListItem(board)
 		} catch (error) {
 			this.writeError(error, 'create')
 		}
@@ -68,11 +86,12 @@ export class BoardsService {
 	) {
 		await this.assertAccess(teamId, projectId, userId, true)
 		try {
-			return await this.prisma.board.update({
+			const board = await this.prisma.board.update({
 				where: { id: boardId, projectId },
 				data: { name: dto.name },
 				include: boardInclude,
 			})
+			return toBoardListItem(board)
 		} catch (error) {
 			this.writeError(error, 'update')
 		}

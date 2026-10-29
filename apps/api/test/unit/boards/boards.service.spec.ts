@@ -37,7 +37,7 @@ describe('BoardsService', () => {
 		prisma.teamMember.findUnique.mockResolvedValue({ role: 'MEMBER' })
 		prisma.board.findMany.mockResolvedValue([{ id: 'board', columns: [] }])
 		expect(await service.findAll('team', 'project', 'user')).toEqual([
-			{ id: 'board', columns: [] },
+			{ id: 'board', columns: [], taskCount: 0 },
 		])
 		expect(prisma.project.findFirst).toHaveBeenCalledWith({
 			where: { id: 'project', teamId: 'team' },
@@ -46,19 +46,39 @@ describe('BoardsService', () => {
 		expect(prisma.board.findMany).toHaveBeenCalledWith(
 			expect.objectContaining({
 				where: { projectId: 'project' },
-				include: { columns: { orderBy: { position: 'asc' } } },
+				include: {
+					columns: {
+						orderBy: { position: 'asc' },
+						include: { _count: { select: { tasks: true } } },
+					},
+				},
 			}),
 		)
+	})
+
+	it('считает задачи во всех колонках, не раскрывая служебный _count', async () => {
+		prisma.board.findMany.mockResolvedValue([
+			{
+				id: 'board',
+				columns: [
+					{ id: 'one', _count: { tasks: 2 } },
+					{ id: 'two', _count: { tasks: 3 } },
+				],
+			},
+		])
+		expect(await service.findAll('team', 'project', 'user')).toEqual([
+			{ id: 'board', taskCount: 5, columns: [{ id: 'one' }, { id: 'two' }] },
+		])
 	})
 
 	it.each(['OWNER', 'ADMIN'])(
 		'allows %s to create a regular board with initial editable columns',
 		async (role) => {
 			prisma.teamMember.findUnique.mockResolvedValue({ role })
-			prisma.board.create.mockResolvedValue({ id: 'board', name: 'Support' })
+			prisma.board.create.mockResolvedValue({ id: 'board', name: 'Support', columns: [] })
 			expect(
 				await service.create('team', 'project', 'user', { name: 'Support' }),
-			).toEqual({ id: 'board', name: 'Support' })
+			).toEqual({ id: 'board', name: 'Support', columns: [], taskCount: 0 })
 			expect(prisma.board.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
@@ -110,10 +130,10 @@ describe('BoardsService', () => {
 	})
 
 	it('renames only a board in the requested project', async () => {
-		prisma.board.update.mockResolvedValue({ id: 'board', name: 'Renamed' })
+		prisma.board.update.mockResolvedValue({ id: 'board', name: 'Renamed', columns: [] })
 		expect(
 			await service.update('team', 'project', 'board', 'user', { name: 'Renamed' }),
-		).toEqual({ id: 'board', name: 'Renamed' })
+		).toEqual({ id: 'board', name: 'Renamed', columns: [], taskCount: 0 })
 		expect(prisma.board.update).toHaveBeenCalledWith(
 			expect.objectContaining({
 				where: { id: 'board', projectId: 'project' },
