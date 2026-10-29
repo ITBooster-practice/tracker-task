@@ -24,6 +24,10 @@ import {
 } from '@/test/mocks/api/tasks-service.mock'
 import { createTaskFixture } from '@/test/mocks/api/tasks.fixtures'
 import { teamMembersServiceMock } from '@/test/mocks/api/team-members-service.mock'
+import {
+	resetBoardHistoryMock,
+	useBoardSearchParamsMock,
+} from '@/test/mocks/views/boards/board-history.mock'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
@@ -45,7 +49,10 @@ const { boardState, formState, toastError, routerPush } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: routerPush }) }))
+vi.mock('next/navigation', () => ({
+	useRouter: () => ({ push: routerPush }),
+	useSearchParams: () => useBoardSearchParamsMock(),
+}))
 vi.mock('@/views/boards/ui/create-board-dialog', () => ({
 	CreateBoardDialog: ({ open }: { open: boolean }) =>
 		open ? <section role='dialog' aria-label='Создание доски' /> : null,
@@ -67,17 +74,20 @@ vi.mock('@repo/ui', () => ({
 		<button {...props}>{children}</button>
 	),
 	Skeleton: () => <span />,
+	Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
 	Label: (props: React.LabelHTMLAttributes<HTMLLabelElement>) => <label {...props} />,
 	Select: ({
 		value,
 		onValueChange,
 		children,
+		name,
 	}: React.PropsWithChildren<{
 		value: string
+		name?: string
 		onValueChange: (value: string) => void
 	}>) => (
 		<select
-			aria-label='Доска проекта'
+			aria-label={name ?? 'Доска проекта'}
 			value={value}
 			onChange={(event) => onValueChange(event.target.value)}
 		>
@@ -240,6 +250,7 @@ describe('ProjectBoardPageView', () => {
 	)
 
 	beforeEach(() => {
+		resetBoardHistoryMock()
 		resetBoardColumnsServiceMock()
 		toastError.mockReset()
 		routerPush.mockReset()
@@ -267,6 +278,121 @@ describe('ProjectBoardPageView', () => {
 	afterEach(() => {
 		cleanup()
 		client.clear()
+	})
+
+	it('совмещает URL-фильтры с поиском, сохраняет полный кеш и сбрасывает только параметры отбора', async () => {
+		resetBoardHistoryMock(
+			'/teams/team-1/projects/project-1/board?boardId=board-1&priority=HIGH&type=BUG&assignee=anna&q=поиск&extra=keep',
+		)
+		const view = movableView()
+		view.columns[0]!.tasks = [
+			{
+				...view.columns[0]!.tasks[0]!,
+				id: 'match',
+				title: 'Исправить поиск',
+				type: 'BUG',
+				priority: 'HIGH',
+				assigneeId: 'anna',
+			},
+			{
+				...view.columns[0]!.tasks[0]!,
+				id: 'hidden',
+				title: 'Другая задача',
+				type: 'TASK',
+				priority: 'LOW',
+				assigneeId: null,
+			},
+		]
+		tasksServiceMock.getBoard.mockResolvedValue(view)
+		render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' boardId='board-1' />,
+			{ wrapper: Wrapper },
+		)
+		await screen.findByText('Исправить поиск')
+		expect(screen.queryByText('Другая задача')).toBeNull()
+		expect(boardState.current!.columns).toHaveLength(2)
+		expect(
+			client.getQueryData(tasksKeys.board('team-1', 'project-1', 'board-1')),
+		).toEqual(view)
+		fireEvent.change(screen.getByLabelText('Поиск задач'), {
+			target: { value: 'ничего такого' },
+		})
+		await screen.findByRole('heading', { name: 'Задачи не найдены' })
+		fireEvent.click(screen.getByRole('button', { name: 'Показать все задачи' }))
+		await screen.findByText('Другая задача')
+		expect(window.location.search).toBe('?boardId=board-1&extra=keep')
+		expect(document.activeElement).toBe(screen.getByLabelText('Поиск задач'))
+		expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(1)
+	})
+
+	it('переносит видимую карточку по полному порядку, не подменяя индекс скрытых задач', async () => {
+		resetBoardHistoryMock('/teams/team-1/projects/project-1/board?priority=HIGH')
+		const view = movableView()
+		view.columns[0]!.tasks[0]!.priority = 'HIGH'
+		view.columns[1]!.tasks = ['hidden-before', 'visible', 'hidden-after'].map(
+			(id, index) => ({
+				...view.columns[0]!.tasks[0]!,
+				id,
+				title: id,
+				boardColumnId: 'target',
+				position: index,
+				priority: id === 'visible' ? 'HIGH' : 'LOW',
+			}),
+		)
+		tasksServiceMock.getBoard.mockResolvedValue(view)
+		tasksServiceMock.move.mockResolvedValue({
+			...view.columns[0]!.tasks[0]!,
+			boardColumnId: 'target',
+			position: 1,
+			version: 8,
+		})
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		expect(boardState.current!.columns[1]!.tasks.map((task) => task.id)).toEqual([
+			'visible',
+		])
+		act(() =>
+			boardState.current!.onMoveTask!({
+				taskId: view.columns[0]!.tasks[0]!.id,
+				toColumnId: 'target',
+				toIndex: 0,
+			}),
+		)
+		await waitFor(() =>
+			expect(tasksServiceMock.move).toHaveBeenCalledWith(
+				'team-1',
+				'project-1',
+				view.columns[0]!.tasks[0]!.id,
+				{
+					fromColumnId: view.columns[0]!.id,
+					toColumnId: 'target',
+					position: 1,
+					expectedVersion: 7,
+				},
+			),
+		)
+	})
+
+	it('при переключении доски сохраняет фильтры и посторонние query-параметры', async () => {
+		resetBoardHistoryMock(
+			'/teams/team-1/projects/project-1/board?priority=HIGH&q=test&extra=keep',
+		)
+		boardsServiceMock.getAll.mockResolvedValue([
+			createBoardListItemFixture({ isDefault: true }),
+			createBoardListItemFixture({ id: 'other', name: 'Другая' }),
+		])
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByRole('heading', { name: 'Задачи не найдены' })
+		fireEvent.change(screen.getByRole('combobox', { name: 'Доска проекта' }), {
+			target: { value: 'other' },
+		})
+		expect(routerPush).toHaveBeenCalledWith(
+			'/teams/team-1/projects/project-1/board?priority=HIGH&q=test&extra=keep&boardId=other',
+		)
 	})
 
 	it('удаляет колонку с переносом и показывает новые статусы и версии задач из API', async () => {

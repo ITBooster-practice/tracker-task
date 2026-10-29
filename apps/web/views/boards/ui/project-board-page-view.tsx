@@ -41,11 +41,19 @@ import { isApiError } from '@/shared/lib/api/utils'
 import { PageHeader } from '@/shared/ui/page-header'
 
 import { toBoardColumnsViewModel } from '../model/adapters'
+import {
+	filterProjectBoardColumns,
+	fullBoardMovePosition,
+	hasProjectBoardFilters,
+	projectBoardAssigneeOptions,
+} from '../model/project-board-filters'
 import type { BoardTask, BoardTaskFormValues, BoardTaskMoveInput } from '../model/types'
+import { useProjectBoardFilters } from '../model/use-project-board-filters'
 import { findBoardTask } from '../model/utils'
 import { Board } from './board'
 import { BoardTaskDetailsDialog } from './board-task-details-dialog'
 import { BoardTaskFormDialog } from './board-task-form-dialog'
+import { BoardToolbar } from './board-toolbar'
 import { CreateBoardDialog } from './create-board-dialog'
 
 interface ProjectBoardPageViewProps {
@@ -79,7 +87,19 @@ function ProjectBoardContent({
 	const deletingColumn = useDeleteBoardColumn()
 	const reorderingColumns = useReorderBoardColumns()
 	const columnBusy = useRef(false)
-	const membersQuery = useTeamMemberOptions(teamId, taskForm !== null)
+	const membersQuery = useTeamMemberOptions(teamId, true)
+	const {
+		filters,
+		effectiveFilters,
+		isPending: filtersPending,
+		update: updateFilters,
+		reset: resetFilters,
+	} = useProjectBoardFilters()
+	const searchInput = useRef<HTMLInputElement>(null)
+	const clearFilters = () => {
+		resetFilters()
+		searchInput.current?.focus()
+	}
 	const assignees = useMemo(
 		() =>
 			(membersQuery.data ?? []).map((member) => {
@@ -119,6 +139,19 @@ function ProjectBoardContent({
 	const columns = useMemo(
 		() => toBoardColumnsViewModel(view, assignees),
 		[view, assignees],
+	)
+	const visibleColumns = useMemo(
+		() => filterProjectBoardColumns(columns, effectiveFilters),
+		[columns, effectiveFilters],
+	)
+	const assigneeOptions = useMemo(
+		() => projectBoardAssigneeOptions(columns, assignees, filters.assignee),
+		[columns, assignees, filters.assignee],
+	)
+	const totalTasks = columns.reduce((count, column) => count + column.tasks.length, 0)
+	const visibleTasks = visibleColumns.reduce(
+		(count, column) => count + column.tasks.length,
+		0,
 	)
 	const createColumns = useMemo(
 		() =>
@@ -275,6 +308,7 @@ function ProjectBoardContent({
 			moveTask.isPending ||
 			crudBusy.current ||
 			columnBusy.current ||
+			filtersPending ||
 			isMutating
 		)
 			return
@@ -284,10 +318,14 @@ function ProjectBoardContent({
 		const target = view.columns.find((column) => column.id === toColumnId)
 		const task = source?.tasks.find((item) => item.id === taskId)
 		if (!source || !target || !task) return
-		const position = Math.min(
-			Math.max(toIndex, 0),
-			target.tasks.filter((item) => item.id !== taskId).length,
+		const position = fullBoardMovePosition(
+			columns,
+			visibleColumns,
+			taskId,
+			toColumnId,
+			toIndex,
 		)
+		if (position === null || position < 0) return
 		if (
 			source.id === target.id &&
 			source.tasks.findIndex((item) => item.id === taskId) === position
@@ -325,6 +363,36 @@ function ProjectBoardContent({
 					</>
 				) : undefined,
 			)}
+			<BoardToolbar
+				filters={filters}
+				assigneeOptions={assigneeOptions}
+				onChange={updateFilters}
+				onReset={clearFilters}
+				searchRef={searchInput}
+				assigneesPending={membersQuery.isPending}
+				assigneesError={membersQuery.isError}
+				onRetryAssignees={() => {
+					void membersQuery.refetch()
+				}}
+			/>
+			{hasTasks && (
+				<p className='text-sm text-muted-foreground' role='status' aria-live='polite'>
+					Показано задач: {visibleTasks} из {totalTasks}
+				</p>
+			)}
+			{hasTasks && visibleTasks === 0 && hasProjectBoardFilters(filters) && (
+				<EmptyState
+					headingLevel='h2'
+					className='mx-auto'
+					title='Задачи не найдены'
+					description='Измените поиск или фильтры, чтобы увидеть задачи.'
+					action={
+						<Button variant='outline' onClick={clearFilters}>
+							Показать все задачи
+						</Button>
+					}
+				/>
+			)}
 			{columns.length === 0 && (
 				<EmptyState
 					headingLevel='h2'
@@ -351,10 +419,11 @@ function ProjectBoardContent({
 				</span>
 			)}
 			<Board
-				columns={columns}
+				columns={visibleColumns}
 				onOpenTask={setOpenedTaskId}
 				onMoveTask={handleMoveTask}
-				disableInteraction={moveTask.isPending || isMutating}
+				disableInteraction={moveTask.isPending || isMutating || filtersPending}
+				dragScope={JSON.stringify(effectiveFilters)}
 				onCreateColumn={handleCreateColumn}
 				onRenameColumn={handleRenameColumn}
 				onDeleteColumn={handleDeleteColumn}
@@ -425,6 +494,13 @@ function ProjectBoardContent({
 
 function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewProps) {
 	const router = useRouter()
+	const openBoard = (id: string) => {
+		const params = new URLSearchParams(window.location.search)
+		params.set('boardId', id)
+		router.push(
+			`${teamRoutes.projectBoard(teamId, projectId)}?${params}${window.location.hash}`,
+		)
+	}
 	const [creatingBoard, setCreatingBoard] = useState(false)
 	const projectQuery = useProjectDetail(teamId, projectId)
 	const boardsQuery = useBoardsList(teamId, projectId)
@@ -488,12 +564,7 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 			{boardsQuery.data && boardsQuery.data.length > 0 && (
 				<div className='w-full max-w-sm space-y-2'>
 					<Label htmlFor='project-board-select'>Доска проекта</Label>
-					<Select
-						value={selectedBoard?.id ?? ''}
-						onValueChange={(id) =>
-							router.push(teamRoutes.projectBoard(teamId, projectId, id))
-						}
-					>
+					<Select value={selectedBoard?.id ?? ''} onValueChange={openBoard}>
 						<SelectTrigger id='project-board-select' className='w-full'>
 							<SelectValue placeholder='Выберите доску' />
 						</SelectTrigger>
@@ -568,9 +639,7 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 					teamId={teamId}
 					projectId={projectId}
 					onOpenChange={setCreatingBoard}
-					onCreated={(board) =>
-						router.push(teamRoutes.projectBoard(teamId, projectId, board.id))
-					}
+					onCreated={(board) => openBoard(board.id)}
 				/>
 			</div>
 		</div>
