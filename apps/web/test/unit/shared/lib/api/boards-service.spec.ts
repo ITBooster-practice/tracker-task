@@ -21,3 +21,25 @@ it('загружает массив досок проекта с колонка�
 		{ signal },
 	)
 })
+
+it('создаёт доску по контракту имени и возвращает её со счётчиком', async () => {
+	const board = createBoardListItemFixture({ taskCount: 0 })
+	mockApiClient.post.mockResolvedValue(axiosResponse(board))
+	await expect(
+		boardsService.create('team-1', 'project-1', { name: 'Поддержка' }),
+	).resolves.toEqual(board)
+	expect(mockApiClient.post).toHaveBeenCalledExactlyOnceWith(
+		'/teams/team-1/projects/project-1/boards',
+		{ name: 'Поддержка' },
+	)
+})
+
+it('удаляет доску без несуществующих параметров переноса', async () => {
+	mockApiClient.delete.mockResolvedValue(axiosResponse(undefined))
+	await expect(
+		boardsService.delete('team-1', 'project-1', 'board-1'),
+	).resolves.toBeUndefined()
+	expect(mockApiClient.delete).toHaveBeenCalledExactlyOnceWith(
+		'/teams/team-1/projects/project-1/boards/board-1',
+	)
+})

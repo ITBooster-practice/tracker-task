@@ -10,14 +10,13 @@ import {
 	Bot,
 	ChevronRight,
 	FolderKanban,
-	KanbanSquare,
 	ListFilter,
 	Pencil,
-	Plus,
 	SquareKanban,
 	Trash2,
 } from '@repo/ui/icons'
 
+import { ProjectBoardsSection } from '@/views/boards/ui/project-boards-section'
 import { useDeleteProject, useProjectDetail } from '@/shared/api/use-projects'
 import { ROUTES, teamRoutes } from '@/shared/config'
 import { isApiError } from '@/shared/lib/api/utils'
@@ -67,8 +66,6 @@ function ProjectDetailPageView() {
 
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-
-	const boards: { id: string; name: string; columnCount: number }[] = []
 
 	type RecentActivity = {
 		id: string
@@ -235,45 +232,7 @@ function ProjectDetailPageView() {
 					})}
 				</section>
 
-				<section className='mb-7'>
-					<div className='mb-4 flex items-center justify-between'>
-						<h2 className='text-[20px] font-semibold tracking-tight'>Доски</h2>
-						<button
-							type='button'
-							className='flex items-center gap-1.5 text-[14px] text-muted-foreground transition-colors hover:text-foreground'
-						>
-							<Plus className='size-4' />
-							<span>Создать доску</span>
-						</button>
-					</div>
-					<div className='grid gap-4 sm:grid-cols-2'>
-						{boards.length > 0 ? (
-							boards.map((board) => (
-								<button
-									key={board.id}
-									type='button'
-									className='flex h-[88px] w-full items-center gap-4 rounded-[var(--radius-surface)] border border-border bg-card px-5 py-4 text-left transition-colors hover:border-primary/30'
-								>
-									<div className='flex size-5 shrink-0 items-center justify-center text-primary'>
-										<KanbanSquare className='size-5' />
-									</div>
-									<div className='min-w-0'>
-										<div className='truncate text-[16px] font-semibold tracking-tight'>
-											{board.name}
-										</div>
-										<div className='mt-1 text-[12px] text-muted-foreground'>
-											{board.columnCount} колонок
-										</div>
-									</div>
-								</button>
-							))
-						) : (
-							<div className='rounded-[var(--radius-surface)] border border-dashed border-border bg-card px-5 py-8 text-[14px] text-muted-foreground sm:col-span-2'>
-								Пока нет досок. Создайте первую доску для проекта.
-							</div>
-						)}
-					</div>
-				</section>
+				<ProjectBoardsSection teamId={teamId} projectId={projectId} />
 
 				<section>
 					<div className='mb-4 flex items-center gap-2'>

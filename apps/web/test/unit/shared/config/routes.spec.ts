@@ -85,6 +85,11 @@ describe('invitationRoutes', () => {
 })
 
 describe('teamRoutes', () => {
+	it('projectBoard сохраняет ID выбранной доски в query и кодирует его один раз', () => {
+		expect(teamRoutes.projectBoard('team /1', 'proj%2', 'board /?%')).toBe(
+			'/teams/team%20%2F1/projects/proj%252/board?boardId=board%20%2F%3F%25',
+		)
+	})
 	it('projectBoard сохраняет контекст и кодирует оба параметра', () => {
 		expect(teamRoutes.projectBoard('team /1', 'proj%2')).toBe(
 			'/teams/team%20%2F1/projects/proj%252/board',

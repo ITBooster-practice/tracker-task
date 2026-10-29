@@ -61,8 +61,8 @@ export const teamRoutes = {
 		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}`,
 	projectTasks: (teamId: string, projectId: string) =>
 		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.tasks}`,
-	projectBoard: (teamId: string, projectId: string) =>
-		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.board}`,
+	projectBoard: (teamId: string, projectId: string, boardId?: string) =>
+		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.board}${boardId ? `?boardId=${encodeRouteParam(boardId)}` : ''}`,
 	projectTasksNew: (teamId: string, projectId: string) =>
 		`${buildTeamProjectsRoute(teamId)}/${encodeRouteParam(projectId)}/${ROUTE_SEGMENTS.tasks}/${ROUTE_SEGMENTS.new}`,
 	settings: (teamId: string) =>

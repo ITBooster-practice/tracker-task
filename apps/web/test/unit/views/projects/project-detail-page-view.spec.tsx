@@ -73,6 +73,16 @@ vi.mock('@/views/projects/ui/edit-project-dialog', () => ({
 	EditProjectDialog: () => null,
 }))
 
+vi.mock('@/views/boards/ui/project-boards-section', () => ({
+	ProjectBoardsSection: ({
+		teamId,
+		projectId,
+	}: {
+		teamId: string
+		projectId: string
+	}) => <div data-testid='project-boards' data-team={teamId} data-project={projectId} />,
+}))
+
 vi.mock('@/shared/lib/api/utils', () => ({
 	isApiError: () => false,
 }))
@@ -129,12 +139,13 @@ describe('ProjectDetailPageView', () => {
 		expect(screen.getByRole('heading', { name: 'My Project' })).toBeDefined()
 	})
 
-	it('доски — пустое состояние', () => {
+	it('передаёт контекст проекта в список досок', () => {
 		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 
-		expect(
-			screen.getByText('Пока нет досок. Создайте первую доску для проекта.'),
-		).toBeDefined()
+		expect(screen.getByTestId('project-boards').getAttribute('data-team')).toBe('team-1')
+		expect(screen.getByTestId('project-boards').getAttribute('data-project')).toBe(
+			'project-uuid-1',
+		)
 	})
 
 	it('loading — показывает skeleton', () => {

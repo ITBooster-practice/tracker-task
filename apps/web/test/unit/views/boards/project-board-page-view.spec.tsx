@@ -33,10 +33,17 @@ import { ProjectBoardPageView } from '@/views/boards/ui/project-board-page-view'
 import { boardsKeys } from '@/shared/api/use-boards'
 import { tasksKeys } from '@/shared/api/use-tasks'
 
-const { boardState, formState, toastError } = vi.hoisted(() => ({
+const { boardState, formState, toastError, routerPush } = vi.hoisted(() => ({
 	boardState: { current: null as ComponentProps<typeof Board> | null },
 	formState: { current: null as ComponentProps<typeof BoardTaskFormDialog> | null },
 	toastError: vi.fn(),
+	routerPush: vi.fn(),
+}))
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: routerPush }) }))
+vi.mock('@/views/boards/ui/create-board-dialog', () => ({
+	CreateBoardDialog: ({ open }: { open: boolean }) =>
+		open ? <section role='dialog' aria-label='Создание доски' /> : null,
 }))
 
 vi.mock('next/link', () => ({
@@ -55,6 +62,29 @@ vi.mock('@repo/ui', () => ({
 		<button {...props}>{children}</button>
 	),
 	Skeleton: () => <span />,
+	Label: (props: React.LabelHTMLAttributes<HTMLLabelElement>) => <label {...props} />,
+	Select: ({
+		value,
+		onValueChange,
+		children,
+	}: React.PropsWithChildren<{
+		value: string
+		onValueChange: (value: string) => void
+	}>) => (
+		<select
+			aria-label='Доска проекта'
+			value={value}
+			onChange={(event) => onValueChange(event.target.value)}
+		>
+			{children}
+		</select>
+	),
+	SelectTrigger: () => null,
+	SelectValue: () => null,
+	SelectContent: ({ children }: React.PropsWithChildren) => <>{children}</>,
+	SelectItem: ({ value, children }: React.PropsWithChildren<{ value: string }>) => (
+		<option value={value}>{children}</option>
+	),
 	ConfirmDialog: ({
 		open,
 		title,
@@ -206,6 +236,7 @@ describe('ProjectBoardPageView', () => {
 
 	beforeEach(() => {
 		toastError.mockReset()
+		routerPush.mockReset()
 		boardState.current = null
 		formState.current = null
 		teamMembersServiceMock.getMembers.mockReset()
@@ -279,6 +310,65 @@ describe('ProjectBoardPageView', () => {
 		expect(screen.getByText('7')).toBeDefined()
 		fireEvent.click(screen.getByText('Закрыть'))
 		expect(screen.queryByRole('dialog')).toBeNull()
+	})
+
+	it('открывает доску из URL и переключает её с сохранением контекста проекта', async () => {
+		const other = createBoardViewFixture('other', 'project-1')
+		other.board.name = 'Другая доска'
+		other.columns[0]!.tasks[0]!.title = 'Карточка другой доски'
+		boardsServiceMock.getAll.mockResolvedValue([
+			createBoardListItemFixture({ isDefault: true }),
+			createBoardListItemFixture({ id: 'other', name: 'Другая доска' }),
+		])
+		tasksServiceMock.getBoard.mockImplementation(async (_team, _project, id) =>
+			id === 'other' ? other : liveView(),
+		)
+		const { rerender } = render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' boardId='other' />,
+			{ wrapper: Wrapper },
+		)
+		fireEvent.click(await screen.findByText('Карточка другой доски'))
+		expect(screen.getByRole('dialog')).toBeDefined()
+		expect(tasksServiceMock.getBoard).toHaveBeenCalledExactlyOnceWith(
+			'team-1',
+			'project-1',
+			'other',
+			expect.any(AbortSignal),
+		)
+		fireEvent.change(screen.getByRole('combobox', { name: 'Доска проекта' }), {
+			target: { value: 'board-1' },
+		})
+		expect(routerPush).toHaveBeenCalledWith(
+			'/teams/team-1/projects/project-1/board?boardId=board-1',
+		)
+		rerender(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' boardId='board-1' />,
+		)
+		await screen.findByText('Задача из API')
+		expect(screen.queryByRole('dialog')).toBeNull()
+	})
+
+	it('не подменяет отсутствующую доску из URL основной доской', async () => {
+		render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' boardId='missing' />,
+			{ wrapper: Wrapper },
+		)
+		await screen.findByText('Доска недоступна')
+		expect(tasksServiceMock.getBoard).not.toHaveBeenCalled()
+		expect(
+			screen.getByRole('link', { name: 'К списку досок' }).getAttribute('href'),
+		).toBe('/teams/team-1/projects/project-1')
+	})
+
+	it('позволяет открыть создание доски из пустого состояния', async () => {
+		boardsServiceMock.getAll.mockResolvedValue([])
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('В проекте пока нет досок')
+		fireEvent.click(screen.getByRole('button', { name: 'Создать доску' }))
+		expect(screen.getByRole('dialog', { name: 'Создание доски' })).toBeDefined()
+		expect(tasksServiceMock.getBoard).not.toHaveBeenCalled()
 	})
 
 	it('создаёт карточку через API и ждёт обновления доски без повторного POST', async () => {

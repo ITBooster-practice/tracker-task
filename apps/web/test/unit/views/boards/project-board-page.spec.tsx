@@ -19,10 +19,19 @@ vi.mock('@/views/boards', () => ({
 	ProjectBoardPageView: ({
 		teamId,
 		projectId,
+		boardId,
 	}: {
 		teamId: string
 		projectId: string
-	}) => <div data-testid='project-board' data-team={teamId} data-project={projectId} />,
+		boardId?: string
+	}) => (
+		<div
+			data-testid='project-board'
+			data-team={teamId}
+			data-project={projectId}
+			data-board={boardId}
+		/>
+	),
 }))
 
 beforeEach(() => {
@@ -42,6 +51,17 @@ it('проверяет существующий флаг и передаёт п�
 	expect(screen.getByTestId('project-board').getAttribute('data-project')).toBe(
 		params.projectId,
 	)
+})
+
+it('передаёт boardId из URL без повторного декодирования', async () => {
+	const boardId = 'board /with%value'
+	render(
+		await ProjectBoardPage({
+			params: Promise.resolve({ id: 'team-1', projectId: 'project-1' }),
+			searchParams: Promise.resolve({ boardId }),
+		}),
+	)
+	expect(screen.getByTestId('project-board').getAttribute('data-board')).toBe(boardId)
 })
 
 it('не возвращает страницу, если серверная проверка отклонила доступ', async () => {

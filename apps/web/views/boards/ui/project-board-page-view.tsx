@@ -1,10 +1,23 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { TaskStatusSchema, type BoardView } from '@repo/types'
-import { Button, ConfirmDialog, EmptyState, Skeleton, toast } from '@repo/ui'
+import {
+	Button,
+	ConfirmDialog,
+	EmptyState,
+	Label,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	Skeleton,
+	toast,
+} from '@repo/ui'
 import { ChevronRight, Plus } from '@repo/ui/icons'
 
 import { useBoardsList } from '@/shared/api/use-boards'
@@ -27,10 +40,12 @@ import { findBoardTask } from '../model/utils'
 import { Board } from './board'
 import { BoardTaskDetailsDialog } from './board-task-details-dialog'
 import { BoardTaskFormDialog } from './board-task-form-dialog'
+import { CreateBoardDialog } from './create-board-dialog'
 
 interface ProjectBoardPageViewProps {
 	teamId: string
 	projectId: string
+	boardId?: string
 }
 
 function ProjectBoardContent({
@@ -265,7 +280,11 @@ function ProjectBoardContent({
 					headingLevel='h2'
 					className='mx-auto'
 					title='На доске пока нет задач'
-					description='Создайте первую задачу, чтобы начать работу.'
+					description={
+						view.board.isDefault
+							? 'Создайте первую задачу, чтобы начать работу.'
+							: 'Здесь будут отображаться задачи, добавленные на эту доску.'
+					}
 				/>
 			)}
 			{moveTask.isPending && (
@@ -341,11 +360,15 @@ function ProjectBoardContent({
 	)
 }
 
-function ProjectBoardPageView({ teamId, projectId }: ProjectBoardPageViewProps) {
+function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewProps) {
+	const router = useRouter()
+	const [creatingBoard, setCreatingBoard] = useState(false)
 	const projectQuery = useProjectDetail(teamId, projectId)
 	const boardsQuery = useBoardsList(teamId, projectId)
 	const selectedBoard =
-		boardsQuery.data?.find((board) => board.isDefault) ?? boardsQuery.data?.[0]
+		boardId !== undefined
+			? boardsQuery.data?.find((board) => board.id === boardId)
+			: (boardsQuery.data?.find((board) => board.isDefault) ?? boardsQuery.data?.[0])
 	const boardQuery = useBoardQuery(teamId, projectId, selectedBoard?.id ?? '')
 	const isLoading =
 		boardsQuery.isPending || (Boolean(selectedBoard) && boardQuery.isPending)
@@ -357,39 +380,71 @@ function ProjectBoardPageView({ teamId, projectId }: ProjectBoardPageViewProps) 
 	}
 
 	const renderHeader = (actions?: ReactNode) => (
-		<PageHeader
-			actions={actions}
-			title={boardQuery.data?.board.name ?? selectedBoard?.name ?? 'Доска проекта'}
-			description='Задачи проекта по этапам работы.'
-			navigation={
-				<nav
-					aria-label='Хлебные крошки'
-					className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'
-				>
-					<Link href={ROUTES.teams} className='transition-colors hover:text-foreground'>
-						Команды
-					</Link>
-					<ChevronRight className='size-4' />
-					<Link
-						href={teamRoutes.projects(teamId)}
-						className='transition-colors hover:text-foreground'
+		<>
+			<PageHeader
+				actions={
+					<>
+						{actions}
+						<Button variant='outline' onClick={() => setCreatingBoard(true)}>
+							<Plus aria-hidden='true' />
+							Создать доску
+						</Button>
+					</>
+				}
+				title={boardQuery.data?.board.name ?? selectedBoard?.name ?? 'Доска проекта'}
+				description='Задачи проекта по этапам работы.'
+				navigation={
+					<nav
+						aria-label='Хлебные крошки'
+						className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'
 					>
-						Проекты
-					</Link>
-					<ChevronRight className='size-4' />
-					<Link
-						href={teamRoutes.project(teamId, projectId)}
-						className='text-sm text-muted-foreground hover:text-foreground'
+						<Link href={ROUTES.teams} className='transition-colors hover:text-foreground'>
+							Команды
+						</Link>
+						<ChevronRight className='size-4' />
+						<Link
+							href={teamRoutes.projects(teamId)}
+							className='transition-colors hover:text-foreground'
+						>
+							Проекты
+						</Link>
+						<ChevronRight className='size-4' />
+						<Link
+							href={teamRoutes.project(teamId, projectId)}
+							className='text-sm text-muted-foreground hover:text-foreground'
+						>
+							{projectQuery.data?.name ?? 'Проект'}
+						</Link>
+						<ChevronRight className='size-4' />
+						<span aria-current='page' className='text-foreground'>
+							Доска
+						</span>
+					</nav>
+				}
+			/>
+			{boardsQuery.data && boardsQuery.data.length > 0 && (
+				<div className='w-full max-w-sm space-y-2'>
+					<Label htmlFor='project-board-select'>Доска проекта</Label>
+					<Select
+						value={selectedBoard?.id ?? ''}
+						onValueChange={(id) =>
+							router.push(teamRoutes.projectBoard(teamId, projectId, id))
+						}
 					>
-						{projectQuery.data?.name ?? 'Проект'}
-					</Link>
-					<ChevronRight className='size-4' />
-					<span aria-current='page' className='text-foreground'>
-						Доска
-					</span>
-				</nav>
-			}
-		/>
+						<SelectTrigger id='project-board-select' className='w-full'>
+							<SelectValue placeholder='Выберите доску' />
+						</SelectTrigger>
+						<SelectContent>
+							{boardsQuery.data.map((board) => (
+								<SelectItem key={board.id} value={board.id}>
+									{board.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+			)}
+		</>
 	)
 
 	return (
@@ -418,8 +473,24 @@ function ProjectBoardPageView({ teamId, projectId }: ProjectBoardPageViewProps) 
 					<EmptyState
 						headingLevel='h2'
 						className='my-auto self-center'
-						title='В проекте пока нет досок'
-						description='После создания доски здесь появятся колонки и задачи.'
+						title={
+							boardId !== undefined ? 'Доска недоступна' : 'В проекте пока нет досок'
+						}
+						description={
+							boardId !== undefined
+								? 'Возможно, доска удалена или не относится к этому проекту. Выберите другую доску.'
+								: 'Создайте доску, чтобы распределять задачи по колонкам.'
+						}
+						action={
+							boardId !== undefined ? (
+								<Link
+									href={teamRoutes.project(teamId, projectId)}
+									className='text-primary underline underline-offset-4'
+								>
+									К списку досок
+								</Link>
+							) : undefined
+						}
 					/>
 				) : boardQuery.data ? (
 					<ProjectBoardContent
@@ -429,8 +500,26 @@ function ProjectBoardPageView({ teamId, projectId }: ProjectBoardPageViewProps) 
 						teamId={teamId}
 					/>
 				) : null}
+				<CreateBoardDialog
+					open={creatingBoard}
+					teamId={teamId}
+					projectId={projectId}
+					onOpenChange={setCreatingBoard}
+					onCreated={(board) =>
+						router.push(teamRoutes.projectBoard(teamId, projectId, board.id))
+					}
+				/>
 			</div>
 		</div>
+	)
+}
+
+function ProjectBoardPageView(props: ProjectBoardPageViewProps) {
+	return (
+		<ProjectBoardPage
+			key={JSON.stringify([props.teamId, props.projectId, props.boardId])}
+			{...props}
+		/>
 	)
 }
 
