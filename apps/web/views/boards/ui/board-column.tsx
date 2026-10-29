@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useEffect, useRef, type ReactNode } from 'react'
 
 import { Button, cn } from '@repo/ui'
-import { Pencil, Plus } from '@repo/ui/icons'
+import { Pencil, Plus, Trash2 } from '@repo/ui/icons'
 
 import { getBoardColumnContainerId } from '../model/constants'
 import type { BoardColumn } from '../model/types'
@@ -18,6 +18,8 @@ interface BoardColumnProps {
 	onEditTitle?: () => void
 	titleEditor?: ReactNode
 	editTitleDisabled?: boolean
+	dragHandle?: ReactNode
+	onDelete?: () => void
 }
 
 function BoardColumn({
@@ -29,6 +31,8 @@ function BoardColumn({
 	onEditTitle,
 	titleEditor,
 	editTitleDisabled = false,
+	dragHandle,
+	onDelete,
 }: BoardColumnProps) {
 	const editTrigger = useRef<HTMLButtonElement>(null)
 	const wasEditing = useRef(false)
@@ -51,6 +55,7 @@ function BoardColumn({
 			<header className='mb-2 px-2'>
 				{titleEditor ?? (
 					<div className='flex items-start justify-between gap-2'>
+						{dragHandle}
 						<div className='flex min-w-0 flex-1 items-start gap-2'>
 							<h2 className='min-w-0 text-lg leading-7 font-semibold break-words text-foreground'>
 								{column.title}
@@ -82,6 +87,18 @@ function BoardColumn({
 								aria-label='Создать задачу'
 							>
 								<Plus aria-hidden='true' />
+							</Button>
+						)}
+						{onDelete && !column.isSystem && (
+							<Button
+								type='button'
+								variant='ghost'
+								size='icon-sm'
+								disabled={editTitleDisabled}
+								onClick={onDelete}
+								aria-label={`Удалить колонку «${column.title}»`}
+							>
+								<Trash2 aria-hidden='true' />
 							</Button>
 						)}
 					</div>

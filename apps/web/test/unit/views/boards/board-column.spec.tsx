@@ -19,6 +19,29 @@ describe('BoardColumn', () => {
 
 	afterEach(cleanup)
 
+	it('скрывает удаление системной колонки и блокирует действие во время операции', () => {
+		const remove = vi.fn()
+		const props = {
+			column: createBoardColumnFixture(),
+			activeDragTaskId: null,
+			onOpenTask: () => undefined,
+			onDelete: remove,
+		}
+		const { rerender } = render(<BoardColumn {...props} />)
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Удалить колонку «К выполнению»' }),
+		)
+		expect(remove).toHaveBeenCalledTimes(1)
+		rerender(<BoardColumn {...props} editTitleDisabled />)
+		expect(
+			screen.getByRole('button', { name: 'Удалить колонку «К выполнению»' }),
+		).toHaveProperty('disabled', true)
+		rerender(<BoardColumn {...props} column={{ ...props.column, isSystem: true }} />)
+		expect(
+			screen.queryByRole('button', { name: 'Удалить колонку «К выполнению»' }),
+		).toBeNull()
+	})
+
 	it('позволяет переименовать системную колонку и возвращает фокус после редактора', () => {
 		const column = createBoardColumnFixture({ isSystem: true })
 		const edit = vi.fn()

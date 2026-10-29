@@ -54,6 +54,7 @@ vi.mock('@dnd-kit/sortable', () => ({
 			},
 			isDragging: boardCardMockState.isDragging,
 			listeners: {
+				onKeyDown: vi.fn(),
 				'data-dnd-listener': 'true',
 			},
 			setNodeRef: () => undefined,

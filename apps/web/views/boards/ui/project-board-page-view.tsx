@@ -22,6 +22,8 @@ import { ChevronRight, Plus } from '@repo/ui/icons'
 
 import {
 	useCreateBoardColumn,
+	useDeleteBoardColumn,
+	useReorderBoardColumns,
 	useUpdateBoardColumn,
 } from '@/shared/api/use-board-columns'
 import { useBoardsList } from '@/shared/api/use-boards'
@@ -74,6 +76,8 @@ function ProjectBoardContent({
 	const deleting = useDeleteTask()
 	const creatingColumn = useCreateBoardColumn()
 	const updatingColumn = useUpdateBoardColumn()
+	const deletingColumn = useDeleteBoardColumn()
+	const reorderingColumns = useReorderBoardColumns()
 	const columnBusy = useRef(false)
 	const membersQuery = useTeamMemberOptions(teamId, taskForm !== null)
 	const assignees = useMemo(
@@ -128,38 +132,50 @@ function ProjectBoardContent({
 	)
 	const isSaving = creating.isPending || updating.isPending
 	const isMutating =
-		isSaving || deleting.isPending || creatingColumn.isPending || updatingColumn.isPending
-	const handleCreateColumn = async (title: string) => {
+		isSaving ||
+		deleting.isPending ||
+		creatingColumn.isPending ||
+		updatingColumn.isPending ||
+		deletingColumn.isPending ||
+		reorderingColumns.isPending
+	const mutateColumn = async (action: () => Promise<unknown>) => {
 		if (columnBusy.current || crudBusy.current || moving.current)
 			throw new Error('Дождитесь завершения текущего действия.')
 		columnBusy.current = true
 		try {
-			await creatingColumn.mutateAsync({
-				teamId,
-				projectId: view.board.projectId,
-				boardId: view.board.id,
+			await action()
+		} finally {
+			columnBusy.current = false
+		}
+	}
+	const columnContext = {
+		teamId,
+		projectId: view.board.projectId,
+		boardId: view.board.id,
+	}
+	const handleCreateColumn = (title: string) =>
+		mutateColumn(() =>
+			creatingColumn.mutateAsync({
+				...columnContext,
 				data: { title, key: `column_${crypto.randomUUID()}` },
-			})
-		} finally {
-			columnBusy.current = false
-		}
-	}
-	const handleRenameColumn = async (columnId: string, title: string) => {
-		if (columnBusy.current || crudBusy.current || moving.current)
-			throw new Error('Дождитесь завершения текущего действия.')
-		columnBusy.current = true
-		try {
-			await updatingColumn.mutateAsync({
-				teamId,
-				projectId: view.board.projectId,
-				boardId: view.board.id,
+			}),
+		)
+	const handleRenameColumn = (columnId: string, title: string) =>
+		mutateColumn(() =>
+			updatingColumn.mutateAsync({ ...columnContext, columnId, data: { title } }),
+		)
+	const handleDeleteColumn = (columnId: string, targetColumnId: string) =>
+		mutateColumn(() =>
+			deletingColumn.mutateAsync({
+				...columnContext,
 				columnId,
-				data: { title },
-			})
-		} finally {
-			columnBusy.current = false
-		}
-	}
+				data: { targetColumnId },
+			}),
+		)
+	const handleReorderColumns = (columnIds: string[]) =>
+		mutateColumn(() =>
+			reorderingColumns.mutateAsync({ ...columnContext, data: { columnIds } }),
+		)
 	const openCreateForm = () => {
 		if (crudBusy.current || moving.current || columnBusy.current || !createColumns.length)
 			return
@@ -341,6 +357,8 @@ function ProjectBoardContent({
 				disableInteraction={moveTask.isPending || isMutating}
 				onCreateColumn={handleCreateColumn}
 				onRenameColumn={handleRenameColumn}
+				onDeleteColumn={handleDeleteColumn}
+				onReorderColumns={handleReorderColumns}
 				columnActionsDisabled={moveTask.isPending || isMutating}
 			/>
 			<BoardTaskDetailsDialog

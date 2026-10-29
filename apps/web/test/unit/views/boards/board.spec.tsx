@@ -16,6 +16,131 @@ describe('Board', () => {
 
 	afterEach(cleanup)
 
+	it.each([false, true])(
+		'сохраняет полный порядок колонок и восстанавливает его при ошибке (%s)',
+		async (fail) => {
+			let resolve!: () => void
+			let reject!: (error: unknown) => void
+			const pending = new Promise<void>((yes, no) => {
+				resolve = yes
+				reject = no
+			})
+			const reorder = vi.fn<(ids: string[]) => Promise<void>>().mockReturnValue(pending)
+			const move = vi.fn()
+			render(
+				<Board
+					columns={createBoardColumnsFixture()}
+					onOpenTask={() => undefined}
+					onMoveTask={move}
+					onReorderColumns={reorder}
+				/>,
+			)
+			act(() =>
+				getBoardUnitMockState().dndContextProps!.onDragStart({
+					active: { id: 'board-column-order:TODO' },
+				}),
+			)
+			const end = {
+				active: {
+					id: 'board-column-order:TODO',
+					rect: { current: { translated: null } },
+				},
+				over: { id: 'board-column-order:DONE', rect: { top: 0, height: 100 } },
+			}
+			act(() => getBoardUnitMockState().dndContextProps!.onDragEnd(end))
+			expect(reorder).toHaveBeenCalledExactlyOnceWith(['DONE', 'TODO'])
+			expect(move).not.toHaveBeenCalled()
+			expect(
+				screen
+					.getAllByTestId(/^board-column-/)
+					.map((node) => node.getAttribute('data-testid')),
+			).toEqual(['board-column-DONE', 'board-column-TODO'])
+			expect(
+				getBoardUnitMockState()
+					.boardColumnProps.slice(-2)
+					.every((props) => props.disabled),
+			).toBe(true)
+			if (fail) await act(async () => reject({ statusCode: 409, message: 'Conflict' }))
+			else await act(async () => resolve())
+			await waitFor(() =>
+				expect(
+					screen
+						.getAllByTestId(/^board-column-/)
+						.map((node) => node.getAttribute('data-testid')),
+				).toEqual(['board-column-TODO', 'board-column-DONE']),
+			)
+			if (fail) expect(screen.getByRole('alert').textContent).toContain('изменилась')
+		},
+	)
+
+	it.each(['same', 'outside', 'cancel'])('не отправляет порядок для %s', (kind) => {
+		const reorder = vi.fn<(ids: string[]) => Promise<void>>()
+		render(
+			<Board
+				columns={createBoardColumnsFixture()}
+				onOpenTask={() => undefined}
+				onReorderColumns={reorder}
+			/>,
+		)
+		act(() =>
+			getBoardUnitMockState().dndContextProps!.onDragStart({
+				active: { id: 'board-column-order:TODO' },
+			}),
+		)
+		act(() => {
+			if (kind === 'cancel') getBoardUnitMockState().dndContextProps!.onDragCancel()
+			else
+				getBoardUnitMockState().dndContextProps!.onDragEnd({
+					active: {
+						id: 'board-column-order:TODO',
+						rect: { current: { translated: null } },
+					},
+					over:
+						kind === 'outside'
+							? null
+							: { id: 'board-column-order:TODO', rect: { top: 0, height: 100 } },
+				})
+		})
+		expect(reorder).not.toHaveBeenCalled()
+	})
+
+	it('не затирает обновлённые сервером колонки при неудачной перестановке', async () => {
+		let reject!: (error: unknown) => void
+		const reorder = vi.fn<(ids: string[]) => Promise<void>>().mockReturnValue(
+			new Promise((_, no) => {
+				reject = no
+			}),
+		)
+		const columns = createBoardColumnsFixture()
+		const props = { onOpenTask: () => undefined, onReorderColumns: reorder }
+		const { rerender } = render(<Board {...props} columns={columns} />)
+		act(() =>
+			getBoardUnitMockState().dndContextProps!.onDragStart({
+				active: { id: 'board-column-order:TODO' },
+			}),
+		)
+		act(() =>
+			getBoardUnitMockState().dndContextProps!.onDragEnd({
+				active: {
+					id: 'board-column-order:TODO',
+					rect: { current: { translated: null } },
+				},
+				over: { id: 'board-column-order:DONE', rect: { top: 0, height: 100 } },
+			}),
+		)
+		const latest = [
+			...columns,
+			{ ...columns[0]!, id: 'NEW', title: 'Добавлена другим пользователем', tasks: [] },
+		]
+		rerender(<Board {...props} columns={latest} />)
+		await act(async () => reject({ statusCode: 400, message: 'Outdated order' }))
+		expect(
+			screen
+				.getAllByTestId(/^board-column-/)
+				.map((node) => node.getAttribute('data-testid')),
+		).toEqual(['board-column-TODO', 'board-column-DONE', 'board-column-NEW'])
+	})
+
 	it('создаёт колонку inline, сохраняет черновик после ошибки и возвращает фокус', async () => {
 		const create = vi
 			.fn<(title: string) => Promise<void>>()
@@ -157,7 +282,7 @@ describe('Board', () => {
 
 		expect(screen.getByTestId('dnd-context')).toBeDefined()
 		expect(state.dndContextProps?.collisionDetection).toBe('closestCorners')
-		expect(state.sensorCalls).toHaveLength(2)
+		expect(state.sensorCalls).toHaveLength(3)
 		expect(state.sensorCalls[0]).toMatchObject({
 			options: {
 				activationConstraint: {
