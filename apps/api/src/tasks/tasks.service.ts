@@ -186,7 +186,9 @@ export class TasksService {
 				...(dto.priority !== undefined && { priority: dto.priority as never }),
 				...(dto.type !== undefined && { type: dto.type }),
 				...(dto.assigneeId !== undefined && { assigneeId: dto.assigneeId }),
-				...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
+				...(dto.dueDate !== undefined && {
+					dueDate: dto.dueDate === null ? null : new Date(dto.dueDate),
+				}),
 			},
 		})
 	}
