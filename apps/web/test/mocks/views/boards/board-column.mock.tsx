@@ -82,6 +82,9 @@ vi.mock('@dnd-kit/sortable', () => ({
 }))
 
 vi.mock('@repo/ui', () => ({
+	Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
+		<button {...props}>{children}</button>
+	),
 	cn: (...args: unknown[]) => boardColumnMockState.buildClassName(args),
 }))
 

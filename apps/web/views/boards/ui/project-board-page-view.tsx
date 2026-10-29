@@ -20,6 +20,10 @@ import {
 } from '@repo/ui'
 import { ChevronRight, Plus } from '@repo/ui/icons'
 
+import {
+	useCreateBoardColumn,
+	useUpdateBoardColumn,
+} from '@/shared/api/use-board-columns'
 import { useBoardsList } from '@/shared/api/use-boards'
 import { useProjectDetail } from '@/shared/api/use-projects'
 import {
@@ -68,6 +72,9 @@ function ProjectBoardContent({
 	const creating = useCreateTask()
 	const updating = useUpdateTask()
 	const deleting = useDeleteTask()
+	const creatingColumn = useCreateBoardColumn()
+	const updatingColumn = useUpdateBoardColumn()
+	const columnBusy = useRef(false)
 	const membersQuery = useTeamMemberOptions(teamId, taskForm !== null)
 	const assignees = useMemo(
 		() =>
@@ -120,15 +127,48 @@ function ProjectBoardContent({
 		[columns, view.board.isDefault],
 	)
 	const isSaving = creating.isPending || updating.isPending
-	const isMutating = isSaving || deleting.isPending
+	const isMutating =
+		isSaving || deleting.isPending || creatingColumn.isPending || updatingColumn.isPending
+	const handleCreateColumn = async (title: string) => {
+		if (columnBusy.current || crudBusy.current || moving.current)
+			throw new Error('Дождитесь завершения текущего действия.')
+		columnBusy.current = true
+		try {
+			await creatingColumn.mutateAsync({
+				teamId,
+				projectId: view.board.projectId,
+				boardId: view.board.id,
+				data: { title, key: `column_${crypto.randomUUID()}` },
+			})
+		} finally {
+			columnBusy.current = false
+		}
+	}
+	const handleRenameColumn = async (columnId: string, title: string) => {
+		if (columnBusy.current || crudBusy.current || moving.current)
+			throw new Error('Дождитесь завершения текущего действия.')
+		columnBusy.current = true
+		try {
+			await updatingColumn.mutateAsync({
+				teamId,
+				projectId: view.board.projectId,
+				boardId: view.board.id,
+				columnId,
+				data: { title },
+			})
+		} finally {
+			columnBusy.current = false
+		}
+	}
 	const openCreateForm = () => {
-		if (crudBusy.current || moving.current || !createColumns.length) return
+		if (crudBusy.current || moving.current || columnBusy.current || !createColumns.length)
+			return
 		setOpenedTaskId(null)
 		setFormError(null)
 		setTaskForm({ mode: 'create', task: null })
 	}
 	const handleSubmitTask = async (values: BoardTaskFormValues) => {
-		if (!taskForm || crudBusy.current || moving.current) return
+		if (!taskForm || crudBusy.current || moving.current || columnBusy.current) return
 		crudBusy.current = true
 		setFormError(null)
 		const data = {
@@ -186,7 +226,8 @@ function ProjectBoardContent({
 		}
 	}
 	const handleDeleteTask = async () => {
-		if (!taskPendingDelete || crudBusy.current || moving.current) return
+		if (!taskPendingDelete || crudBusy.current || moving.current || columnBusy.current)
+			return
 		crudBusy.current = true
 		setDeleteError(null)
 		try {
@@ -213,7 +254,14 @@ function ProjectBoardContent({
 	const selectedTask = findBoardTask(columns, openedTaskId)
 	const hasTasks = columns.some((column) => column.tasks.length > 0)
 	const handleMoveTask = ({ taskId, toColumnId, toIndex }: BoardTaskMoveInput) => {
-		if (moving.current || moveTask.isPending || crudBusy.current || isMutating) return
+		if (
+			moving.current ||
+			moveTask.isPending ||
+			crudBusy.current ||
+			columnBusy.current ||
+			isMutating
+		)
+			return
 		const source = view.columns.find((column) =>
 			column.tasks.some((task) => task.id === taskId),
 		)
@@ -249,20 +297,6 @@ function ProjectBoardContent({
 			})
 	}
 
-	if (columns.length === 0) {
-		return (
-			<>
-				{renderHeader()}
-				<EmptyState
-					headingLevel='h2'
-					className='my-auto self-center'
-					title='На доске пока нет колонок'
-					description='Добавьте колонки, чтобы распределять задачи по этапам.'
-				/>
-			</>
-		)
-	}
-
 	return (
 		<>
 			{renderHeader(
@@ -275,7 +309,15 @@ function ProjectBoardContent({
 					</>
 				) : undefined,
 			)}
-			{!hasTasks && (
+			{columns.length === 0 && (
+				<EmptyState
+					headingLevel='h2'
+					className='mx-auto'
+					title='На доске пока нет колонок'
+					description='Добавьте колонку, чтобы распределять задачи по этапам.'
+				/>
+			)}
+			{columns.length > 0 && !hasTasks && (
 				<EmptyState
 					headingLevel='h2'
 					className='mx-auto'
@@ -297,18 +339,21 @@ function ProjectBoardContent({
 				onOpenTask={setOpenedTaskId}
 				onMoveTask={handleMoveTask}
 				disableInteraction={moveTask.isPending || isMutating}
+				onCreateColumn={handleCreateColumn}
+				onRenameColumn={handleRenameColumn}
+				columnActionsDisabled={moveTask.isPending || isMutating}
 			/>
 			<BoardTaskDetailsDialog
 				task={taskForm || taskPendingDelete ? null : selectedTask}
 				showActivity={false}
 				actionsDisabled={moveTask.isPending || isMutating}
 				onEditTask={(task) => {
-					if (moving.current || crudBusy.current) return
+					if (moving.current || crudBusy.current || columnBusy.current) return
 					setFormError(null)
 					setTaskForm({ mode: 'edit', task })
 				}}
 				onDeleteTask={(task) => {
-					if (moving.current || crudBusy.current) return
+					if (moving.current || crudBusy.current || columnBusy.current) return
 					setDeleteError(null)
 					setTaskPendingDelete(task)
 				}}

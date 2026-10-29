@@ -3,8 +3,8 @@ import {
 	getBoardUnitMockState,
 	resetBoardUnitMocks,
 } from '@/test/mocks/views/boards/board.mock'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { BoardTaskMoveInput } from '@/views/boards/model/types'
 import { Board } from '@/views/boards/ui/board'
@@ -15,6 +15,82 @@ describe('Board', () => {
 	})
 
 	afterEach(cleanup)
+
+	it('создаёт колонку inline, сохраняет черновик после ошибки и возвращает фокус', async () => {
+		const create = vi
+			.fn<(title: string) => Promise<void>>()
+			.mockRejectedValueOnce({ statusCode: 409, message: 'Conflict' })
+			.mockResolvedValueOnce(undefined)
+		render(
+			<Board
+				columns={createBoardColumnsFixture()}
+				onOpenTask={() => undefined}
+				onMoveTask={() => undefined}
+				onCreateColumn={create}
+			/>,
+		)
+		fireEvent.click(screen.getByRole('button', { name: 'Добавить колонку' }))
+		const input = screen.getByLabelText('Название новой колонки')
+		expect(document.activeElement).toBe(input)
+		expect(
+			getBoardUnitMockState()
+				.boardColumnProps.slice(-2)
+				.every((props) => props.disabled),
+		).toBe(true)
+		fireEvent.click(screen.getByTestId('drag-start'))
+		expect(screen.queryByTestId('overlay-card-task-a')).toBeNull()
+		fireEvent.change(input, { target: { value: '  Проверка  ' } })
+		fireEvent.submit(input.closest('form')!)
+		await screen.findByRole('alert')
+		expect(input).toHaveProperty('value', '  Проверка  ')
+		fireEvent.submit(input.closest('form')!)
+		await waitFor(() =>
+			expect(screen.queryByLabelText('Название новой колонки')).toBeNull(),
+		)
+		expect(create).toHaveBeenLastCalledWith('Проверка')
+		await waitFor(() =>
+			expect(document.activeElement).toBe(
+				screen.getByRole('button', { name: 'Добавить колонку' }),
+			),
+		)
+		expect(
+			getBoardUnitMockState()
+				.boardColumnProps.slice(-2)
+				.every((props) => !props.disabled),
+		).toBe(true)
+	})
+
+	it('переименовывает выбранную колонку и отменяет создание по Escape', async () => {
+		const rename = vi
+			.fn<(id: string, title: string) => Promise<void>>()
+			.mockResolvedValue(undefined)
+		const create = vi.fn<(title: string) => Promise<void>>()
+		render(
+			<Board
+				columns={createBoardColumnsFixture()}
+				onOpenTask={() => undefined}
+				onCreateColumn={create}
+				onRenameColumn={rename}
+			/>,
+		)
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
+		)
+		const input = screen.getByLabelText('Название колонки')
+		fireEvent.change(input, { target: { value: 'Новый этап' } })
+		fireEvent.submit(input.closest('form')!)
+		await waitFor(() =>
+			expect(rename).toHaveBeenCalledExactlyOnceWith('TODO', 'Новый этап'),
+		)
+		await waitFor(() => expect(screen.queryByLabelText('Название колонки')).toBeNull())
+		fireEvent.click(screen.getByRole('button', { name: 'Добавить колонку' }))
+		fireEvent.keyDown(screen.getByLabelText('Название новой колонки'), { key: 'Escape' })
+		expect(screen.queryByLabelText('Название новой колонки')).toBeNull()
+		expect(create).not.toHaveBeenCalled()
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Добавить колонку' }),
+		)
+	})
 
 	it('оставляет открытие карточек, отключая drag без обработчика переноса', () => {
 		let openedTaskId = ''
