@@ -1,8 +1,9 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useEffect, useRef, type ReactNode } from 'react'
 
-import { cn } from '@repo/ui'
-import { Plus } from '@repo/ui/icons'
+import { Button, cn } from '@repo/ui'
+import { Pencil, Plus } from '@repo/ui/icons'
 
 import { getBoardColumnContainerId } from '../model/constants'
 import type { BoardColumn } from '../model/types'
@@ -14,6 +15,9 @@ interface BoardColumnProps {
 	onCreateTask?: () => void
 	activeDragTaskId: string | null
 	disabled?: boolean
+	onEditTitle?: () => void
+	titleEditor?: ReactNode
+	editTitleDisabled?: boolean
 }
 
 function BoardColumn({
@@ -22,7 +26,17 @@ function BoardColumn({
 	onCreateTask,
 	activeDragTaskId,
 	disabled = false,
+	onEditTitle,
+	titleEditor,
+	editTitleDisabled = false,
 }: BoardColumnProps) {
+	const editTrigger = useRef<HTMLButtonElement>(null)
+	const wasEditing = useRef(false)
+	const isEditingTitle = Boolean(titleEditor)
+	useEffect(() => {
+		if (wasEditing.current && !isEditingTitle) editTrigger.current?.focus()
+		wasEditing.current = isEditingTitle
+	}, [isEditingTitle])
 	const { isOver, setNodeRef } = useDroppable({
 		id: getBoardColumnContainerId(column.id),
 		data: {
@@ -35,33 +49,49 @@ function BoardColumn({
 	return (
 		<section className='flex w-[260px] shrink-0 flex-col'>
 			<header className='mb-2 px-2'>
-				<div className='flex items-center justify-between gap-2'>
-					<div className='flex items-center gap-2'>
-						<h2 className='text-[13px] font-semibold tracking-[0.01em] text-foreground'>
-							{column.title}
-						</h2>
-						<span className='inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground'>
-							{column.tasks.length}
-						</span>
-					</div>
+				{titleEditor ?? (
+					<div className='flex items-start justify-between gap-2'>
+						<div className='flex min-w-0 flex-1 items-start gap-2'>
+							<h2 className='min-w-0 text-lg leading-7 font-semibold break-words text-foreground'>
+								{column.title}
+							</h2>
+							<span className='mt-1 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-muted-foreground'>
+								{column.tasks.length}
+							</span>
+						</div>
+						{onEditTitle && (
+							<Button
+								ref={editTrigger}
+								type='button'
+								variant='ghost'
+								size='icon-sm'
+								disabled={editTitleDisabled}
+								onClick={onEditTitle}
+								aria-label={`Переименовать колонку «${column.title}»`}
+							>
+								<Pencil aria-hidden='true' />
+							</Button>
+						)}
 
-					{onCreateTask && (
-						<button
-							type='button'
-							onClick={onCreateTask}
-							className='inline-flex size-5 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground'
-							title='Создать задачу'
-						>
-							<Plus className='size-3.5' />
-						</button>
-					)}
-				</div>
+						{onCreateTask && (
+							<Button
+								type='button'
+								onClick={onCreateTask}
+								variant='ghost'
+								size='icon-sm'
+								aria-label='Создать задачу'
+							>
+								<Plus aria-hidden='true' />
+							</Button>
+						)}
+					</div>
+				)}
 			</header>
 
 			<div
 				ref={setNodeRef}
 				className={cn(
-					'flex min-h-[320px] flex-1 flex-col rounded-[16px] p-2 transition-colors duration-200',
+					'flex min-h-[320px] flex-1 flex-col rounded-[var(--radius-surface)] p-2 transition-colors duration-200',
 					isOver && 'bg-primary/5',
 				)}
 			>
@@ -82,7 +112,7 @@ function BoardColumn({
 								/>
 							))
 						) : (
-							<div className='flex min-h-[100px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-border/60 bg-background/40 px-4 text-center text-[11px] leading-5 text-muted-foreground/60'>
+							<div className='flex min-h-[100px] flex-1 items-center justify-center rounded-[var(--radius-surface)] border border-dashed border-border bg-background/40 px-4 text-center text-sm leading-5 text-muted-foreground'>
 								{disabled ? 'Нет задач' : 'Перетащите карточку сюда'}
 							</div>
 						)}

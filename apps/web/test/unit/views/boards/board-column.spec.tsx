@@ -8,7 +8,7 @@ import {
 	createBoardTaskFixture,
 } from '@/test/mocks/views/boards/board-ui.fixtures'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BoardColumn } from '@/views/boards/ui/board-column'
 
@@ -18,6 +18,35 @@ describe('BoardColumn', () => {
 	})
 
 	afterEach(cleanup)
+
+	it('позволяет переименовать системную колонку и возвращает фокус после редактора', () => {
+		const column = createBoardColumnFixture({ isSystem: true })
+		const edit = vi.fn()
+		const props = {
+			column,
+			activeDragTaskId: null,
+			onOpenTask: () => undefined,
+			onEditTitle: edit,
+		}
+		const { rerender } = render(<BoardColumn {...props} />)
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
+		)
+		expect(edit).toHaveBeenCalledTimes(1)
+		rerender(
+			<BoardColumn {...props} titleEditor={<input aria-label='Редактор названия' />} />,
+		)
+		expect(screen.queryByRole('heading')).toBeNull()
+		expect(screen.getByLabelText('Редактор названия')).toBeDefined()
+		rerender(<BoardColumn {...props} />)
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
+		)
+		rerender(<BoardColumn {...props} editTitleDisabled />)
+		expect(
+			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
+		).toHaveProperty('disabled', true)
+	})
 
 	it('рендерит заголовок, счётчик и карточки колонки', () => {
 		let openedTaskId = ''

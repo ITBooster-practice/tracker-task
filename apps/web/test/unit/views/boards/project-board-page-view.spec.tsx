@@ -1,8 +1,13 @@
 import '@/test/mocks/api/boards-service.mock'
+import '@/test/mocks/api/board-columns-service.mock'
 import '@/test/mocks/api/tasks-service.mock'
 import '@/test/mocks/api/projects-service.mock'
 import '@/test/mocks/api/team-members-service.mock'
 
+import {
+	boardColumnsServiceMock,
+	resetBoardColumnsServiceMock,
+} from '@/test/mocks/api/board-columns-service.mock'
 import { boardsServiceMock } from '@/test/mocks/api/boards-service.mock'
 import {
 	createBoardListItemFixture,
@@ -235,6 +240,7 @@ describe('ProjectBoardPageView', () => {
 	)
 
 	beforeEach(() => {
+		resetBoardColumnsServiceMock()
 		toastError.mockReset()
 		routerPush.mockReset()
 		boardState.current = null
@@ -261,6 +267,125 @@ describe('ProjectBoardPageView', () => {
 	afterEach(() => {
 		cleanup()
 		client.clear()
+	})
+
+	it('создаёт колонку с техническим ключом и блокирует повторные изменения до обновления доски', async () => {
+		const before = movableView()
+		const after = structuredClone(before)
+		const added = {
+			...createBoardListItemFixture().columns[0]!,
+			id: 'created-column',
+			key: 'column_random',
+			title: 'Проверка',
+			position: 2,
+		}
+		after.columns.push({ ...added, tasks: [] })
+		const request = deferred<typeof added>()
+		const refetch = deferred<BoardView>()
+		tasksServiceMock.getBoard
+			.mockResolvedValueOnce(before)
+			.mockReturnValueOnce(refetch.promise)
+		boardColumnsServiceMock.create.mockReturnValue(request.promise)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		let result!: Promise<void>
+		act(() => {
+			result = boardState.current!.onCreateColumn!('Проверка')
+		})
+		await waitFor(() => expect(boardColumnsServiceMock.create).toHaveBeenCalledTimes(1))
+		expect(boardColumnsServiceMock.create).toHaveBeenCalledWith(
+			'team-1',
+			'project-1',
+			'board-1',
+			{ title: 'Проверка', key: expect.stringMatching(/^column_[0-9a-f-]{36}$/) },
+		)
+		await act(async () => {
+			await expect(boardState.current!.onCreateColumn!('Дубль')).rejects.toThrow()
+		})
+		act(() =>
+			boardState.current!.onMoveTask!({
+				taskId: before.columns[0]!.tasks[0]!.id,
+				toColumnId: 'target',
+				toIndex: 0,
+			}),
+		)
+		expect(tasksServiceMock.move).not.toHaveBeenCalled()
+		await act(async () => {
+			request.resolve(added)
+		})
+		await waitFor(() => expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(2))
+		expect(boardState.current!.columnActionsDisabled).toBe(true)
+		await act(async () => {
+			refetch.resolve(after)
+			await result
+		})
+		await screen.findByRole('heading', { name: 'Проверка' })
+		await waitFor(() => expect(boardState.current!.columnActionsDisabled).toBe(false))
+	})
+
+	it('переименовывает системную колонку без изменения её ключа и статусов задач', async () => {
+		const before = liveView()
+		const after = structuredClone(before)
+		after.columns[0]!.title = 'Новый этап'
+		boardColumnsServiceMock.update.mockResolvedValue({
+			...createBoardListItemFixture().columns[0]!,
+			title: 'Новый этап',
+		})
+		tasksServiceMock.getBoard.mockResolvedValueOnce(before).mockResolvedValue(after)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		await act(async () => {
+			await boardState.current!.onRenameColumn!(before.columns[0]!.id, 'Новый этап')
+		})
+		expect(boardColumnsServiceMock.update).toHaveBeenCalledExactlyOnceWith(
+			'team-1',
+			'project-1',
+			'board-1',
+			before.columns[0]!.id,
+			{ title: 'Новый этап' },
+		)
+		await screen.findByRole('heading', { name: 'Новый этап' })
+		const saved = client.getQueryData<BoardView>(
+			tasksKeys.board('team-1', 'project-1', 'board-1'),
+		)!
+		expect(saved.columns[0]!.key).toBe(before.columns[0]!.key)
+		expect(saved.columns[0]!.tasks).toEqual(before.columns[0]!.tasks)
+	})
+
+	it('завершение создания после смены проекта не меняет новую доску', async () => {
+		const request =
+			deferred<ReturnType<typeof createBoardListItemFixture>['columns'][number]>()
+		boardColumnsServiceMock.create.mockReturnValue(request.promise)
+		const { rerender } = render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' />,
+			{ wrapper: Wrapper },
+		)
+		await screen.findByText('Задача из API')
+		let result!: Promise<void>
+		act(() => {
+			result = boardState.current!.onCreateColumn!('Старый проект')
+		})
+		await waitFor(() => expect(boardColumnsServiceMock.create).toHaveBeenCalledTimes(1))
+		const other = liveView('project-2')
+		other.columns[0]!.title = 'Этап другого проекта'
+		boardsServiceMock.getAll.mockResolvedValue([
+			createBoardListItemFixture({ projectId: 'project-2', isDefault: true }),
+		])
+		tasksServiceMock.getBoard.mockResolvedValue(other)
+		rerender(<ProjectBoardPageView teamId='team-1' projectId='project-2' />)
+		await screen.findByRole('heading', { name: 'Этап другого проекта' })
+		const calls = tasksServiceMock.getBoard.mock.calls.length
+		await act(async () => {
+			request.resolve(createBoardListItemFixture().columns[0]!)
+			await result
+		})
+		expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(calls)
+		expect(screen.getByRole('heading', { name: 'Этап другого проекта' })).toBeDefined()
+		expect(screen.queryByText('Старый проект')).toBeNull()
 	})
 
 	it('загружает основную доску в два этапа и показывает реальные карточки и детали', async () => {

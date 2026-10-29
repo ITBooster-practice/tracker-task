@@ -41,6 +41,9 @@ interface DndContextMockProps {
 }
 
 interface BoardColumnMockProps {
+	onEditTitle?: () => void
+	titleEditor?: React.ReactNode
+	editTitleDisabled?: boolean
 	activeDragTaskId: string | null
 	column: BoardColumn
 	disabled?: boolean
@@ -199,6 +202,16 @@ vi.mock('@/views/boards/ui/board-column', () => ({
 				data-disabled={String(Boolean(props.disabled))}
 				data-testid={`board-column-${props.column.id}`}
 			>
+				{props.titleEditor ??
+					(props.onEditTitle && (
+						<button
+							disabled={props.editTitleDisabled}
+							onClick={props.onEditTitle}
+							aria-label={`Переименовать колонку «${props.column.title}»`}
+						>
+							Переименовать
+						</button>
+					))}
 				{props.column.tasks.map((task) => (
 					<button key={task.id} type='button' onClick={() => props.onOpenTask(task.id)}>
 						{task.title}

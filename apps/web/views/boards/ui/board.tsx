@@ -12,11 +12,15 @@ import {
 } from '@dnd-kit/core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { Button } from '@repo/ui'
+import { Plus } from '@repo/ui/icons'
+
 import { BOARD_COLUMN_CONTAINER_PREFIX } from '../model/constants'
 import type { BoardColumn, BoardTaskMoveInput } from '../model/types'
 import { findBoardTask, moveTaskInColumns } from '../model/utils'
 import { BoardCard } from './board-card'
 import { BoardColumn as BoardColumnView } from './board-column'
+import { BoardColumnTitleForm } from './board-column-title-form'
 
 interface BoardProps {
 	columns: BoardColumn[]
@@ -24,6 +28,9 @@ interface BoardProps {
 	onMoveTask?: (input: BoardTaskMoveInput) => void
 	onCreateTask?: () => void
 	disableInteraction?: boolean
+	onCreateColumn?: (title: string) => Promise<void>
+	onRenameColumn?: (columnId: string, title: string) => Promise<void>
+	columnActionsDisabled?: boolean
 }
 
 const getColumnIdFromDroppableId = (droppableId: string) => {
@@ -91,8 +98,27 @@ function Board({
 	onMoveTask,
 	onCreateTask,
 	disableInteraction = false,
+	onCreateColumn,
+	onRenameColumn,
+	columnActionsDisabled = false,
 }: BoardProps) {
-	const isInteractionDisabled = disableInteraction || !onMoveTask
+	const [isAddingColumn, setIsAddingColumn] = useState(false)
+	const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
+	const createTrigger = useRef<HTMLButtonElement>(null)
+	const wasAdding = useRef(false)
+	useEffect(() => {
+		if (wasAdding.current && !isAddingColumn) createTrigger.current?.focus()
+		wasAdding.current = isAddingColumn
+	}, [isAddingColumn])
+	useEffect(() => {
+		if (
+			editingColumnId !== null &&
+			!columns.some((column) => column.id === editingColumnId)
+		)
+			setEditingColumnId(null)
+	}, [columns, editingColumnId])
+	const isColumnEditing = isAddingColumn || editingColumnId !== null
+	const isInteractionDisabled = disableInteraction || !onMoveTask || isColumnEditing
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: {
@@ -192,8 +218,53 @@ function Board({
 							onCreateTask={onCreateTask}
 							activeDragTaskId={activeTaskId}
 							disabled={isInteractionDisabled}
+							onEditTitle={
+								onRenameColumn ? () => setEditingColumnId(column.id) : undefined
+							}
+							editTitleDisabled={
+								columnActionsDisabled || isColumnEditing || activeTaskId !== null
+							}
+							titleEditor={
+								editingColumnId === column.id && onRenameColumn ? (
+									<BoardColumnTitleForm
+										columnId={column.id}
+										initialTitle={column.title}
+										columns={columns}
+										disabled={columnActionsDisabled}
+										onSubmit={(title) => onRenameColumn(column.id, title)}
+										onDone={() => setEditingColumnId(null)}
+									/>
+								) : undefined
+							}
 						/>
 					))}
+					{onCreateColumn && (
+						<div key='create-column-control' className='w-[260px] shrink-0'>
+							{isAddingColumn ? (
+								<div className='rounded-[var(--radius-surface)] border border-border bg-card p-4'>
+									<BoardColumnTitleForm
+										columns={columns}
+										disabled={columnActionsDisabled}
+										onSubmit={onCreateColumn}
+										onDone={() => setIsAddingColumn(false)}
+									/>
+								</div>
+							) : (
+								<Button
+									ref={createTrigger}
+									variant='outline'
+									className='w-full'
+									disabled={
+										columnActionsDisabled || isColumnEditing || activeTaskId !== null
+									}
+									onClick={() => setIsAddingColumn(true)}
+								>
+									<Plus aria-hidden='true' />
+									Добавить колонку
+								</Button>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
 
