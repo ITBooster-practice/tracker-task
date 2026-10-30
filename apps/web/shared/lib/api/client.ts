@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
+import { useUserStore } from '@/entities/user'
 import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
 
 import { isClientSide, setCookieHeader } from './auth-cookies'
@@ -43,6 +44,7 @@ client.interceptors.response.use(
 			}
 
 			if (isClientSide()) {
+				useUserStore.getState().clearUser()
 				const url = new URL(ROUTES.login, window.location.origin)
 				url.searchParams.set(ROUTE_QUERY_PARAMS.clearAuth, '1')
 				window.location.assign(url)

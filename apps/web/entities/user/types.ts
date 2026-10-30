@@ -6,11 +6,14 @@ export type User = {
 
 type UserStoreState = {
 	user: User | null
+	sessionVersion: number
+	sessionEnded: boolean
 }
 
 type UserStoreActions = {
 	setUser: (user: User) => void
 	clearUser: () => void
+	startSession: () => void
 }
 
 export type UserStore = UserStoreState & UserStoreActions

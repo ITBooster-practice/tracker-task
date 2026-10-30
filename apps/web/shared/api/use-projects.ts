@@ -15,6 +15,8 @@ import type {
 
 import { projectsService } from '@/shared/lib/api/projects-service'
 import type { ApiError } from '@/shared/lib/api/types'
+import { isApiError } from '@/shared/lib/api/utils'
+import { useWorkspaceStore } from '@/shared/lib/workspace-context/store'
 
 export const projectsKeys = {
 	all: ['projects'] as const,
@@ -27,20 +29,39 @@ export const projectsKeys = {
 		[...projectsKeys.details(), teamId, projectId] as const,
 } as const
 
-export const useProjectsList = (teamId: string, params?: PaginationParams) => {
+export const useProjectsList = (
+	teamId: string,
+	params?: PaginationParams,
+	options?: { accountId?: string; enabled?: boolean },
+) => {
 	return useQuery<PaginatedResponse<Project>>({
-		queryKey: projectsKeys.list(teamId, params),
+		queryKey:
+			options?.accountId === undefined
+				? projectsKeys.list(teamId, params)
+				: [...projectsKeys.list(teamId, params), { accountId: options.accountId }],
 		queryFn: () => projectsService.getAll(teamId, params),
-		enabled: Boolean(teamId),
-		placeholderData: keepPreviousData,
+		enabled: Boolean(teamId) && (options?.enabled ?? true),
+		placeholderData: options?.accountId === undefined ? keepPreviousData : undefined,
 	})
 }
 
-export const useProjectDetail = (teamId: string, projectId: string) => {
+export const useProjectDetail = (
+	teamId: string,
+	projectId: string,
+	options?: { accountId?: string; enabled?: boolean },
+) => {
 	return useQuery({
-		queryKey: projectsKeys.detail(teamId, projectId),
+		queryKey:
+			options?.accountId === undefined
+				? projectsKeys.detail(teamId, projectId)
+				: [...projectsKeys.detail(teamId, projectId), { accountId: options.accountId }],
 		queryFn: () => projectsService.getById(teamId, projectId),
-		enabled: Boolean(teamId) && Boolean(projectId),
+		enabled: Boolean(teamId) && Boolean(projectId) && (options?.enabled ?? true),
+		retry:
+			options?.accountId === undefined
+				? undefined
+				: (count, error) =>
+						!(isApiError(error) && [403, 404].includes(error.statusCode)) && count < 3,
 	})
 }
 
@@ -84,6 +105,7 @@ export const useDeleteProject = () => {
 	return useMutation<void, ApiError, { teamId: string; projectId: string }>({
 		mutationFn: ({ teamId, projectId }) => projectsService.delete(teamId, projectId),
 		onSuccess: (_, { teamId, projectId }) => {
+			useWorkspaceStore.getState().clearProject(teamId, projectId)
 			queryClient.invalidateQueries({ queryKey: projectsKeys.teamLists(teamId) })
 			queryClient.removeQueries({ queryKey: projectsKeys.detail(teamId, projectId) })
 		},
