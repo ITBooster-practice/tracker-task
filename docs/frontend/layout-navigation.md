@@ -45,8 +45,8 @@ apps/web/app/
 - `ui/layout.tsx` — базовая двухколоночная разметка:
   - слева `aside` (desktop),
   - справа `header` + `main`.
-- `ui/sidebar/sidebar.tsx` — меню разделов, тема, блок пользователя.
-- `ui/header/header.tsx` — toggle/sidebar-trigger, breadcrumbs-заглушка, поиск, уведомления (заглушка), профиль.
+- `ui/sidebar/sidebar.tsx` — меню разделов, блок пользователя.
+- `ui/header/header.tsx` — toggle/sidebar-trigger, breadcrumbs-заглушка, поиск, уведомления (заглушка), переключатель темы, профиль. Применение темы описано в [дизайн-системе](../design-system/README.md#цвета-и-темы).
 
 ## 3) Как работает сворачивание Sidebar
 
