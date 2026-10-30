@@ -24,11 +24,20 @@
 			"env": ["DATABASE_URL"]
 		},
 		"lint": {},
+		"api#lint": {
+			"dependsOn": ["prisma:generate"]
+		},
 		"test": {
 			"dependsOn": ["^build"]
 		},
 		"check-types": {
 			"dependsOn": ["^build"]
+		},
+		"api#check-types:ci": {
+			"dependsOn": ["^build", "^check-types", "prisma:generate"]
+		},
+		"api#test:ci": {
+			"dependsOn": ["^build", "prisma:generate"]
 		},
 		"test:e2e": {
 			"cache": false,
