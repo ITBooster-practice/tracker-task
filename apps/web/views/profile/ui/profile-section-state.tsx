@@ -2,7 +2,6 @@ import { Button, EmptyState } from '@repo/ui'
 
 import { profileCopy } from '../config/constants'
 import {
-	profilePrimaryButtonClassName,
 	profileSectionCenteredEmptyStateClassName,
 	profileSectionCenteredEmptyWrapClassName,
 	profileSectionEmptyStateClassName,
@@ -31,15 +30,12 @@ const ProfileSectionState = ({
 			}
 		>
 			<EmptyState
+				headingLevel='h2'
 				title={title}
 				description={description}
 				action={
 					onRetry ? (
-						<Button
-							type='button'
-							onClick={() => void onRetry()}
-							className={profilePrimaryButtonClassName}
-						>
+						<Button type='button' onClick={() => void onRetry()}>
 							{profileCopy.retryAction}
 						</Button>
 					) : undefined
