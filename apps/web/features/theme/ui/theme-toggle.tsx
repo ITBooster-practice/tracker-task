@@ -2,8 +2,6 @@
 
 import { Button, cn, MoonIcon, SunIcon } from '@repo/ui'
 
-import { useHydratedStore } from '@/shared/hooks'
-
 import { useThemeStore } from '../model/store'
 
 interface ThemeToggleProps {
@@ -17,27 +15,23 @@ export const ThemeToggle = ({
 	iconClassName,
 	size = 'icon',
 }: ThemeToggleProps) => {
-	const theme = useHydratedStore(useThemeStore, (state) => state.theme)
 	const toggleTheme = useThemeStore((state) => state.toggleTheme)
-
-	if (!theme) {
-		// тут можно рисовать скелетон
-		return null
-	}
-
-	const Icon = theme === 'dark' ? SunIcon : MoonIcon
-	const nextThemeLabel = theme === 'dark' ? 'Светлая тема' : 'Темная тема'
 
 	return (
 		<Button
+			type='button'
 			onClick={toggleTheme}
 			variant='outline'
 			size={size}
 			className={className}
-			aria-label={nextThemeLabel}
-			title={nextThemeLabel}
+			aria-label='Переключить тему'
+			title='Переключить тему'
 		>
-			<Icon className={cn('size-5', iconClassName)} />
+			<SunIcon
+				aria-hidden='true'
+				className={cn('hidden size-4 dark:block', iconClassName)}
+			/>
+			<MoonIcon aria-hidden='true' className={cn('size-4 dark:hidden', iconClassName)} />
 		</Button>
 	)
 }
