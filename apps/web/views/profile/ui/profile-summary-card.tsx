@@ -20,7 +20,6 @@ import {
 	type ProfileRoleSummary,
 } from '../config/constants'
 import {
-	profileBadgeBaseClassName,
 	profileInputClassName,
 	profilePrimaryButtonClassName,
 	profileSectionCardClassName,
@@ -90,10 +89,7 @@ const ProfileSummaryCard = ({
 								<div className={profileSummaryHeadingClassName}>
 									<h2 className={profileSummaryNameClassName}>{displayName}</h2>
 									<div className={profileSummaryMetaClassName}>
-										<Badge
-											variant='outline'
-											className={cn(profileBadgeBaseClassName, primaryRole.className)}
-										>
+										<Badge variant='outline' className={primaryRole.className}>
 											{primaryRole.label}
 										</Badge>
 										<span className={profileSummaryEmailClassName}>{email}</span>

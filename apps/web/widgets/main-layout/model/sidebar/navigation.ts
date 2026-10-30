@@ -15,7 +15,7 @@ import {
 import { ROUTES, SIDEBAR_ROUTE_IDS, teamRoutes } from '@/shared/config/routes'
 import { hasFeature } from '@/shared/lib/feature-flags/feature-flags'
 
-import type { SidebarNavSection, SidebarUserCard, SidebarWorkspace } from './types'
+import type { SidebarNavSection, SidebarWorkspace } from './types'
 
 const teamHref = (teamId: string | null | undefined, route: 'projects' | 'settings') =>
 	teamId ? teamRoutes[route](teamId) : '#'
@@ -129,9 +129,4 @@ export function getSidebarSections(
 			],
 		},
 	]
-}
-export const sidebarCurrentUser: SidebarUserCard = {
-	initials: 'AI',
-	name: 'Алексей Иванов',
-	role: 'Owner',
 }

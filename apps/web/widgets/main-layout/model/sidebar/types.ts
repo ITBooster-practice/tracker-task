@@ -31,9 +31,3 @@ export type SidebarWorkspace = {
 	title: string
 	subtitle: string
 }
-
-export type SidebarUserCard = {
-	initials: string
-	name: string
-	role: string
-}

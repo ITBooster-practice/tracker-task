@@ -73,9 +73,6 @@ export const teamSettingsMemberEmailClassName =
 export const teamSettingsRowActionsClassName =
 	'flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto md:flex-nowrap md:justify-end'
 
-export const teamSettingsBadgeClassName =
-	'h-8 shrink-0 rounded-full px-3 text-[12px] font-medium'
-
 export const teamSettingsRoleSelectClassName = 'h-8 w-full sm:w-[180px] text-[13px]'
 
 export const teamSettingsRemoveButtonClassName =

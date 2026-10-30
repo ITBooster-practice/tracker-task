@@ -102,7 +102,7 @@ function BoardTaskDetailsDialog({
 						<DialogDrawerHeader className='relative gap-0 px-5 pt-4 pb-0 sm:px-6 lg:px-7 lg:pt-5'>
 							<div className='pr-14 sm:pr-18'>
 								<div className='flex flex-wrap items-center gap-2.5'>
-									<TaskTypeBadge type={task.type} className='text-xs' />
+									<TaskTypeBadge type={task.type} />
 									<span className='text-xs font-medium break-all text-muted-foreground'>
 										{task.key}
 									</span>

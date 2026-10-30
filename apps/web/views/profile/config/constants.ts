@@ -1,4 +1,5 @@
 import { TEAM_ROLES, type TeamRole } from '@repo/types'
+import { badgeToneVariants } from '@repo/ui/lib/badge-tones'
 
 type ProfileRoleSummary = {
 	label: string
@@ -61,18 +62,15 @@ const profileRolePriority: TeamRole[] = [
 const profileRoleSummaryByValue: Record<TeamRole, ProfileRoleSummary> = {
 	[TEAM_ROLES.OWNER]: {
 		label: 'Владелец',
-		className:
-			'border-amber-300 bg-amber-100/80 text-amber-900 dark:border-amber-400/15 dark:bg-amber-400/10 dark:text-amber-300',
+		className: badgeToneVariants({ tone: 'owner' }),
 	},
 	[TEAM_ROLES.ADMIN]: {
 		label: 'Администратор',
-		className:
-			'border-sky-200 bg-sky-50 text-sky-700 dark:border-primary/15 dark:bg-primary/10 dark:text-primary',
+		className: badgeToneVariants({ tone: 'admin' }),
 	},
 	[TEAM_ROLES.MEMBER]: {
 		label: 'Участник',
-		className:
-			'border-slate-200 bg-slate-50 text-slate-700 dark:border-border/60 dark:bg-surface-2 dark:text-muted-foreground',
+		className: badgeToneVariants({ tone: 'member' }),
 	},
 }
 

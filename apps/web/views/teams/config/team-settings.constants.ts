@@ -1,5 +1,6 @@
 import { TEAM_ROLES, type TeamRole } from '@repo/types'
 import { Crown, Mail, Settings2, Shield, Trash2, Users } from '@repo/ui/icons'
+import { badgeToneVariants } from '@repo/ui/lib/badge-tones'
 
 const TEAM_SETTINGS_TEXT = {
 	pageTitle: 'Настройки команды',
@@ -76,12 +77,9 @@ const TEAM_SETTINGS_ASSIGNABLE_ROLES = [TEAM_ROLES.ADMIN, TEAM_ROLES.MEMBER] as 
 type TeamAssignableRole = (typeof TEAM_SETTINGS_ASSIGNABLE_ROLES)[number]
 
 const TEAM_SETTINGS_ROLE_BADGE_CLASSNAME_BY_ROLE: Record<TeamRole, string> = {
-	[TEAM_ROLES.OWNER]:
-		'border-amber-300 bg-amber-100/80 text-amber-900 dark:border-amber-400/15 dark:bg-amber-400/10 dark:text-amber-300',
-	[TEAM_ROLES.ADMIN]:
-		'border-sky-200 bg-sky-50 text-sky-700 dark:border-primary/15 dark:bg-primary/10 dark:text-primary',
-	[TEAM_ROLES.MEMBER]:
-		'border-slate-200 bg-slate-50 text-slate-700 dark:border-border/60 dark:bg-surface-2 dark:text-muted-foreground',
+	[TEAM_ROLES.OWNER]: badgeToneVariants({ tone: 'owner' }),
+	[TEAM_ROLES.ADMIN]: badgeToneVariants({ tone: 'admin' }),
+	[TEAM_ROLES.MEMBER]: badgeToneVariants({ tone: 'member' }),
 }
 
 const TEAM_SETTINGS_ROLE_OPTIONS = [

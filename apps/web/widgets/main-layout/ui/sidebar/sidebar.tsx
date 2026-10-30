@@ -4,11 +4,10 @@ import Link from 'next/link'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import React from 'react'
 
-import { FEATURE_KEYS, type TeamRole } from '@repo/types'
-import { Avatar, AvatarFallback, cn } from '@repo/ui'
+import { FEATURE_KEYS } from '@repo/types'
+import { cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
-import { useMe } from '@/shared/api/use-auth'
 import { useProjectsList } from '@/shared/api/use-projects'
 import { useTeamsList } from '@/shared/api/use-teams'
 import {
@@ -19,33 +18,20 @@ import {
 } from '@/shared/config'
 import { useFeatureFlags } from '@/shared/lib/feature-flags/context'
 import { hasFeature } from '@/shared/lib/feature-flags/feature-flags'
-import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
 
 import {
 	getSidebarSections,
-	sidebarCurrentUser,
 	sidebarWorkspace,
 	useSideBarStore,
 } from '../../model/sidebar'
 import { SidebarMenuItem } from './sidebar-menu-item'
 import { SidebarSelector } from './sidebar-selector'
+import { SidebarUser } from './sidebar-user'
 
 interface Props {
 	className?: string
 	forceOpen?: boolean
 	onNavigate?: () => void
-}
-
-const ROLE_LABELS: Record<TeamRole, string> = {
-	OWNER: 'Владелец',
-	ADMIN: 'Администратор',
-	MEMBER: 'Участник',
-}
-
-const ROLE_BADGE_CLASS: Record<TeamRole, string> = {
-	OWNER: 'bg-amber-500/20 text-amber-400',
-	ADMIN: 'bg-blue-500/20 text-blue-400',
-	MEMBER: 'bg-sidebar-accent text-sidebar-foreground/60',
 }
 
 function getShortName(name: string) {
@@ -60,7 +46,6 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const flags = useFeatureFlags()
 	const snapshot = flags.status === 'ready' ? flags.snapshot : null
 	const projectsEnabled = hasFeature(snapshot, FEATURE_KEYS.PROJECTS)
-	const profileQuery = useMe()
 	const { data: teamsData } = useTeamsList({ page: 1, limit: 50 })
 	const teams = teamsData?.data ?? []
 	const isOpen = forceOpen ?? isDesktopOpen
@@ -72,14 +57,8 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const projects = projectsEnabled ? (projectsData?.data ?? []) : []
 
 	const projectId = typeof params.projectId === 'string' ? params.projectId : null
-	const currentProject = projects.find((p) => p.id === projectId) ?? null
-
-	const currentUserRole = currentTeam?.currentUserRole ?? null
-	const currentUserName = profileQuery.data
-		? getUserDisplayName(profileQuery.data)
-		: sidebarCurrentUser.name
-	const currentUserInitials =
-		getNameInitials(currentUserName) || sidebarCurrentUser.initials
+	const currentProject =
+		projects.find((p) => p.id === projectId && p.teamId === teamId) ?? null
 
 	const activeRouteId = getSidebarRouteId(pathname)
 	const sections = getSidebarSections(teamId, projectId, snapshot, flags.canManage)
@@ -247,51 +226,12 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 					)}
 				</div>
 
-				<div className='mt-auto border-t border-sidebar-border px-3 py-3'>
-					<div
-						className={cn('flex items-center', {
-							'justify-center': !isOpen,
-							'gap-2': isOpen,
-						})}
-					>
-						<div
-							className={cn(
-								'flex rounded-[var(--radius-control)] text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/35',
-								{
-									'h-8 items-center justify-center': !isOpen,
-									'min-w-0 flex-1 items-start gap-2 px-1.5 py-1': isOpen,
-								},
-							)}
-						>
-							<Avatar className='size-6 shrink-0'>
-								<AvatarFallback className='bg-sidebar-primary text-xs text-sidebar-primary-foreground'>
-									{currentUserInitials}
-								</AvatarFallback>
-							</Avatar>
-							{isOpen && (
-								<div className='min-w-0'>
-									<div className='truncate text-[12px] font-medium leading-tight'>
-										{currentUserName}
-									</div>
-									{currentUserRole ? (
-										<span
-											className={cn(
-												'mt-0.5 inline-block rounded px-1.5 py-px text-[10px] font-medium',
-												ROLE_BADGE_CLASS[currentUserRole],
-											)}
-										>
-											{ROLE_LABELS[currentUserRole]}
-										</span>
-									) : (
-										<div className='truncate text-[10px] text-muted-foreground'>
-											{sidebarCurrentUser.role}
-										</div>
-									)}
-								</div>
-							)}
-						</div>
-					</div>
-				</div>
+				<SidebarUser
+					teamId={teamId}
+					projectId={projectId}
+					projectsEnabled={projectsEnabled}
+					isOpen={isOpen}
+				/>
 			</div>
 		</div>
 	)

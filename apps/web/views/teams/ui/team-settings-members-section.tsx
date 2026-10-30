@@ -25,7 +25,6 @@ import {
 	type TeamAssignableRole,
 } from '../config/team-settings.constants'
 import {
-	teamSettingsBadgeClassName,
 	teamSettingsListRowClassName,
 	teamSettingsMemberAvatarClassName,
 	teamSettingsMemberAvatarFallbackClassName,
@@ -136,10 +135,7 @@ const TeamSettingsMembersSection = ({
 								<div className={teamSettingsRowActionsClassName}>
 									<Badge
 										variant='outline'
-										className={cn(
-											teamSettingsBadgeClassName,
-											getTeamRoleBadgeClassName(member.role),
-										)}
+										className={getTeamRoleBadgeClassName(member.role)}
 									>
 										{getTeamRoleLabel(member.role)}
 									</Badge>
