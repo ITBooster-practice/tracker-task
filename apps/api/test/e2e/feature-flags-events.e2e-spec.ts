@@ -24,7 +24,6 @@ describe('Feature flag SSE across API instances (e2e)', () => {
 		prisma = one.prisma
 		redis = one.redisClient
 		redisSecond = two.redisClient
-		await second.listen(0, '127.0.0.1')
 		url = await second.getUrl()
 	})
 	beforeEach(async () => {

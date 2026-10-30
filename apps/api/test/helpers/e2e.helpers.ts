@@ -37,7 +37,7 @@ export async function createTestApp(): Promise<{
 
 	const app = moduleFixture.createNestApplication()
 	app.use(cookieParser())
-	await app.init()
+	await app.listen(0, '127.0.0.1')
 
 	const prisma = moduleFixture.get<PrismaService>(PrismaService)
 	const redisClient = moduleFixture.get<Redis>(REDIS_CLIENT)
