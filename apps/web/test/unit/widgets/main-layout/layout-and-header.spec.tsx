@@ -59,7 +59,6 @@ vi.mock('@repo/ui', () => ({
 	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
 		<button {...props}>{children}</button>
 	),
-	Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }))
 
 vi.mock('@repo/ui/icons', () => ({
@@ -90,12 +89,6 @@ describe('Layout', () => {
 
 // ─── Header ──────────────────────────────────────────────────────
 describe('Header', () => {
-	it('рендерит поле поиска', () => {
-		render(<Header />)
-
-		expect(screen.getByPlaceholderText('Поиск (пока не реализовано)')).toBeDefined()
-	})
-
 	it('скрывает уведомления до загрузки флагов', () => {
 		render(<Header />)
 
