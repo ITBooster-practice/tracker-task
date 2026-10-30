@@ -11,7 +11,6 @@ import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
 interface SidebarUserProps {
 	teamId: string | null
 	projectId: string | null
-	projectsEnabled: boolean
 	isOpen: boolean
 }
 
@@ -27,17 +26,14 @@ const ROLE_TONES: Record<TeamRole, BadgeTone> = {
 	MEMBER: 'member',
 }
 
-function SidebarUser({ teamId, projectId, projectsEnabled, isOpen }: SidebarUserProps) {
+function SidebarUser({ teamId, projectId, isOpen }: SidebarUserProps) {
 	const profileQuery = useMe()
 	const teamQuery = useTeamDetail(teamId ?? '')
-	const projectQuery = useProjectDetail(
-		projectsEnabled ? (teamId ?? '') : '',
-		projectsEnabled ? (projectId ?? '') : '',
-	)
+	const projectQuery = useProjectDetail(teamId ?? '', projectId ?? '')
 	const pending = Boolean(
 		profileQuery.isPending ||
 		(teamId && (teamQuery.isPending || teamQuery.isFetching)) ||
-		(projectId && projectsEnabled && (projectQuery.isPending || projectQuery.isFetching)),
+		(projectId && (projectQuery.isPending || projectQuery.isFetching)),
 	)
 	const team = teamQuery.data?.id === teamId ? teamQuery.data : null
 	const project =
@@ -49,7 +45,7 @@ function SidebarUser({ teamId, projectId, projectsEnabled, isOpen }: SidebarUser
 		!profileQuery.isError &&
 		!teamQuery.isError &&
 		team &&
-		(!projectId || (projectsEnabled && !projectQuery.isError && project)),
+		(!projectId || (!projectQuery.isError && project)),
 	)
 	const role = hasContext
 		? team?.members.find((member) => member.userId === profileQuery.data?.id)?.role

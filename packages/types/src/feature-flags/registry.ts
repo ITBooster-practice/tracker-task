@@ -1,18 +1,18 @@
 export const FEATURE_KEYS = {
-	PROJECTS: 'projects',
+	AI_ASSISTANT: 'ai-assistant',
+	NOTIFICATIONS: 'notifications',
 	TASKS: 'tasks',
 	BOARDS: 'boards',
 	BACKLOG: 'backlog',
-	TEAM_SETTINGS: 'team-settings',
 } as const
 
-// Запись добавляется вместе с проверками флага в коде и выпускается в составе обновления.
+// Add each registry entry together with its feature checks in the same release.
 export const FEATURE_REGISTRY: Readonly<Record<string, string>> = {
-	[FEATURE_KEYS.PROJECTS]: 'Проекты',
+	[FEATURE_KEYS.AI_ASSISTANT]: 'AI Ассистент',
+	[FEATURE_KEYS.NOTIFICATIONS]: 'Уведомления',
 	[FEATURE_KEYS.TASKS]: 'Задачи',
 	[FEATURE_KEYS.BOARDS]: 'Доски',
 	[FEATURE_KEYS.BACKLOG]: 'Бэклог',
-	[FEATURE_KEYS.TEAM_SETTINGS]: 'Настройки команды',
 }
 
 export function getConnectedFeature(key: string): string | null {

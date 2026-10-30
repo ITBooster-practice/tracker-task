@@ -44,49 +44,111 @@ describe('Runtime feature flags (e2e)', () => {
 		await app.close()
 		await prisma.$disconnect()
 	})
-	it('blocks direct API access for disabled projects, tasks, boards and settings', async () => {
+	it('keeps projects and team administration available with flags off, preserving permissions', async () => {
+		await prisma.featureFlag.updateMany({ data: { enabled: false } })
 		const team = await request(server)
 			.post('/teams/new')
 			.set('Cookie', developerCookies)
 			.send({ name: 'Feature team' })
 			.expect(201)
-		const teamId = team.body.id as string
+		const teamPath = '/teams/' + team.body.id
+		const projectPath = teamPath + '/projects'
 		const project = await request(server)
-			.post('/teams/' + teamId + '/projects')
+			.post(projectPath)
 			.set('Cookie', developerCookies)
 			.send({ name: 'Feature project' })
 			.expect(201)
-		const projectPath = '/teams/' + teamId + '/projects'
-		const taskPath = projectPath + '/' + project.body.id + '/tasks'
-		const toggle = async (key: string, enabled: boolean) => {
-			const flag = await prisma.featureFlag.findUniqueOrThrow({ where: { key } })
-			const revision = await prisma.featureFlagsRevision.findUniqueOrThrow({
-				where: { id: 'global' },
-			})
-			await request(server)
-				.patch('/feature-flags/' + flag.id)
-				.set('Cookie', developerCookies)
-				.send({ enabled, expectedVersion: revision.version })
-				.expect(200)
-		}
-		await toggle('projects', false)
+		const detailPath = projectPath + '/' + project.body.id
 		await request(server).get(projectPath).expect(401)
-		for (const method of ['get', 'post', 'patch', 'delete'] as const) {
-			const path =
-				method === 'get' || method === 'post'
-					? projectPath
-					: projectPath + '/' + project.body.id
-			const blocked = await request(server)
-				[method](path)
-				.set('Cookie', developerCookies)
-				.send({ name: 'Blocked' })
-				.expect(403)
-			expect(blocked.body.code).toBe('FEATURE_DISABLED')
+		await request(server)
+			.get(teamPath + '/members')
+			.expect(401)
+		for (const path of [
+			projectPath,
+			detailPath,
+			teamPath,
+			teamPath + '/members',
+			teamPath + '/invitations',
+		]) {
+			await request(server).get(path).set('Cookie', developerCookies).expect(200)
+			await request(server).get(path).set('Cookie', userCookies).expect(403)
 		}
-		await request(server).get(taskPath).set('Cookie', developerCookies).expect(403)
-		await toggle('projects', true)
-		await request(server).get(projectPath).set('Cookie', userCookies).expect(403)
-		await toggle('tasks', false)
+		const member = await prisma.user.findUniqueOrThrow({
+			where: { email: 'ordinary@example.com' },
+		})
+		await prisma.teamMember.create({
+			data: { teamId: team.body.id, userId: member.id, role: 'MEMBER' },
+		})
+		await request(server).get(projectPath).set('Cookie', userCookies).expect(200)
+		await request(server)
+			.get(teamPath + '/members')
+			.set('Cookie', userCookies)
+			.expect(200)
+		for (const [method, path, body] of [
+			['patch', detailPath, { name: 'Forbidden' }],
+			['delete', detailPath, {}],
+			['patch', teamPath, { name: 'Forbidden' }],
+			['delete', teamPath, {}],
+			['get', teamPath + '/invitations', {}],
+			[
+				'post',
+				teamPath + '/invitations',
+				{ email: 'invite@example.com', role: 'MEMBER' },
+			],
+			['patch', teamPath + '/members/' + developerId + '/role', { role: 'MEMBER' }],
+			['delete', teamPath + '/members/' + developerId, {}],
+		] as const) {
+			await request(server)
+				[method](path)
+				.set('Cookie', userCookies)
+				.send(body)
+				.expect(403)
+		}
+		await prisma.teamMember.update({
+			where: { teamId_userId: { teamId: team.body.id, userId: member.id } },
+			data: { role: 'ADMIN' },
+		})
+		await request(server)
+			.patch(teamPath)
+			.set('Cookie', userCookies)
+			.send({ name: 'Renamed' })
+			.expect(200)
+		await request(server)
+			.patch(detailPath)
+			.set('Cookie', userCookies)
+			.send({ name: 'Renamed' })
+			.expect(200)
+		const invitation = await request(server)
+			.post(teamPath + '/invitations')
+			.set('Cookie', userCookies)
+			.send({ email: 'invite@example.com', role: 'MEMBER' })
+			.expect(201)
+		await request(server)
+			.delete(teamPath + '/invitations/' + invitation.body.id)
+			.set('Cookie', userCookies)
+			.expect(200)
+		await request(server).delete(teamPath).set('Cookie', userCookies).expect(403)
+		await request(server).delete(detailPath).set('Cookie', userCookies).expect(204)
+		await request(server).delete(teamPath).set('Cookie', developerCookies).expect(200)
+	})
+
+	it('still blocks tasks and boards through their own flags', async () => {
+		const team = await request(server)
+			.post('/teams/new')
+			.set('Cookie', developerCookies)
+			.send({ name: 'Feature team' })
+			.expect(201)
+		const projectPath = '/teams/' + team.body.id + '/projects'
+		const project = await request(server)
+			.post(projectPath)
+			.set('Cookie', developerCookies)
+			.send({ name: 'Feature project' })
+			.expect(201)
+		const taskPath = projectPath + '/' + project.body.id + '/tasks'
+		await prisma.featureFlag.update({
+			where: { key: FEATURE_KEYS.TASKS },
+			data: { enabled: false },
+		})
 		for (const [method, path] of [
 			['get', taskPath],
 			['post', taskPath],
@@ -96,39 +158,26 @@ describe('Runtime feature flags (e2e)', () => {
 			['delete', taskPath + '/missing'],
 			['get', taskPath + '/board'],
 		] as const) {
-			await request(server)
+			const blocked = await request(server)
 				[method](path)
 				.set('Cookie', developerCookies)
 				.send({ title: 'Blocked' })
 				.expect(403)
+			expect(blocked.body.code).toBe('FEATURE_DISABLED')
 		}
-		await toggle('tasks', true)
-		await toggle('boards', false)
+		await prisma.featureFlag.update({
+			where: { key: FEATURE_KEYS.TASKS },
+			data: { enabled: true },
+		})
+		await prisma.featureFlag.update({
+			where: { key: FEATURE_KEYS.BOARDS },
+			data: { enabled: false },
+		})
 		await request(server)
 			.get(taskPath + '/board')
 			.set('Cookie', developerCookies)
 			.expect(403)
 		await request(server).get(taskPath).set('Cookie', developerCookies).expect(200)
-		await toggle('team-settings', false)
-		for (const [method, path] of [
-			['patch', '/teams/' + teamId],
-			['delete', '/teams/' + teamId],
-			['get', '/teams/' + teamId + '/members'],
-			['patch', '/teams/' + teamId + '/members/any/role'],
-			['delete', '/teams/' + teamId + '/members/any'],
-			['get', '/teams/' + teamId + '/invitations'],
-			['post', '/teams/' + teamId + '/invitations'],
-			['delete', '/teams/' + teamId + '/invitations/any'],
-		] as const) {
-			await request(server)
-				[method](path)
-				.set('Cookie', developerCookies)
-				.send({ name: 'Blocked' })
-				.expect(403)
-		}
-		await request(server).get('/teams').set('Cookie', developerCookies).expect(200)
-		await request(server).get('/invitations/me').set('Cookie', userCookies).expect(200)
-		await request(server).get('/auth/me').set('Cookie', userCookies).expect(200)
 	})
 
 	it('requires authentication for snapshot and state changes', async () => {
@@ -177,7 +226,9 @@ describe('Runtime feature flags (e2e)', () => {
 			.set('Cookie', userCookies)
 			.expect(200)
 		expect(snapshot.body.version).toBe(0)
-		expect(snapshot.body.flags).toHaveLength(5)
+		expect(snapshot.body.flags.map((flag: { key: string }) => flag.key).sort()).toEqual(
+			Object.values(FEATURE_KEYS).sort(),
+		)
 		expect(Object.keys(snapshot.body.flags[0] as Record<string, unknown>).sort()).toEqual(
 			['enabled', 'key', 'updatedAt'],
 		)
@@ -220,6 +271,38 @@ describe('Runtime feature flags (e2e)', () => {
 			})
 		}
 	})
+	it.each([
+		[FEATURE_KEYS.AI_ASSISTANT, 'AI Ассистент'],
+		[FEATURE_KEYS.NOTIFICATIONS, 'Уведомления'],
+	])(
+		'manages the connected %s flag and reflects its state in snapshots',
+		async (key, label) => {
+			const list = await request(server)
+				.get('/feature-flags')
+				.set('Cookie', developerCookies)
+				.expect(200)
+			const flag = list.body.flags.find((item: { key: string }) => item.key === key)
+			expect(flag.connectedFeature).toBe(label)
+			for (const [expectedVersion, enabled] of [
+				[0, false],
+				[1, true],
+			] as const) {
+				await request(server)
+					.patch('/feature-flags/' + flag.id)
+					.set('Cookie', developerCookies)
+					.send({ enabled, expectedVersion })
+					.expect(200)
+				const snapshot = await request(server)
+					.get('/feature-flags/snapshot')
+					.set('Cookie', userCookies)
+					.expect(200)
+				expect(snapshot.body.version).toBe(expectedVersion + 1)
+				expect(
+					snapshot.body.flags.find((item: { key: string }) => item.key === key).enabled,
+				).toBe(enabled)
+			}
+		},
+	)
 	it('keeps database-created flags disabled and cannot enable them until connected', async () => {
 		// Имитируем запись из миграции: API создания флагов отсутствует.
 		const flag = await prisma.featureFlag.create({ data: { key: 'new-release' } })

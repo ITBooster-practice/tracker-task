@@ -39,7 +39,7 @@ import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
 import { TasksService } from './tasks.service'
 
-@RequireFeatures(FEATURE_KEYS.PROJECTS, FEATURE_KEYS.TASKS)
+@RequireFeatures(FEATURE_KEYS.TASKS)
 @ApiTags('Tasks')
 @ApiBearerAuth()
 @Authorization()

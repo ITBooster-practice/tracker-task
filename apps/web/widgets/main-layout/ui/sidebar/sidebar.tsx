@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import React from 'react'
 
-import { FEATURE_KEYS } from '@repo/types'
 import { cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
@@ -17,7 +16,6 @@ import {
 	type SidebarRouteId,
 } from '@/shared/config'
 import { useFeatureFlags } from '@/shared/lib/feature-flags/context'
-import { hasFeature } from '@/shared/lib/feature-flags/feature-flags'
 
 import {
 	getSidebarSections,
@@ -45,7 +43,6 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const params = useParams<{ id?: string; projectId?: string }>()
 	const flags = useFeatureFlags()
 	const snapshot = flags.status === 'ready' ? flags.snapshot : null
-	const projectsEnabled = hasFeature(snapshot, FEATURE_KEYS.PROJECTS)
 	const { data: teamsData } = useTeamsList({ page: 1, limit: 50 })
 	const teams = teamsData?.data ?? []
 	const isOpen = forceOpen ?? isDesktopOpen
@@ -53,8 +50,8 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const teamId = typeof params.id === 'string' ? params.id : null
 	const currentTeam = teams.find((t) => t.id === teamId) ?? null
 
-	const { data: projectsData } = useProjectsList(projectsEnabled ? (teamId ?? '') : '')
-	const projects = projectsEnabled ? (projectsData?.data ?? []) : []
+	const { data: projectsData } = useProjectsList(teamId ?? '')
+	const projects = projectsData?.data ?? []
 
 	const projectId = typeof params.projectId === 'string' ? params.projectId : null
 	const currentProject =
@@ -159,29 +156,31 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									isOpen={isOpen}
 									emptyLabel='Нет проектов'
 									placeholder='Выберите проект'
-									disabled={!teamId || !projectsEnabled}
+									disabled={!teamId}
 									onSelect={handleSelectProject}
 								/>
 							</div>
 
-							{sections.map((section) => (
-								<section key={section.title}>
-									<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
-										{section.title}
-									</div>
-									<nav className='space-y-1'>
-										{section.items.map((item) => (
-											<SidebarMenuItem
-												key={`${section.title}-${item.title}`}
-												{...item}
-												isOpen={isOpen}
-												isActive={isItemActive(item.href, item.routeId)}
-												onNavigate={onNavigate}
-											/>
-										))}
-									</nav>
-								</section>
-							))}
+							{sections
+								.filter((section) => section.items.length > 0)
+								.map((section) => (
+									<section key={section.title}>
+										<div className='mb-2 px-3 text-[12px] font-normal text-sidebar-foreground/48'>
+											{section.title}
+										</div>
+										<nav className='space-y-1'>
+											{section.items.map((item) => (
+												<SidebarMenuItem
+													key={`${section.title}-${item.title}`}
+													{...item}
+													isOpen={isOpen}
+													isActive={isItemActive(item.href, item.routeId)}
+													onNavigate={onNavigate}
+												/>
+											))}
+										</nav>
+									</section>
+								))}
 						</div>
 					) : (
 						<div className='space-y-4'>
@@ -206,7 +205,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									isOpen={isOpen}
 									emptyLabel='Нет проектов'
 									placeholder='Выберите проект'
-									disabled={!teamId || !projectsEnabled}
+									disabled={!teamId}
 									onSelect={handleSelectProject}
 								/>
 							</div>
@@ -226,12 +225,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 					)}
 				</div>
 
-				<SidebarUser
-					teamId={teamId}
-					projectId={projectId}
-					projectsEnabled={projectsEnabled}
-					isOpen={isOpen}
-				/>
+				<SidebarUser teamId={teamId} projectId={projectId} isOpen={isOpen} />
 			</div>
 		</div>
 	)

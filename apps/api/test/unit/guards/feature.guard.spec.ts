@@ -21,10 +21,9 @@ describe('FeatureGuard', () => {
 		expect(flags.requireEnabled).not.toHaveBeenCalled()
 	})
 	it('checks all inherited requirements, without duplicates', async () => {
-		const { flags, guard } = setup(['projects', 'tasks', 'boards', 'tasks'])
+		const { flags, guard } = setup(['tasks', 'boards', 'tasks'])
 		expect(await guard.canActivate(createCtx())).toBe(true)
 		expect(flags.requireEnabled.mock.calls.map((args) => args[0])).toEqual([
-			'projects',
 			'tasks',
 			'boards',
 		])

@@ -1,5 +1,3 @@
-import { RequireFeatures } from '../feature-flags/feature.guard'
-import { FEATURE_KEYS } from '@repo/types'
 import {
 	Body,
 	Controller,
@@ -32,7 +30,6 @@ import { ProjectResponseDto } from './dto/project-response.dto'
 import { UpdateProjectDto } from './dto/update-project.dto'
 import { ProjectsService } from './projects.service'
 
-@RequireFeatures(FEATURE_KEYS.PROJECTS)
 @ApiTags('Projects')
 @ApiBearerAuth()
 @Authorization()

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { FEATURE_KEYS } from '@repo/types'
 import { Button, cn, ConfirmDialog, EmptyState, Skeleton, toast } from '@repo/ui'
 import {
 	Activity,
@@ -20,6 +21,7 @@ import { ProjectBoardsSection } from '@/views/boards/ui/project-boards-section'
 import { useDeleteProject, useProjectDetail } from '@/shared/api/use-projects'
 import { ROUTES, teamRoutes } from '@/shared/config'
 import { isApiError } from '@/shared/lib/api/utils'
+import { useFeature } from '@/shared/lib/feature-flags/context'
 import { PageHeader } from '@/shared/ui/page-header'
 
 import { EditProjectDialog } from './edit-project-dialog'
@@ -52,6 +54,13 @@ const actionCards = [
 ] as const
 
 function ProjectDetailPageView() {
+	const aiEnabled = useFeature(FEATURE_KEYS.AI_ASSISTANT)
+	const visibleActionCards = actionCards.filter(
+		(card) => card.id !== 'ai-generation' || aiEnabled,
+	)
+	const actionGridClassName = cn('mb-7 grid gap-4 sm:grid-cols-2', {
+		'lg:grid-cols-3': visibleActionCards.length === 3,
+	})
 	const router = useRouter()
 	const params = useParams<{ id: string; projectId: string }>()
 	const teamId = decodeURIComponent(params.id)
@@ -105,9 +114,9 @@ function ProjectDetailPageView() {
 						<Skeleton className='mb-2 h-9 w-64' />
 						<Skeleton className='h-4 w-96' />
 					</div>
-					<div className='mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-						{Array.from({ length: 3 }).map((_, i) => (
-							<Skeleton key={i} className='h-[82px] rounded-lg' />
+					<div className={actionGridClassName}>
+						{visibleActionCards.map((card) => (
+							<Skeleton key={card.id} className='h-[82px] rounded-lg' />
 						))}
 					</div>
 					<Skeleton className='mb-4 h-6 w-24' />
@@ -194,8 +203,8 @@ function ProjectDetailPageView() {
 					}
 				/>
 
-				<section className='mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-					{actionCards.map((card) => {
+				<section className={actionGridClassName}>
+					{visibleActionCards.map((card) => {
 						const Icon = card.icon
 						const handleClick =
 							card.id === 'all-tasks'

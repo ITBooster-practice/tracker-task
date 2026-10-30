@@ -7,6 +7,7 @@ const migration = (name: string) =>
 	readFileSync(join(process.cwd(), 'prisma/migrations', name, 'migration.sql'), 'utf8')
 const simplify = migration('20261026000000_simplify_feature_flags')
 const removeTestFlag = migration('20261026010000_remove_unused_test_flag')
+const updateRuntimeFlags = migration('20261030000000_update_runtime_feature_flags')
 
 describe('Feature flag data migrations (isolated PostgreSQL schemas)', () => {
 	let client: Client
@@ -25,6 +26,67 @@ describe('Feature flag data migrations (isolated PostgreSQL schemas)', () => {
 		await client.query('ROLLBACK')
 		await client.query('DROP SCHEMA IF EXISTS "' + schema + '" CASCADE')
 		await client.end()
+	})
+	it('initializes the current registry with AI and notifications disabled on a fresh install', async () => {
+		await client.query(simplify)
+		await client.query(removeTestFlag)
+		await client.query(updateRuntimeFlags)
+		expect(
+			(await client.query('SELECT key, enabled FROM "FeatureFlag" ORDER BY key')).rows,
+		).toEqual([
+			{ key: 'ai-assistant', enabled: false },
+			{ key: 'backlog', enabled: false },
+			{ key: 'boards', enabled: false },
+			{ key: 'notifications', enabled: false },
+			{ key: 'tasks', enabled: false },
+		])
+	})
+	it('removes retired flags, preserves all remaining records and advances the snapshot revision', async () => {
+		await client.query(simplify)
+		await client.query(removeTestFlag)
+		await client.query(
+			"UPDATE \"FeatureFlag\" SET enabled = true WHERE key IN ('tasks', 'backlog', 'projects', 'team-settings')",
+		)
+		const before = await client.query(
+			"SELECT * FROM \"FeatureFlag\" WHERE key IN ('tasks', 'boards', 'backlog') ORDER BY key",
+		)
+		const revision = (
+			await client.query(
+				'SELECT version FROM "FeatureFlagsRevision" WHERE id = \'global\'',
+			)
+		).rows[0].version as number
+		await client.query(updateRuntimeFlags)
+		expect(
+			(
+				await client.query(
+					"SELECT * FROM \"FeatureFlag\" WHERE key IN ('tasks', 'boards', 'backlog') ORDER BY key",
+				)
+			).rows,
+		).toEqual(before.rows)
+		expect(
+			(
+				await client.query(
+					"SELECT key FROM \"FeatureFlag\" WHERE key IN ('projects', 'team-settings')",
+				)
+			).rows,
+		).toEqual([])
+		expect(
+			(
+				await client.query(
+					"SELECT key, enabled FROM \"FeatureFlag\" WHERE key IN ('ai-assistant', 'notifications') ORDER BY key",
+				)
+			).rows,
+		).toEqual([
+			{ key: 'ai-assistant', enabled: false },
+			{ key: 'notifications', enabled: false },
+		])
+		expect(
+			(
+				await client.query(
+					'SELECT version FROM "FeatureFlagsRevision" WHERE id = \'global\'',
+				)
+			).rows[0].version,
+		).toBe(revision + 1)
 	})
 	it('creates the five release flags disabled and keeps the database default disabled', async () => {
 		await client.query(simplify)
