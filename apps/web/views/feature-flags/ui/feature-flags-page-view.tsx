@@ -20,6 +20,7 @@ import { featureFlagsKeys, useFeatureFlagsList } from '@/shared/api/use-feature-
 import { isApiError } from '@/shared/lib/api/utils'
 import { useFeatureFlags } from '@/shared/lib/feature-flags/context'
 import { featureFlagsService } from '@/shared/lib/feature-flags/feature-flags-service'
+import { PageHeader } from '@/shared/ui/page-header'
 
 import { FeatureFlagStatus } from './feature-flag-status'
 import { FeatureFlagsAccessDenied } from './feature-flags-access-denied'
@@ -64,13 +65,11 @@ export function FeatureFlagsPageView() {
 		)
 	})
 	return (
-		<section className='mx-auto grid w-full max-w-5xl gap-6 p-4 sm:p-6'>
-			<header>
-				<h1 className='text-2xl font-semibold'>Флаги функций</h1>
-				<p className='text-sm text-muted-foreground'>
-					Изменения применяются ко всем пользователям этого окружения.
-				</p>
-			</header>
+		<section className='mx-auto grid w-full max-w-[960px] gap-6 px-4 py-5 sm:px-6'>
+			<PageHeader
+				title='Флаги функций'
+				description='Изменения применяются ко всем пользователям этого окружения.'
+			/>
 			<div className='flex flex-wrap items-end gap-4'>
 				<div className='grid min-w-56 flex-1 gap-2'>
 					<Label htmlFor='flags-search'>Поиск по названию или ключу</Label>

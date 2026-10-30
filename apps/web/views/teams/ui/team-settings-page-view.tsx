@@ -21,17 +21,13 @@ import {
 import { useDeleteTeam, useTeamDetail } from '@/shared/api/use-teams'
 import { ROUTES } from '@/shared/config'
 import { isApiError } from '@/shared/lib/api/utils'
+import { PageHeader } from '@/shared/ui/page-header'
 
 import {
 	TEAM_SETTINGS_TEXT,
 	type TeamAssignableRole,
 } from '../config/team-settings.constants'
-import {
-	teamPageHeaderClassName,
-	teamPagePrimaryButtonClassName,
-	teamPageSubtitleClassName,
-	teamPageTitleClassName,
-} from '../lib/styles'
+import { teamPagePrimaryButtonClassName } from '../lib/styles'
 import {
 	canDeleteTeam,
 	getCurrentTeamMember,
@@ -209,11 +205,32 @@ function TeamSettingsPageView() {
 		}
 	}
 
+	const pageHeader = (
+		<PageHeader
+			title={TEAM_SETTINGS_TEXT.pageTitle}
+			description={teamQuery.data?.name ?? 'Участники и настройки команды'}
+			className='mb-6'
+			actions={
+				teamQuery.data && canManageTeam ? (
+					<Button
+						type='button'
+						onClick={() => setInviteOpen(true)}
+						className={teamPagePrimaryButtonClassName}
+					>
+						<UserPlus className='size-4' />
+						{TEAM_SETTINGS_TEXT.members.inviteAction}
+					</Button>
+				) : undefined
+			}
+		/>
+	)
+
 	if (teamQuery.isPending && !teamQuery.data) {
 		return (
 			<div className='min-h-full w-full bg-background text-foreground'>
-				<div className='mx-auto max-w-[960px] px-6 py-5'>
-					<div className='flex justify-center py-16 text-sm text-muted-foreground'>
+				<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
+					{pageHeader}
+					<div role='status' className='text-sm text-muted-foreground'>
 						{TEAM_SETTINGS_TEXT.members.loading}
 					</div>
 				</div>
@@ -224,9 +241,11 @@ function TeamSettingsPageView() {
 	if (teamQuery.isError || !teamQuery.data) {
 		return (
 			<div className='min-h-full w-full bg-background text-foreground'>
-				<div className='mx-auto max-w-[960px] px-6 py-5'>
-					<div className='flex justify-center py-16'>
+				<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
+					{pageHeader}
+					<div className='flex justify-center'>
 						<EmptyState
+							headingLevel='h2'
 							icon={<Users className='size-7' />}
 							title={TEAM_SETTINGS_TEXT.emptyState.title}
 							description={TEAM_SETTINGS_TEXT.emptyState.description}
@@ -245,24 +264,8 @@ function TeamSettingsPageView() {
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
-			<div className='mx-auto max-w-[960px] px-6 py-5'>
-				<header className={teamPageHeaderClassName}>
-					<div>
-						<h1 className={teamPageTitleClassName}>{TEAM_SETTINGS_TEXT.pageTitle}</h1>
-						<p className={teamPageSubtitleClassName}>{teamQuery.data.name}</p>
-					</div>
-
-					{canManageTeam ? (
-						<Button
-							type='button'
-							onClick={() => setInviteOpen(true)}
-							className={teamPagePrimaryButtonClassName}
-						>
-							<UserPlus className='size-4' />
-							{TEAM_SETTINGS_TEXT.members.inviteAction}
-						</Button>
-					) : null}
-				</header>
+			<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
+				{pageHeader}
 
 				<div className='space-y-5'>
 					<TeamSettingsRolesSection />

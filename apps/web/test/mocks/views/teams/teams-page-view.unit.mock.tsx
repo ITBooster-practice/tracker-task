@@ -28,7 +28,8 @@ vi.mock('next/navigation', () => ({
 	useRouter: () => ({ push: mockTeamsPagePush }),
 }))
 
-vi.mock('@repo/ui', () => ({
+vi.mock('@repo/ui', async () => ({
+	cn: (await import('@repo/ui/lib/utils')).cn,
 	Button: ({
 		children,
 		...props

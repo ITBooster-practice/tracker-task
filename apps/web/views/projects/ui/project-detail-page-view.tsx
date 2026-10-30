@@ -105,15 +105,65 @@ function ProjectDetailPageView() {
 		}
 	}
 
+	const pageHeader = (
+		<PageHeader
+			title={project?.name ?? 'Проект'}
+			description={project?.description?.trim() || 'Доски и задачи проекта.'}
+			className='mb-6'
+			navigation={
+				<nav
+					aria-label='Хлебные крошки'
+					className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'
+				>
+					<Link href={ROUTES.teams} className='transition-colors hover:text-foreground'>
+						Команды
+					</Link>
+					<ChevronRight className='size-4 text-muted-foreground/70' />
+					<Link
+						href={teamRoutes.projects(teamId)}
+						className='transition-colors hover:text-foreground'
+					>
+						Проекты
+					</Link>
+					<ChevronRight className='size-4 text-muted-foreground/70' />
+					<span className='text-foreground' aria-current='page'>
+						{project?.name ?? 'Проект'}
+					</span>
+				</nav>
+			}
+			actions={
+				project ? (
+					<>
+						<Button
+							type='button'
+							variant='outline'
+							size='icon-sm'
+							onClick={() => setIsEditDialogOpen(true)}
+							aria-label='Редактировать проект'
+						>
+							<Pencil className='size-4' />
+						</Button>
+						<Button
+							type='button'
+							variant='outline'
+							size='icon-sm'
+							onClick={() => setIsDeleteDialogOpen(true)}
+							aria-label='Удалить проект'
+							className='text-destructive hover:border-destructive/50 hover:text-destructive'
+						>
+							<Trash2 className='size-4' />
+						</Button>
+					</>
+				) : undefined
+			}
+		/>
+	)
+
 	if (isLoading) {
 		return (
 			<div className='min-h-full w-full bg-background text-foreground'>
 				<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
-					<Skeleton className='mb-3 h-4 w-48' />
-					<div className='mb-6'>
-						<Skeleton className='mb-2 h-9 w-64' />
-						<Skeleton className='h-4 w-96' />
-					</div>
+					{pageHeader}
 					<div className={actionGridClassName}>
 						{visibleActionCards.map((card) => (
 							<Skeleton key={card.id} className='h-[82px] rounded-lg' />
@@ -128,21 +178,25 @@ function ProjectDetailPageView() {
 
 	if (isError || !project) {
 		return (
-			<div className='flex min-h-full w-full items-center justify-center bg-background'>
-				<EmptyState
-					icon={<FolderKanban className='size-7' />}
-					title='Не удалось загрузить проект'
-					description='Попробуйте повторить запрос ещё раз.'
-					action={
-						<Button
-							onClick={() => void refetch()}
-							className='h-9 rounded-[var(--radius-control)] bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
-						>
-							Повторить
-						</Button>
-					}
-					className='max-w-[420px] border-border bg-card'
-				/>
+			<div className='min-h-full w-full bg-background text-foreground'>
+				<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
+					{pageHeader}
+					<EmptyState
+						headingLevel='h2'
+						icon={<FolderKanban className='size-7' />}
+						title='Не удалось загрузить проект'
+						description='Попробуйте повторить запрос ещё раз.'
+						action={
+							<Button
+								onClick={() => void refetch()}
+								className='h-9 rounded-[var(--radius-control)] bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90'
+							>
+								Повторить
+							</Button>
+						}
+						className='mx-auto max-w-[420px] border-border bg-card'
+					/>
+				</div>
 			</div>
 		)
 	}
@@ -150,58 +204,7 @@ function ProjectDetailPageView() {
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
 			<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
-				<PageHeader
-					title={project.name}
-					description={project.description?.trim() || 'Доски и задачи проекта.'}
-					className='mb-6'
-					navigation={
-						<nav
-							aria-label='Хлебные крошки'
-							className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'
-						>
-							<Link
-								href={ROUTES.teams}
-								className='transition-colors hover:text-foreground'
-							>
-								Команды
-							</Link>
-							<ChevronRight className='size-4 text-muted-foreground/70' />
-							<Link
-								href={teamRoutes.projects(teamId)}
-								className='transition-colors hover:text-foreground'
-							>
-								Проекты
-							</Link>
-							<ChevronRight className='size-4 text-muted-foreground/70' />
-							<span className='text-foreground' aria-current='page'>
-								{project.name}
-							</span>
-						</nav>
-					}
-					actions={
-						<>
-							<Button
-								type='button'
-								variant='outline'
-								size='icon-sm'
-								onClick={() => setIsEditDialogOpen(true)}
-								aria-label='Редактировать проект'
-							>
-								<Pencil className='size-4' />
-							</Button>
-							<Button
-								type='button'
-								variant='outline'
-								size='icon-sm'
-								onClick={() => setIsDeleteDialogOpen(true)}
-								aria-label='Удалить проект'
-								className='text-destructive hover:border-destructive/50 hover:text-destructive'
-							>
-								<Trash2 className='size-4' />
-							</Button>
-						</>
-					}
-				/>
+				{pageHeader}
 
 				<section className={actionGridClassName}>
 					{visibleActionCards.map((card) => {

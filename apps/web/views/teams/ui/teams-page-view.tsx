@@ -7,15 +7,10 @@ import { Button, CardSkeleton, EmptyState, Input, Pagination } from '@repo/ui'
 import { Plus, Search, Users } from '@repo/ui/icons'
 
 import { ROUTES, teamRoutes } from '@/shared/config'
+import { PageHeader } from '@/shared/ui/page-header'
 import { ViewToggle, type ViewMode } from '@/shared/ui/view-toggle'
 
-import {
-	teamPageGridClassName,
-	teamPageHeaderClassName,
-	teamPagePrimaryButtonClassName,
-	teamPageSubtitleClassName,
-	teamPageTitleClassName,
-} from '../lib/styles'
+import { teamPageGridClassName, teamPagePrimaryButtonClassName } from '../lib/styles'
 import type { TeamCardModel } from '../model/types'
 import { useTeamsPage } from '../model/use-teams-page'
 import { TeamCard } from './team-card'
@@ -42,16 +37,12 @@ function TeamsPageView() {
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
-			<div className='mx-auto max-w-[960px] px-6 py-5'>
-				<header className={teamPageHeaderClassName}>
-					<div>
-						<h1 className={teamPageTitleClassName}>Команды</h1>
-						<p className={teamPageSubtitleClassName}>
-							Выберите команду или создайте новую
-						</p>
-					</div>
-
-					<div className='self-end'>
+			<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
+				<PageHeader
+					title='Команды'
+					description='Выберите команду или создайте новую'
+					className='mb-6'
+					actions={
 						<Button
 							onClick={() => router.push(ROUTES.teamsNew)}
 							className={teamPagePrimaryButtonClassName}
@@ -59,8 +50,8 @@ function TeamsPageView() {
 							<Plus className='size-4' />
 							Создать команду
 						</Button>
-					</div>
-				</header>
+					}
+				/>
 
 				<div className='mb-5 flex items-center gap-3'>
 					<div className='relative max-w-[360px] flex-1'>
@@ -84,6 +75,7 @@ function TeamsPageView() {
 				) : isError ? (
 					<div className='flex justify-center py-16'>
 						<EmptyState
+							headingLevel='h2'
 							icon={<Users className='size-7' />}
 							title='Не удалось загрузить команды'
 							description='Попробуйте повторить запрос ещё раз.'
@@ -101,6 +93,7 @@ function TeamsPageView() {
 				) : filteredTeams.length === 0 ? (
 					<div className='flex justify-center py-16'>
 						<EmptyState
+							headingLevel='h2'
 							icon={<Users className='size-7' />}
 							title={allTeams.length === 0 ? 'Нет команд' : 'Команды не найдены'}
 							description={

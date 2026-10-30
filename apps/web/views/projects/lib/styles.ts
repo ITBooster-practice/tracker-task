@@ -1,14 +1,5 @@
 import { cn } from '@repo/ui'
 
-import { pageHeaderRowClassName } from '@/shared/ui/page-header/styles'
-
-export {
-	pageTitleClassName as projectPageTitleClassName,
-	pageDescriptionClassName as projectPageSubtitleClassName,
-} from '@/shared/ui/page-header/styles'
-
-export const projectPageHeaderClassName = `mb-6 ${pageHeaderRowClassName}`
-
 export const projectPagePrimaryButtonClassName =
 	'h-9 w-full sm:w-auto rounded-[var(--radius-control)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90'
 

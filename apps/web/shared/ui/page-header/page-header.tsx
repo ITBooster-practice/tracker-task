@@ -27,11 +27,15 @@ export function PageHeader({
 		<header className={cn('flex flex-col gap-3', className)}>
 			{navigation}
 			<div className={pageHeaderRowClassName}>
-				<div className='min-w-0'>
+				<div className='min-w-0 flex-auto'>
 					<h1 className={cn(pageTitleClassName, 'break-words')}>{title}</h1>
 					<p className={pageDescriptionClassName}>{description}</p>
 				</div>
-				{actions && <div className='flex shrink-0 items-center gap-2'>{actions}</div>}
+				{actions && (
+					<div className='flex max-w-full shrink-0 flex-wrap items-center gap-2'>
+						{actions}
+					</div>
+				)}
 			</div>
 		</header>
 	)
