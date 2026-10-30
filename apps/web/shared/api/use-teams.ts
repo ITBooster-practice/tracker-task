@@ -16,6 +16,8 @@ import {
 	type UpdateTeam,
 } from '@/shared/lib/api/teams-service'
 import type { ApiError } from '@/shared/lib/api/types'
+import { isApiError } from '@/shared/lib/api/utils'
+import { useWorkspaceStore } from '@/shared/lib/workspace-context/store'
 
 export const teamsKeys = {
 	all: ['teams'] as const,
@@ -28,19 +30,37 @@ export const teamsKeys = {
 	delete: (id: string) => [...teamsKeys.all, 'delete', id] as const,
 } as const
 
-export const useTeamsList = (params?: PaginationParams) => {
+export const useTeamsList = (
+	params?: PaginationParams,
+	options?: { accountId?: string; enabled?: boolean },
+) => {
 	return useQuery({
-		queryKey: teamsKeys.list(params),
+		queryKey:
+			options?.accountId === undefined
+				? teamsKeys.list(params)
+				: [...teamsKeys.list(params), { accountId: options.accountId }],
 		queryFn: () => teamsService.getAll(params),
-		placeholderData: keepPreviousData,
+		placeholderData: options?.accountId === undefined ? keepPreviousData : undefined,
+		enabled: options?.enabled,
 	})
 }
 
-export const useTeamDetail = (id: string, options?: { enabled?: boolean }) => {
+export const useTeamDetail = (
+	id: string,
+	options?: { enabled?: boolean; accountId?: string },
+) => {
 	return useQuery({
-		queryKey: teamsKeys.detail(id),
+		queryKey:
+			options?.accountId === undefined
+				? teamsKeys.detail(id)
+				: [...teamsKeys.detail(id), { accountId: options.accountId }],
 		queryFn: () => teamsService.getById(id),
-		enabled: options?.enabled !== undefined ? options.enabled : Boolean(id),
+		enabled: Boolean(id) && (options?.enabled ?? true),
+		retry:
+			options?.accountId === undefined
+				? undefined
+				: (count, error) =>
+						!(isApiError(error) && [403, 404].includes(error.statusCode)) && count < 3,
 	})
 }
 
@@ -95,6 +115,7 @@ export const useDeleteTeam = () => {
 		mutationKey: teamsKeys.delete('mutation'),
 		mutationFn: teamsService.delete,
 		onSuccess: (_, id) => {
+			useWorkspaceStore.getState().clearTeam(id)
 			queryClient.invalidateQueries({ queryKey: teamsKeys.lists() })
 			queryClient.removeQueries({ queryKey: teamsKeys.detail(id) })
 		},

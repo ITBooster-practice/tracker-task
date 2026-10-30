@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { MainLayout } from '@/widgets/main-layout'
 import { FeatureFlagsProvider } from '@/features/feature-flags'
-import { authKeys } from '@/shared/api/use-auth'
+import { authKeys } from '@/shared/api/auth-keys'
 import { featureFlagsKeys } from '@/shared/api/use-feature-flags'
 import { ROUTES } from '@/shared/config'
 import { authService } from '@/shared/lib/api/auth-service'

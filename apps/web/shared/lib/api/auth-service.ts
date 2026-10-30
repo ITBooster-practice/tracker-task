@@ -37,8 +37,10 @@ export const authService = {
 		await publicClient.post(`${ENDPOINT}/logout`)
 	},
 
-	getMe: async (): Promise<User> => {
-		const response = await client.get<User>(`${ENDPOINT}/me`)
+	getMe: async (options?: { signal?: AbortSignal }): Promise<User> => {
+		const response = options?.signal
+			? await client.get<User>(`${ENDPOINT}/me`, { signal: options.signal })
+			: await client.get<User>(`${ENDPOINT}/me`)
 
 		return response.data
 	},
