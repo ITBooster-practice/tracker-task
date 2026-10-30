@@ -6,11 +6,11 @@
 
 `FeatureFlagsProvider` загружает snapshot и право управления, подписывается на SSE и обновляет React Query при изменении версии. После переподключения перечитывается снимок. Версия и ETag используются как технические данные.
 
-Проверяйте функции через `hasFeature`, `useFeatureFlags` и `FeatureGate`. Задачи требуют проектов; доски — проектов и задач. Серверные страницы используют `shared/lib/feature-flags/server.ts` и передают cookie-сессию API.
+Проверяйте функции через `hasFeature`, `useFeatureFlags` и `FeatureGate`; [зависимости флагов](../work/feature-flags.md#добавление-и-подключение) задают необходимые проверки. Серверные страницы используют `shared/lib/feature-flags/server.ts` и передают cookie-сессию API.
 
 Отсутствующий или выключенный ключ закрывает блок. Ошибка загрузки не включает функции; интерфейс предлагает повторить загрузку. При ответе API `FEATURE_DISABLED` перечитывается snapshot. Проверки frontend дополняют guards API и не заменяют авторизацию.
 
-Явный локальный режим `NEXT_PUBLIC_FEATURE_FLAGS_DEV_FALLBACK=true` действует только при `NODE_ENV=development`: при ошибке API включает известные функции и показывает уведомление. В production fallback не действует.
+Явный локальный режим `NEXT_PUBLIC_FEATURE_FLAGS_DEV_FALLBACK=true` действует только при `NODE_ENV=development`: при ошибке API включает известные флаги, кроме `AI_ASSISTANT` и `NOTIFICATIONS`, которые остаются выключенными, и показывает уведомление. В production fallback не действует.
 
 ## Панель разработчика
 
