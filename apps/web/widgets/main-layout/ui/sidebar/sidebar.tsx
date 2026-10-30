@@ -1,14 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useParams, usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import React from 'react'
 
 import { cn } from '@repo/ui'
 import { KanbanSquare } from '@repo/ui/icons'
 
-import { useProjectsList } from '@/shared/api/use-projects'
-import { useTeamsList } from '@/shared/api/use-teams'
 import {
 	getSidebarRouteId,
 	ROUTES,
@@ -22,6 +20,7 @@ import {
 	sidebarWorkspace,
 	useSideBarStore,
 } from '../../model/sidebar'
+import { useWorkspaceContext } from '../../model/use-workspace-context'
 import { SidebarMenuItem } from './sidebar-menu-item'
 import { SidebarSelector } from './sidebar-selector'
 import { SidebarUser } from './sidebar-user'
@@ -40,25 +39,31 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	const router = useRouter()
 	const { isOpen: isDesktopOpen } = useSideBarStore()
 	const pathname = usePathname()
-	const params = useParams<{ id?: string; projectId?: string }>()
 	const flags = useFeatureFlags()
 	const snapshot = flags.status === 'ready' ? flags.snapshot : null
-	const { data: teamsData } = useTeamsList({ page: 1, limit: 50 })
-	const teams = teamsData?.data ?? []
 	const isOpen = forceOpen ?? isDesktopOpen
-
-	const teamId = typeof params.id === 'string' ? params.id : null
-	const currentTeam = teams.find((t) => t.id === teamId) ?? null
-
-	const { data: projectsData } = useProjectsList(teamId ?? '')
-	const projects = projectsData?.data ?? []
-
-	const projectId = typeof params.projectId === 'string' ? params.projectId : null
-	const currentProject =
-		projects.find((p) => p.id === projectId && p.teamId === teamId) ?? null
+	const {
+		teamId,
+		projectId,
+		currentTeam,
+		currentProject,
+		teams,
+		projects,
+		teamsLoading,
+		projectsLoading,
+		canManageTeam,
+		selectTeam,
+		selectProject,
+	} = useWorkspaceContext()
 
 	const activeRouteId = getSidebarRouteId(pathname)
-	const sections = getSidebarSections(teamId, projectId, snapshot, flags.canManage)
+	const sections = getSidebarSections(
+		teamId,
+		projectId,
+		snapshot,
+		flags.canManage,
+		canManageTeam,
+	)
 	const collapsedItems = sections.flatMap((section) => section.items)
 
 	const teamOptions = teams.map((t) => ({
@@ -74,18 +79,25 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 	}))
 
 	const handleSelectTeam = (id: string) => {
+		if (!teams.some((team) => team.id === id)) return
+		selectTeam(id)
 		router.push(teamRoutes.projects(id))
 		onNavigate?.()
 	}
 
 	const handleSelectProject = (id: string) => {
-		if (!teamId) return
+		if (
+			!teamId ||
+			!projects.some((project) => project.id === id && project.teamId === teamId)
+		)
+			return
+		selectProject(id)
 		router.push(teamRoutes.project(teamId, id))
 		onNavigate?.()
 	}
 
-	const isItemActive = (href: string, routeId?: SidebarRouteId) => {
-		if (href === '#' || !routeId || !activeRouteId) {
+	const isItemActive = (href: string | undefined, routeId?: SidebarRouteId) => {
+		if (!href || !routeId || !activeRouteId) {
 			return false
 		}
 
@@ -138,6 +150,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 							<div className='space-y-2'>
 								<SidebarSelector
 									label='Команда'
+									loading={teamsLoading}
 									value={currentTeam?.name ?? ''}
 									shortValue={teamShortValue}
 									options={teamOptions}
@@ -149,6 +162,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 								/>
 								<SidebarSelector
 									label='Проект'
+									loading={projectsLoading}
 									value={currentProject?.name ?? ''}
 									shortValue={projectShortValue}
 									options={projectOptions}
@@ -187,6 +201,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 							<div className='flex flex-col items-center gap-2'>
 								<SidebarSelector
 									label='Команда'
+									loading={teamsLoading}
 									value={currentTeam?.name ?? ''}
 									shortValue={teamShortValue}
 									options={teamOptions}
@@ -198,6 +213,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 								/>
 								<SidebarSelector
 									label='Проект'
+									loading={projectsLoading}
 									value={currentProject?.name ?? ''}
 									shortValue={projectShortValue}
 									options={projectOptions}

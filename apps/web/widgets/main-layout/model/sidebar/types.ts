@@ -16,7 +16,8 @@ export type SideBarStore = SideBarStoreState & SideBarStoreActions
 
 export type SidebarNavItem = {
 	title: string
-	href: string
+	href?: string
+	disabledReason?: string
 	icon: LucideIcon
 	routeId?: SidebarRouteId
 	iconClassName?: string

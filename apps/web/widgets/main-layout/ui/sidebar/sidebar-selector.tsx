@@ -26,6 +26,7 @@ interface Props {
 	emptyLabel?: string
 	placeholder?: string
 	disabled?: boolean
+	loading?: boolean
 	onSelect: (id: string) => void
 }
 
@@ -39,9 +40,11 @@ function SidebarSelector({
 	emptyLabel = 'Нет элементов',
 	placeholder,
 	disabled = false,
+	loading = false,
 	onSelect,
 }: Props) {
 	const isEmpty = options.length === 0
+	const unavailableLabel = loading ? 'Загрузка…' : emptyLabel
 
 	if (!isOpen) {
 		const collapsedDisabled = isEmpty || disabled
@@ -53,17 +56,19 @@ function SidebarSelector({
 							collapsedDisabled
 								? disabled
 									? placeholder
-									: emptyLabel
+									: unavailableLabel
 								: `${label}: ${value}`
 						}
 						disabled={collapsedDisabled}
-						className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-[var(--radius-control)] bg-sidebar-accent text-[11px] font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40'
+						aria-label={`${label}: ${value || (disabled ? placeholder : unavailableLabel)}`}
+						aria-busy={loading}
+						className='flex size-11 cursor-pointer items-center justify-center rounded-[var(--radius-control)] bg-sidebar-accent text-xs font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed disabled:opacity-50'
 					>
 						{shortValue}
 					</button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent side='right' align='start' className='min-w-[180px]'>
-					<DropdownMenuLabel className='text-[11px] uppercase tracking-wide text-muted-foreground'>
+					<DropdownMenuLabel className='text-xs uppercase tracking-wide text-muted-foreground'>
 						{label}
 					</DropdownMenuLabel>
 					{options.map((option) => (
@@ -85,12 +90,13 @@ function SidebarSelector({
 
 	if (isEmpty || disabled) {
 		return (
-			<div className='w-full rounded-[var(--radius-control)] border border-sidebar-border/50 px-3 py-2 opacity-50'>
-				<div className='text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/50'>
-					{label}
-				</div>
-				<div className='pt-0.5 text-sm text-sidebar-foreground/40'>
-					{disabled ? (placeholder ?? '—') : emptyLabel}
+			<div
+				aria-busy={loading}
+				className='h-14 w-full rounded-[var(--radius-control)] border border-sidebar-border px-3 py-2'
+			>
+				<div className='text-xs font-medium text-muted-foreground'>{label}</div>
+				<div className='truncate pt-0.5 text-sm text-muted-foreground'>
+					{disabled ? (placeholder ?? '—') : value || unavailableLabel}
 				</div>
 			</div>
 		)
@@ -99,10 +105,11 @@ function SidebarSelector({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<button className='w-full cursor-pointer rounded-[var(--radius-control)] border border-sidebar-border px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/20 focus-visible:outline-none data-[state=open]:border-sidebar-primary/40 data-[state=open]:bg-sidebar-accent/20'>
-					<div className='text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/50'>
-						{label}
-					</div>
+				<button
+					aria-label={`${label}: ${value || placeholder}`}
+					className='h-14 w-full cursor-pointer rounded-[var(--radius-control)] border border-sidebar-border px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring data-[state=open]:border-sidebar-primary/40 data-[state=open]:bg-sidebar-accent/20'
+				>
+					<div className='text-xs font-medium text-muted-foreground'>{label}</div>
 					<div className='flex items-center justify-between gap-2 pt-0.5'>
 						{value ? (
 							<span className='truncate text-sm font-medium'>{value}</span>
@@ -111,7 +118,7 @@ function SidebarSelector({
 								{placeholder ?? '—'}
 							</span>
 						)}
-						<ChevronDown className='size-3.5 shrink-0 text-sidebar-foreground/50' />
+						<ChevronDown className='size-4 shrink-0 text-muted-foreground' />
 					</div>
 				</button>
 			</DropdownMenuTrigger>

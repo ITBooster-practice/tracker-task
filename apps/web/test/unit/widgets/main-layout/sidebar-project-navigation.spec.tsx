@@ -5,7 +5,9 @@ import { FEATURE_KEYS, type FeatureFlagsSnapshot } from '@repo/types'
 
 import { Header } from '@/widgets/main-layout/ui/header/header'
 import { Sidebar } from '@/widgets/main-layout/ui/sidebar'
+import { useUserStore } from '@/entities/user'
 import { FeatureFlagsContext } from '@/shared/lib/feature-flags/context'
+import { useWorkspaceStore } from '@/shared/lib/workspace-context/store'
 
 const navigation = vi.hoisted(() => ({ pathname: '/teams/team-1/projects/project-1' }))
 
@@ -43,7 +45,9 @@ vi.mock('next/link', () => ({
 	),
 }))
 vi.mock('@/shared/api/use-auth', () => ({
-	useMe: () => ({ data: { name: 'Разработчик' } }),
+	useMe: () => ({
+		data: { id: 'viewer', name: 'Разработчик', email: 'viewer@example.test' },
+	}),
 }))
 vi.mock('@/features/theme', () => ({ ThemeToggle: () => null }))
 vi.mock('@/widgets/main-layout/ui/header/profile-menu', () => ({
@@ -97,9 +101,25 @@ const Wrapper = ({ children }: React.PropsWithChildren) => (
 )
 
 beforeEach(() => {
+	vi.stubGlobal(
+		'ResizeObserver',
+		class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		},
+	)
+	useUserStore.getState().clearUser()
+	useWorkspaceStore.setState({ hydrated: true })
+	useUserStore
+		.getState()
+		.setUser({ id: 'viewer', name: 'Разработчик', email: 'viewer@example.test' })
 	navigation.pathname = '/teams/team-1/projects/project-1'
 })
-afterEach(cleanup)
+afterEach(() => {
+	cleanup()
+	vi.unstubAllGlobals()
+})
 
 it.each([true, false])(
 	'switches both notification entries together (expanded: %s)',
@@ -127,12 +147,12 @@ it.each([true, false])(
 		const { rerender } = render(view(false))
 		const expectHidden = () => {
 			expect(screen.queryByRole('button', { name: 'Уведомления (заглушка)' })).toBeNull()
-			expect(screen.queryByRole('link', { name: 'Уведомления' })).toBeNull()
+			expect(screen.queryByRole('button', { name: 'Уведомления' })).toBeNull()
 		}
 		expectHidden()
 		rerender(view(true))
 		expect(screen.getByRole('button', { name: 'Уведомления (заглушка)' })).toBeDefined()
-		expect(screen.getByRole('link', { name: 'Уведомления' })).toBeDefined()
+		expect(screen.getByRole('button', { name: 'Уведомления' })).toBeDefined()
 		rerender(view(false))
 		expectHidden()
 		for (const status of ['loading', 'error'] as const) {
@@ -173,7 +193,7 @@ it.each([true, false])(
 it('не уводит на общий экран досок без выбранного проекта', () => {
 	navigation.pathname = '/teams/team-1/projects'
 	render(<Sidebar forceOpen />, { wrapper: Wrapper })
-	const board = screen.getByRole('link', { name: 'Доска' })
+	const board = screen.getByRole('button', { name: 'Доска' })
 	expect(board.getAttribute('aria-disabled')).toBe('true')
 	fireEvent.click(board)
 	expect(navigation.pathname).toBe('/teams/team-1/projects')

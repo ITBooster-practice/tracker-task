@@ -28,8 +28,12 @@ const ROLE_TONES: Record<TeamRole, BadgeTone> = {
 
 function SidebarUser({ teamId, projectId, isOpen }: SidebarUserProps) {
 	const profileQuery = useMe()
-	const teamQuery = useTeamDetail(teamId ?? '')
-	const projectQuery = useProjectDetail(teamId ?? '', projectId ?? '')
+	const options = {
+		accountId: profileQuery.data?.id ?? '',
+		enabled: Boolean(profileQuery.data?.id),
+	}
+	const teamQuery = useTeamDetail(teamId ?? '', options)
+	const projectQuery = useProjectDetail(teamId ?? '', projectId ?? '', options)
 	const pending = Boolean(
 		profileQuery.isPending ||
 		(teamId && (teamQuery.isPending || teamQuery.isFetching)) ||

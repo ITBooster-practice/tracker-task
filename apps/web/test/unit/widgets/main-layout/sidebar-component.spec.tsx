@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useSideBarStore } from '@/widgets/main-layout/model/sidebar'
 import { Sidebar } from '@/widgets/main-layout/ui/sidebar'
+import { useUserStore } from '@/entities/user'
+import { useWorkspaceStore } from '@/shared/lib/workspace-context/store'
 
 vi.mock('next/link', () => ({
 	default: ({
@@ -128,6 +130,11 @@ vi.mock('@repo/ui/icons', () => ({
 
 describe('Sidebar', () => {
 	beforeEach(() => {
+		useUserStore.getState().clearUser()
+		useWorkspaceStore.setState({ hydrated: true })
+		useUserStore
+			.getState()
+			.setUser({ id: 'user-1', name: 'Alex Real', email: 'alex.real@test.dev' })
 		vi.clearAllMocks()
 		mockUsePathname.mockReturnValue('/')
 		mockUseParams.mockReturnValue({})
@@ -159,6 +166,7 @@ describe('Sidebar', () => {
 	})
 
 	it('показывает имя текущей команды в селекторе команды', () => {
+		mockUsePathname.mockReturnValue('/teams/team-1/projects')
 		mockUseParams.mockReturnValue({ id: 'team-1' })
 		mockUseTeamsList.mockReturnValue({
 			data: {
