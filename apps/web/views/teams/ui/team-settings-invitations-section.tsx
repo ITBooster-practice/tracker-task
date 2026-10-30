@@ -7,7 +7,6 @@ import {
 } from '../config/team-settings.constants'
 import {
 	teamPagePrimaryButtonClassName,
-	teamSettingsBadgeClassName,
 	teamSettingsListRowClassName,
 	teamSettingsMemberEmailClassName,
 	teamSettingsMemberNameClassName,
@@ -97,10 +96,7 @@ const TeamSettingsInvitationsSection = ({
 								<div className={teamSettingsRowActionsClassName}>
 									<Badge
 										variant='outline'
-										className={cn(
-											teamSettingsBadgeClassName,
-											getTeamRoleBadgeClassName(invitation.role),
-										)}
+										className={getTeamRoleBadgeClassName(invitation.role)}
 									>
 										{getTeamRoleLabel(invitation.role)}
 									</Badge>

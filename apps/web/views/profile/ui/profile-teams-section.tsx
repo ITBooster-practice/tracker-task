@@ -6,7 +6,6 @@ import { getNameInitials } from '@/shared/lib/user'
 
 import { profileCopy, profileRoleSummaryByValue } from '../config/constants'
 import {
-	profileBadgeBaseClassName,
 	profileItemAvatarClassName,
 	profileItemBodyClassName,
 	profileItemSubtitleClassName,
@@ -80,10 +79,7 @@ const ProfileTeamsSection = ({
 									</div>
 								</div>
 
-								<Badge
-									variant='outline'
-									className={cn(profileBadgeBaseClassName, teamRole.className)}
-								>
+								<Badge variant='outline' className={teamRole.className}>
 									{teamRole.label}
 								</Badge>
 							</button>

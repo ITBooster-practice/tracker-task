@@ -34,10 +34,7 @@ function BoardCardBody({
 		>
 			<CardContent className='space-y-2.5 px-3 py-3'>
 				<div className='flex min-w-0 items-center gap-2'>
-					<TaskTypeBadge
-						type={task.type}
-						className='h-[18px] rounded-full px-1.5 text-[9px] font-semibold'
-					/>
+					<TaskTypeBadge type={task.type} />
 					<span className='text-[10px] font-medium tracking-[0.02em] text-muted-foreground'>
 						{task.key}
 					</span>

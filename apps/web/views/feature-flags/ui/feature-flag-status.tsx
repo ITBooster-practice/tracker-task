@@ -5,12 +5,11 @@ export function FeatureFlagStatus({ flag }: { flag: Pick<FeatureFlag, 'enabled'>
 	return (
 		<Badge
 			variant='outline'
-			className={cn(
-				'gap-2 px-2.5 py-1',
+			className={
 				flag.enabled
 					? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-					: 'border-border bg-muted/50 text-muted-foreground',
-			)}
+					: 'border-border bg-muted/50 text-muted-foreground'
+			}
 		>
 			<span
 				aria-hidden='true'

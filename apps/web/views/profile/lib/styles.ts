@@ -53,9 +53,6 @@ export const profileSkeletonRowClassName =
 export const profileRowClickableClassName =
 	'transition-colors hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-export const profileBadgeBaseClassName =
-	'rounded-full px-2 py-[3px] text-[10px] font-medium leading-none'
-
 export const profilePrimaryButtonClassName =
 	'h-8 rounded-[12px] bg-primary px-3 text-[12px] font-medium text-primary-foreground hover:bg-primary/90'
 

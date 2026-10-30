@@ -1,0 +1,88 @@
+'use client'
+
+import type { TeamRole } from '@repo/types'
+import { cn, UserSummary, type BadgeTone } from '@repo/ui'
+
+import { useMe } from '@/shared/api/use-auth'
+import { useProjectDetail } from '@/shared/api/use-projects'
+import { useTeamDetail } from '@/shared/api/use-teams'
+import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
+
+interface SidebarUserProps {
+	teamId: string | null
+	projectId: string | null
+	projectsEnabled: boolean
+	isOpen: boolean
+}
+
+const ROLE_LABELS: Record<TeamRole, string> = {
+	OWNER: 'Владелец',
+	ADMIN: 'Администратор',
+	MEMBER: 'Участник',
+}
+
+const ROLE_TONES: Record<TeamRole, BadgeTone> = {
+	OWNER: 'owner',
+	ADMIN: 'admin',
+	MEMBER: 'member',
+}
+
+function SidebarUser({ teamId, projectId, projectsEnabled, isOpen }: SidebarUserProps) {
+	const profileQuery = useMe()
+	const teamQuery = useTeamDetail(teamId ?? '')
+	const projectQuery = useProjectDetail(
+		projectsEnabled ? (teamId ?? '') : '',
+		projectsEnabled ? (projectId ?? '') : '',
+	)
+	const pending = Boolean(
+		profileQuery.isPending ||
+		(teamId && (teamQuery.isPending || teamQuery.isFetching)) ||
+		(projectId && projectsEnabled && (projectQuery.isPending || projectQuery.isFetching)),
+	)
+	const team = teamQuery.data?.id === teamId ? teamQuery.data : null
+	const project =
+		projectQuery.data?.id === projectId && projectQuery.data?.teamId === teamId
+			? projectQuery.data
+			: null
+	const hasContext = Boolean(
+		!pending &&
+		!profileQuery.isError &&
+		!teamQuery.isError &&
+		team &&
+		(!projectId || (projectsEnabled && !projectQuery.isError && project)),
+	)
+	const role = hasContext
+		? team?.members.find((member) => member.userId === profileQuery.data?.id)?.role
+		: undefined
+	const roleLabel = role ? ROLE_LABELS[role] : undefined
+	const name = getUserDisplayName(profileQuery.isError ? null : profileQuery.data)
+	const roleDescription = roleLabel
+		? project
+			? `${roleLabel} команды «${team?.name}»: доступ к проекту «${project.name}»`
+			: `${roleLabel} команды «${team?.name}»`
+		: pending
+			? 'Роль в текущем контексте загружается'
+			: 'Нет подтверждённой роли в выбранной команде или проекте'
+
+	return (
+		<div
+			className={cn(
+				'mt-auto shrink-0 border-t border-sidebar-border py-3',
+				isOpen ? 'px-3' : 'px-2',
+			)}
+		>
+			<UserSummary
+				name={name}
+				initials={getNameInitials(name)}
+				roleLabel={roleLabel ?? 'Роль не определена'}
+				roleDescription={roleDescription}
+				roleTone={role ? ROLE_TONES[role] : undefined}
+				neutral={!roleLabel}
+				pending={pending}
+				collapsed={!isOpen}
+			/>
+		</div>
+	)
+}
+
+export { SidebarUser }

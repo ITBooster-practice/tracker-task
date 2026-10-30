@@ -45,11 +45,13 @@ vi.mock('@/shared/api/use-auth', () => ({
 	useMe: () => ({ data: { name: 'Разработчик' } }),
 }))
 vi.mock('@/shared/api/use-teams', () => ({
+	useTeamDetail: () => ({ data: undefined }),
 	useTeamsList: () => ({
 		data: { data: [{ id: 'team-1', name: 'Команда', currentUserRole: 'OWNER' }] },
 	}),
 }))
 vi.mock('@/shared/api/use-projects', () => ({
+	useProjectDetail: () => ({ data: undefined }),
 	useProjectsList: () => ({
 		data: { data: [{ id: 'project-1', teamId: 'team-1', name: 'Проект' }] },
 	}),
@@ -61,13 +63,6 @@ vi.mock('@/widgets/main-layout/ui/sidebar/sidebar-selector', () => ({
 		</div>
 	),
 }))
-vi.mock('@repo/ui', () => ({
-	Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
-	cn: (...values: unknown[]) =>
-		values.filter((value) => typeof value === 'string').join(' '),
-}))
-
 const snapshot: FeatureFlagsSnapshot = {
 	version: 1,
 	flags: Object.values(FEATURE_KEYS).map((key) => ({

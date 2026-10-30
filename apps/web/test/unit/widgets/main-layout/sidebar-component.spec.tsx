@@ -40,6 +40,7 @@ const mockUseMe = vi.fn()
 
 vi.mock('@/shared/api/use-teams', () => ({
 	useTeamsList: () => mockUseTeamsList(),
+	useTeamDetail: () => ({ data: undefined }),
 }))
 
 vi.mock('@/shared/api/use-auth', () => ({
@@ -58,6 +59,7 @@ vi.mock('@/shared/config', () => ({
 
 vi.mock('@/shared/api/use-projects', () => ({
 	useProjectsList: () => ({ data: { data: [], meta: {} } }),
+	useProjectDetail: () => ({ data: undefined }),
 }))
 
 vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
@@ -80,7 +82,6 @@ vi.mock('@/widgets/main-layout/model/sidebar', async (importOriginal) => {
 			},
 		],
 		sidebarWorkspace: { title: 'Tracker Task', subtitle: 'Product Team' },
-		sidebarCurrentUser: { initials: 'AI', name: 'Алексей Иванов', role: 'Owner' },
 	}
 })
 
@@ -119,12 +120,6 @@ vi.mock('@/widgets/main-layout/ui/sidebar/sidebar-selector', () => ({
 			<span>{value}</span>
 		</div>
 	),
-}))
-
-vi.mock('@repo/ui', () => ({
-	Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
-	cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
 vi.mock('@repo/ui/icons', () => ({
