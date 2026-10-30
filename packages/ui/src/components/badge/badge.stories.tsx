@@ -7,6 +7,10 @@ const meta = {
 	component: Badge,
 	tags: ['autodocs'],
 	argTypes: {
+		tone: {
+			control: 'select',
+			options: ['owner', 'admin', 'member'],
+		},
 		variant: {
 			control: 'select',
 			options: ['default', 'secondary', 'destructive', 'outline', 'ghost', 'link'],
@@ -70,6 +74,40 @@ export const AllVariants: Story = {
 			<Badge variant='outline'>Outline</Badge>
 			<Badge variant='ghost'>Ghost</Badge>
 			<Badge variant='link'>Link</Badge>
+		</div>
+	),
+}
+
+export const RoleTones: Story = {
+	render: () => (
+		<div className='flex flex-wrap gap-2'>
+			<Badge variant='outline' tone='owner'>
+				Владелец
+			</Badge>
+			<Badge variant='outline' tone='admin'>
+				Администратор
+			</Badge>
+			<Badge variant='outline' tone='member'>
+				Участник
+			</Badge>
+		</div>
+	),
+}
+
+export const Geometry: Story = {
+	render: () => (
+		<div className='flex flex-wrap items-center gap-3'>
+			<Badge variant='outline' tone='owner'>
+				Владелец
+			</Badge>
+			<Badge variant='outline' tone='admin'>
+				Администратор
+			</Badge>
+			<Badge variant='outline' tone='member'>
+				Участник
+			</Badge>
+			<Badge variant='outline'>Роль не определена</Badge>
+			<Badge variant='secondary'>Основная</Badge>
 		</div>
 	),
 }
