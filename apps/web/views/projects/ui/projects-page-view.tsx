@@ -8,14 +8,10 @@ import { Button, CardSkeleton, EmptyState, Input, Pagination } from '@repo/ui'
 import { FolderKanban, Plus, Search } from '@repo/ui/icons'
 
 import { teamRoutes } from '@/shared/config'
+import { PageHeader } from '@/shared/ui/page-header'
 import { ViewToggle, type ViewMode } from '@/shared/ui/view-toggle'
 
-import {
-	projectPageHeaderClassName,
-	projectPagePrimaryButtonClassName,
-	projectPageSubtitleClassName,
-	projectPageTitleClassName,
-} from '../lib/styles'
+import { projectPagePrimaryButtonClassName } from '../lib/styles'
 import { useProjectsPage } from '../model/use-projects-page'
 import { CreateProjectDialog } from './create-project-dialog'
 import { ProjectCard } from './project-card'
@@ -48,16 +44,12 @@ function ProjectsPageView() {
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
-			<div className='mx-auto max-w-[960px] px-6 py-5'>
-				<header className={projectPageHeaderClassName}>
-					<div>
-						<h1 className={projectPageTitleClassName}>Проекты</h1>
-						<p className={projectPageSubtitleClassName}>
-							{teamName ?? 'Загрузка команды'}
-						</p>
-					</div>
-
-					<div className='self-end'>
+			<div className='mx-auto max-w-[960px] px-4 py-5 sm:px-6'>
+				<PageHeader
+					title='Проекты'
+					description={teamName ?? 'Проекты команды'}
+					className='mb-6'
+					actions={
 						<Button
 							onClick={() => setIsCreateDialogOpen(true)}
 							className={projectPagePrimaryButtonClassName}
@@ -65,8 +57,8 @@ function ProjectsPageView() {
 							<Plus className='size-4' />
 							Создать проект
 						</Button>
-					</div>
-				</header>
+					}
+				/>
 
 				<div className='mb-5 flex items-center gap-3'>
 					<div className='relative max-w-[360px] flex-1'>
@@ -90,6 +82,7 @@ function ProjectsPageView() {
 				) : isError ? (
 					<div className='flex justify-center py-16'>
 						<EmptyState
+							headingLevel='h2'
 							icon={<FolderKanban className='size-7' />}
 							title='Не удалось загрузить проекты'
 							description='Попробуйте повторить запрос ещё раз.'
@@ -107,6 +100,7 @@ function ProjectsPageView() {
 				) : filteredProjects.length === 0 ? (
 					<div className='flex justify-center py-16'>
 						<EmptyState
+							headingLevel='h2'
 							icon={<FolderKanban className='size-7' />}
 							title={
 								allProjects.length === 0

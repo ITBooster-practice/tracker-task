@@ -34,6 +34,7 @@ import { useProjectDetail } from '@/shared/api/use-projects'
 import { useTasksList } from '@/shared/api/use-tasks'
 import { useTeamMembers } from '@/shared/api/use-team-members'
 import { teamRoutes } from '@/shared/config'
+import { PageHeader } from '@/shared/ui/page-header'
 
 import { EditTaskDialog } from './edit-task-dialog'
 
@@ -209,22 +210,21 @@ export function ProjectTasksPageView() {
 
 	return (
 		<div className='min-h-full w-full bg-background text-foreground'>
-			<div className='mx-auto max-w-[1100px] px-6 py-6'>
-				<header className='mb-6 flex items-start justify-between gap-4'>
-					<div>
-						<h1 className='text-[32px] font-bold leading-tight tracking-tight'>Задачи</h1>
-						<p className='mt-0.5 text-[14px] text-muted-foreground'>
-							{project?.name ?? '...'}
-						</p>
-					</div>
-					<Button
-						onClick={() => router.push(teamRoutes.projectTasksNew(teamId, projectId))}
-						className='h-10 shrink-0 rounded-[var(--radius-control)] bg-primary px-5 text-[14px] font-medium text-primary-foreground hover:bg-primary/90'
-					>
-						<Plus className='mr-1.5 size-4' />
-						Создать задачу
-					</Button>
-				</header>
+			<div className='mx-auto max-w-[1760px] px-4 py-5 sm:px-6'>
+				<PageHeader
+					title='Задачи'
+					description={project?.name ?? 'Задачи проекта'}
+					className='mb-6'
+					actions={
+						<Button
+							onClick={() => router.push(teamRoutes.projectTasksNew(teamId, projectId))}
+							className='h-10 shrink-0 rounded-[var(--radius-control)] bg-primary px-5 text-[14px] font-medium text-primary-foreground hover:bg-primary/90'
+						>
+							<Plus className='mr-1.5 size-4' />
+							Создать задачу
+						</Button>
+					}
+				/>
 
 				<div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center'>
 					<div className='relative flex-1'>
@@ -434,6 +434,7 @@ export function ProjectTasksPageView() {
 					) : (
 						<div className='px-6 py-16'>
 							<EmptyState
+								headingLevel='h2'
 								icon={<ClipboardList className='size-7' />}
 								title='Задачи не найдены'
 								description={

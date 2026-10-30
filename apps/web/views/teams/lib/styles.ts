@@ -1,13 +1,4 @@
-import { pageHeaderRowClassName } from '@/shared/ui/page-header/styles'
-
-export {
-	pageTitleClassName as teamPageTitleClassName,
-	pageDescriptionClassName as teamPageSubtitleClassName,
-} from '@/shared/ui/page-header/styles'
-
 export const teamPageGridClassName = 'grid gap-4 sm:grid-cols-2'
-
-export const teamPageHeaderClassName = `mb-6 ${pageHeaderRowClassName}`
 
 export const teamPagePrimaryButtonClassName =
 	'h-9 w-full sm:w-auto rounded-[var(--radius-control)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90'

@@ -188,7 +188,8 @@ vi.mock('@/shared/api/use-team-invitations', () => ({
 	}),
 }))
 
-vi.mock('@repo/ui', () => ({
+vi.mock('@repo/ui', async () => ({
+	cn: (await import('@repo/ui/lib/utils')).cn,
 	usePagination: () => ({
 		page: 1,
 		limit: 10,
