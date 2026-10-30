@@ -34,7 +34,16 @@ describe('Feature flag contracts', () => {
 	it('only recognizes own registry keys', () => {
 		expect(getConnectedFeature('boards')).toBe('Доски')
 		expect(getConnectedFeature('backlog')).toBe('Бэклог')
-		for (const key of ['search-v1', 'constructor', 'toString', '__proto__'])
+		expect(getConnectedFeature('ai-assistant')).toBe('AI Ассистент')
+		expect(getConnectedFeature('notifications')).toBe('Уведомления')
+		for (const key of [
+			'projects',
+			'team-settings',
+			'search-v1',
+			'constructor',
+			'toString',
+			'__proto__',
+		])
 			expect(getConnectedFeature(key)).toBeNull()
 	})
 })

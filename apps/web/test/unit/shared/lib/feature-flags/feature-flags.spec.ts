@@ -21,19 +21,18 @@ describe('Runtime flags', () => {
 		expect(hasFeature(null, 'boards')).toBe(false)
 		expect(hasFeature(snapshot, 'unknown')).toBe(false)
 	})
-	it('applies parent dependencies to tasks and boards', () => {
+	it('requires tasks for boards without a projects flag', () => {
 		expect(hasFeature(snapshot, 'boards')).toBe(true)
 		const disabled = {
 			...snapshot,
 			flags: snapshot.flags.map((flag) => ({
 				...flag,
-				enabled: flag.key !== 'projects',
+				enabled: flag.key !== FEATURE_KEYS.TASKS,
 			})),
 		}
-		expect(hasFeature(disabled, 'projects')).toBe(false)
 		expect(hasFeature(disabled, 'tasks')).toBe(false)
 		expect(hasFeature(disabled, 'boards')).toBe(false)
-		expect(hasFeature(disabled, 'team-settings')).toBe(true)
+		expect(hasFeature(snapshot, 'tasks')).toBe(true)
 	})
 	it('matches exact keys and does not attach the next release flag to the old key', () => {
 		const nextRelease = {
@@ -60,5 +59,8 @@ describe('Runtime flags', () => {
 		expect(getDevelopmentSnapshot()).toBeUndefined()
 		vi.stubEnv('NEXT_PUBLIC_FEATURE_FLAGS_DEV_FALLBACK', 'true')
 		expect(getDevelopmentSnapshot()?.flags).toHaveLength(5)
+		expect(hasFeature(getDevelopmentSnapshot(), FEATURE_KEYS.AI_ASSISTANT)).toBe(false)
+		expect(hasFeature(getDevelopmentSnapshot(), FEATURE_KEYS.NOTIFICATIONS)).toBe(false)
+		expect(hasFeature(getDevelopmentSnapshot(), FEATURE_KEYS.TASKS)).toBe(true)
 	})
 })

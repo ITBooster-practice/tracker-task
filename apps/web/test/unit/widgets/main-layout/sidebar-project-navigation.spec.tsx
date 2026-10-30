@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { FEATURE_KEYS, type FeatureFlagsSnapshot } from '@repo/types'
 
+import { Header } from '@/widgets/main-layout/ui/header/header'
 import { Sidebar } from '@/widgets/main-layout/ui/sidebar'
 import { FeatureFlagsContext } from '@/shared/lib/feature-flags/context'
 
@@ -43,6 +44,16 @@ vi.mock('next/link', () => ({
 }))
 vi.mock('@/shared/api/use-auth', () => ({
 	useMe: () => ({ data: { name: 'Разработчик' } }),
+}))
+vi.mock('@/features/theme', () => ({ ThemeToggle: () => null }))
+vi.mock('@/widgets/main-layout/ui/header/profile-menu', () => ({
+	ProfileMenu: () => null,
+}))
+vi.mock('@/widgets/main-layout/ui/header/sidebar-toggle', () => ({
+	SidebarToggle: () => null,
+}))
+vi.mock('@/widgets/main-layout/ui/header/mobile-sidebar-trigger', () => ({
+	MobileSidebarTrigger: () => null,
 }))
 vi.mock('@/shared/api/use-teams', () => ({
 	useTeamDetail: () => ({ data: undefined }),
@@ -89,6 +100,51 @@ beforeEach(() => {
 	navigation.pathname = '/teams/team-1/projects/project-1'
 })
 afterEach(cleanup)
+
+it.each([true, false])(
+	'switches both notification entries together (expanded: %s)',
+	(isOpen) => {
+		const view = (enabled: boolean, status: 'ready' | 'loading' | 'error' = 'ready') => (
+			<FeatureFlagsContext.Provider
+				value={{
+					snapshot: {
+						...snapshot,
+						flags: snapshot.flags.map((flag) => ({
+							...flag,
+							enabled: flag.key === FEATURE_KEYS.NOTIFICATIONS ? enabled : flag.enabled,
+						})),
+					},
+					status,
+					connection: 'connected',
+					canManage: false,
+					retry: () => {},
+				}}
+			>
+				<Header />
+				<Sidebar forceOpen={isOpen} />
+			</FeatureFlagsContext.Provider>
+		)
+		const { rerender } = render(view(false))
+		const expectHidden = () => {
+			expect(screen.queryByRole('button', { name: 'Уведомления (заглушка)' })).toBeNull()
+			expect(screen.queryByRole('link', { name: 'Уведомления' })).toBeNull()
+		}
+		expectHidden()
+		rerender(view(true))
+		expect(screen.getByRole('button', { name: 'Уведомления (заглушка)' })).toBeDefined()
+		expect(screen.getByRole('link', { name: 'Уведомления' })).toBeDefined()
+		rerender(view(false))
+		expectHidden()
+		for (const status of ['loading', 'error'] as const) {
+			rerender(view(true, status))
+			expectHidden()
+			expect(screen.getByRole('link', { name: 'Проекты' })).toBeDefined()
+			expect(screen.getByRole('link', { name: 'Настройки команды' })).toBeDefined()
+			expect(screen.getByRole('link', { name: 'Обзор проекта' })).toBeDefined()
+			expect(screen.getByText('Проект: Проект')).toBeDefined()
+		}
+	},
+)
 
 it.each([true, false])(
 	'сохраняет проект и переключает активный пункт на доску (sidebar открыт: %s)',

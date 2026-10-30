@@ -7,13 +7,11 @@ export function hasFeature(
 	const enabled = (name: string) =>
 		snapshot?.flags.some((flag) => flag.key === name && flag.enabled) ?? false
 	if (!enabled(key)) return false
-	if (key === FEATURE_KEYS.TASKS) return enabled(FEATURE_KEYS.PROJECTS)
-	if (key === FEATURE_KEYS.BOARDS)
-		return enabled(FEATURE_KEYS.PROJECTS) && enabled(FEATURE_KEYS.TASKS)
+	if (key === FEATURE_KEYS.BOARDS) return enabled(FEATURE_KEYS.TASKS)
 	return true
 }
 
-// Явное включение локального режима разрешено только при разработке.
+// The local fallback requires an explicit opt-in and is limited to development.
 export function getDevelopmentSnapshot(): FeatureFlagsSnapshot | undefined {
 	if (
 		process.env.NODE_ENV !== 'development' ||
@@ -24,7 +22,7 @@ export function getDevelopmentSnapshot(): FeatureFlagsSnapshot | undefined {
 		version: 0,
 		flags: Object.values(FEATURE_KEYS).map((key) => ({
 			key,
-			enabled: true,
+			enabled: key !== FEATURE_KEYS.AI_ASSISTANT && key !== FEATURE_KEYS.NOTIFICATIONS,
 			updatedAt: '1970-01-01T00:00:00.000Z',
 		})),
 	}

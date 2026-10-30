@@ -41,7 +41,6 @@ const makeProject = (id = 'project-1', teamId = 'team-1'): Project => ({
 const props = {
 	teamId: 'team-1',
 	projectId: 'project-1',
-	projectsEnabled: true,
 	isOpen: true,
 }
 
@@ -132,12 +131,6 @@ describe('SidebarUser', () => {
 			expect(screen.getByText('Роль не определена')).toBeDefined()
 		},
 	)
-
-	it('не показывает командную роль как права отключённого проекта', () => {
-		render(<SidebarUser {...props} projectsEnabled={false} />)
-		expect(screen.getByText('Роль не определена')).toBeDefined()
-		expect(queries.project).toHaveBeenCalledWith('', '')
-	})
 
 	it('не придумывает роль при отсутствии членства пользователя', () => {
 		queries.team.mockReturnValue({ data: { ...makeTeam(), members: [] } })

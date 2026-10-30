@@ -113,7 +113,7 @@ describe('Board task payload and moves (e2e)', () => {
 	beforeEach(async () => {
 		await prisma.featureFlag.updateMany({
 			where: {
-				key: { in: [FEATURE_KEYS.PROJECTS, FEATURE_KEYS.TASKS, FEATURE_KEYS.BOARDS] },
+				key: { in: [FEATURE_KEYS.TASKS, FEATURE_KEYS.BOARDS] },
 			},
 			data: { enabled: true },
 		})

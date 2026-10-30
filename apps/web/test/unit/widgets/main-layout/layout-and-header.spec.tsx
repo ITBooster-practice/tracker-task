@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Header } from '@/widgets/main-layout/ui/header/header'
 import { Layout } from '@/widgets/main-layout/ui/layout'
 import { MainLayout } from '@/widgets/main-layout/ui/main-layout'
+import { FeatureFlagsContext } from '@/shared/lib/feature-flags/context'
 
 // ─── Мок: ThemeToggle ────────────────────────────────────────────
 vi.mock('@/features/theme', () => ({
@@ -95,9 +96,35 @@ describe('Header', () => {
 		expect(screen.getByPlaceholderText('Поиск (пока не реализовано)')).toBeDefined()
 	})
 
-	it('рендерит кнопку уведомлений', () => {
+	it('скрывает уведомления до загрузки флагов', () => {
 		render(<Header />)
 
+		expect(screen.queryByRole('button', { name: 'Уведомления (заглушка)' })).toBeNull()
+	})
+
+	it('рендерит кнопку при включённом флаге уведомлений', () => {
+		render(
+			<FeatureFlagsContext.Provider
+				value={{
+					snapshot: {
+						version: 1,
+						flags: [
+							{
+								key: 'notifications',
+								enabled: true,
+								updatedAt: '2026-10-30T00:00:00.000Z',
+							},
+						],
+					},
+					status: 'ready',
+					connection: 'connected',
+					canManage: false,
+					retry: () => {},
+				}}
+			>
+				<Header />
+			</FeatureFlagsContext.Provider>,
+		)
 		expect(screen.getByRole('button', { name: 'Уведомления (заглушка)' })).toBeDefined()
 	})
 

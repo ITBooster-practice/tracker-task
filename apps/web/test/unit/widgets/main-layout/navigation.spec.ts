@@ -38,21 +38,33 @@ describe('Runtime sidebar navigation', () => {
 		expect(find('Обзор проекта', snapshot, false, 'team-1', null)).toBeUndefined()
 	})
 	it('hides flagged sections before loading', () => {
-		for (const title of ['Проекты', 'Задачи', 'Доска', 'Бэклог', 'Настройки команды'])
+		for (const title of ['Задачи', 'Доска', 'Бэклог', 'AI Ассистент', 'Уведомления'])
 			expect(find(title, null)).toBeUndefined()
-		expect(find('Команды', null)).toBeDefined()
+		for (const title of ['Команды', 'Проекты', 'Обзор проекта', 'Настройки команды'])
+			expect(find(title, null)).toBeDefined()
 	})
-	it('hides dependents when projects are disabled', () => {
+	it('controls the AI and notification entries independently', () => {
 		const disabled = {
 			...snapshot,
 			flags: snapshot.flags.map((flag) => ({
 				...flag,
-				enabled: flag.key !== 'projects',
+				enabled:
+					flag.key !== FEATURE_KEYS.AI_ASSISTANT &&
+					flag.key !== FEATURE_KEYS.NOTIFICATIONS,
 			})),
 		}
-		for (const title of ['Проекты', 'Обзор проекта', 'Задачи', 'Доска'])
+		for (const title of ['AI Ассистент', 'Уведомления'])
 			expect(find(title, disabled)).toBeUndefined()
-		expect(find('Настройки команды', disabled)).toBeDefined()
+		for (const title of [
+			'Проекты',
+			'Обзор проекта',
+			'Задачи',
+			'Доска',
+			'Настройки команды',
+		])
+			expect(find(title, disabled)).toBeDefined()
+		expect(find('AI Ассистент')).toBeDefined()
+		expect(find('Уведомления')).toBeDefined()
 	})
 	it('показывает пункт Бэклог только при включённом флаге', () => {
 		expect(find('Бэклог')?.href).toBe('#')

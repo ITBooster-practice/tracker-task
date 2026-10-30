@@ -34,7 +34,7 @@ export function getSidebarSections(
 		{
 			title: 'Работа',
 			items: [
-				...(activeTeamId && activeProjectId && enabled(FEATURE_KEYS.PROJECTS)
+				...(activeTeamId && activeProjectId
 					? [
 							{
 								title: 'Обзор проекта',
@@ -78,13 +78,19 @@ export function getSidebarSections(
 		{
 			title: 'Инструменты',
 			items: [
-				{
-					title: 'AI Ассистент',
-					href: '#',
-					icon: Sparkles,
-					iconClassName: 'text-accent',
-				},
-				{ title: 'Уведомления', href: '#', icon: Bell },
+				...(enabled(FEATURE_KEYS.AI_ASSISTANT)
+					? [
+							{
+								title: 'AI Ассистент',
+								href: '#',
+								icon: Sparkles,
+								iconClassName: 'text-accent',
+							},
+						]
+					: []),
+				...(enabled(FEATURE_KEYS.NOTIFICATIONS)
+					? [{ title: 'Уведомления', href: '#', icon: Bell }]
+					: []),
 			],
 		},
 		{
@@ -96,26 +102,18 @@ export function getSidebarSections(
 					routeId: SIDEBAR_ROUTE_IDS.teams,
 					icon: Users,
 				},
-				...(enabled(FEATURE_KEYS.PROJECTS)
-					? [
-							{
-								title: 'Проекты',
-								href: teamHref(activeTeamId, 'projects'),
-								routeId: SIDEBAR_ROUTE_IDS.teamProjects,
-								icon: FolderKanban,
-							},
-						]
-					: []),
-				...(enabled(FEATURE_KEYS.TEAM_SETTINGS)
-					? [
-							{
-								title: 'Настройки команды',
-								href: teamHref(activeTeamId, 'settings'),
-								routeId: SIDEBAR_ROUTE_IDS.teamSettings,
-								icon: Settings,
-							},
-						]
-					: []),
+				{
+					title: 'Проекты',
+					href: teamHref(activeTeamId, 'projects'),
+					routeId: SIDEBAR_ROUTE_IDS.teamProjects,
+					icon: FolderKanban,
+				},
+				{
+					title: 'Настройки команды',
+					href: teamHref(activeTeamId, 'settings'),
+					routeId: SIDEBAR_ROUTE_IDS.teamSettings,
+					icon: Settings,
+				},
 				...(canManage
 					? [
 							{

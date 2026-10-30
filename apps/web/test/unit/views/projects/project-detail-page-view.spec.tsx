@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectDetailPageView } from '@/views/projects/ui/project-detail-page-view'
+import { FeatureFlagsContext } from '@/shared/lib/feature-flags/context'
 
 const mockUseProjectDetail = vi.fn()
 const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }))
@@ -120,6 +121,34 @@ describe('ProjectDetailPageView', () => {
 	})
 
 	afterEach(cleanup)
+	it('hides the AI generator until enabled and keeps the project available', () => {
+		const { rerender } = render(<ProjectDetailPageView />, { wrapper: createWrapper() })
+		expect(screen.queryByRole('button', { name: /AI Генератор/ })).toBeNull()
+		expect(screen.getByRole('heading', { name: 'My Project' })).toBeDefined()
+		rerender(
+			<FeatureFlagsContext.Provider
+				value={{
+					snapshot: {
+						version: 1,
+						flags: [
+							{
+								key: 'ai-assistant',
+								enabled: true,
+								updatedAt: '2026-10-30T00:00:00.000Z',
+							},
+						],
+					},
+					status: 'ready',
+					connection: 'connected',
+					canManage: false,
+					retry: () => {},
+				}}
+			>
+				<ProjectDetailPageView />
+			</FeatureFlagsContext.Provider>,
+		)
+		expect(screen.getByRole('button', { name: /AI Генератор/ })).toBeDefined()
+	})
 
 	it('открывает доску текущего проекта через проектный маршрут', () => {
 		render(<ProjectDetailPageView />, { wrapper: createWrapper() })

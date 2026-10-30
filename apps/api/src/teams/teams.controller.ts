@@ -1,5 +1,3 @@
-import { RequireFeatures } from '../feature-flags/feature.guard'
-import { FEATURE_KEYS } from '@repo/types'
 import {
 	Body,
 	Controller,
@@ -75,7 +73,6 @@ export class TeamsController {
 	@ApiBadRequestResponse({ description: 'Некорректные данные' })
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для обновления команды' })
 	@ApiNotFoundResponse({ description: 'Команда не найдена' })
-	@RequireFeatures(FEATURE_KEYS.TEAM_SETTINGS)
 	@Patch(':id')
 	@UseGuards(RolesGuard)
 	@Roles('OWNER', 'ADMIN')
@@ -94,7 +91,6 @@ export class TeamsController {
 	})
 	@ApiForbiddenResponse({ description: 'Только владелец может удалить команду' })
 	@ApiNotFoundResponse({ description: 'Команда не найдена' })
-	@RequireFeatures(FEATURE_KEYS.TEAM_SETTINGS)
 	@Delete(':id')
 	@UseGuards(RolesGuard)
 	@Roles('OWNER')
