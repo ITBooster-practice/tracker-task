@@ -1,21 +1,17 @@
 import { type MyInvitation } from '@repo/types'
-import { Button, cn } from '@repo/ui'
+import { Button } from '@repo/ui'
 import { Check, Mail, X } from '@repo/ui/icons'
 
 import { getNameInitials } from '@/shared/lib/user'
 
 import { profileCopy } from '../config/constants'
 import {
-	profileGhostActionClassName,
 	profileItemAvatarClassName,
 	profileItemBodyClassName,
 	profileItemSubtitleClassName,
 	profileItemTitleClassName,
 	profileListWrapClassName,
-	profilePrimaryButtonClassName,
 	profileRowClassName,
-	profileSecondaryButtonClassName,
-	profileSectionCompactContentClassName,
 	profileSectionMetaBadgeClassName,
 } from '../lib/styles'
 import { getInvitationSubtitle } from '../lib/utils'
@@ -76,9 +72,7 @@ const ProfileInvitationsSection = ({
 					onRetry={onRetry}
 				/>
 			) : (
-				<div
-					className={cn(profileListWrapClassName, profileSectionCompactContentClassName)}
-				>
+				<div className={profileListWrapClassName}>
 					{invitations.map((invitation) => {
 						const isAcceptPending =
 							acceptState.isPending && acceptState.token === invitation.token
@@ -100,14 +94,13 @@ const ProfileInvitationsSection = ({
 									</div>
 								</div>
 
-								<div className='flex flex-wrap items-center gap-1.5'>
+								<div className='flex shrink-0 flex-wrap items-center gap-2'>
 									<Button
 										type='button'
 										onClick={() => onAccept(invitation.token)}
 										disabled={isActionPending}
-										className={profilePrimaryButtonClassName}
 									>
-										<Check className='size-3.5' />
+										<Check className='size-4' />
 										{isAcceptPending
 											? profileCopy.invitations.acceptPendingAction
 											: profileCopy.invitations.acceptAction}
@@ -117,12 +110,8 @@ const ProfileInvitationsSection = ({
 										variant='outline'
 										onClick={() => onDecline(invitation.token)}
 										disabled={isActionPending}
-										className={cn(
-											profileSecondaryButtonClassName,
-											profileGhostActionClassName,
-										)}
 									>
-										<X className='size-3.5' />
+										<X className='size-4' />
 										{isDeclinePending
 											? profileCopy.invitations.declinePendingAction
 											: profileCopy.invitations.declineAction}

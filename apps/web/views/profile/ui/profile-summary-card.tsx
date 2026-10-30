@@ -7,7 +7,6 @@ import {
 	Button,
 	Card,
 	CardContent,
-	cn,
 	Input,
 	Label,
 	toast,
@@ -20,8 +19,6 @@ import {
 	type ProfileRoleSummary,
 } from '../config/constants'
 import {
-	profileInputClassName,
-	profilePrimaryButtonClassName,
 	profileSectionCardClassName,
 	profileSummaryAvatarClassName,
 	profileSummaryAvatarFallbackClassName,
@@ -99,7 +96,7 @@ const ProfileSummaryCard = ({
 						</div>
 					</div>
 
-					<div className='flex items-center gap-3 border-b border-border/90 px-4 py-2 sm:px-5'>
+					<div className='flex items-center gap-3 border-b border-border px-4 py-4 sm:px-6'>
 						<div className='min-w-0 flex-1 space-y-1'>
 							<p className={profileSummaryLabelClassName}>{profileCopy.userId.label}</p>
 							<code className='block select-all break-all text-xs text-muted-foreground'>
@@ -131,7 +128,6 @@ const ProfileSummaryCard = ({
 								id={profileFormFieldIds.name}
 								value={formName}
 								onChange={(event) => onNameChange(event.target.value)}
-								className={profileInputClassName}
 							/>
 						</div>
 
@@ -146,15 +142,10 @@ const ProfileSummaryCard = ({
 								id={profileFormFieldIds.email}
 								value={formEmail}
 								onChange={(event) => onEmailChange(event.target.value)}
-								className={profileInputClassName}
 							/>
 						</div>
 
-						<Button
-							type='submit'
-							disabled={!isDirty}
-							className={cn(profilePrimaryButtonClassName, 'min-w-[96px]')}
-						>
+						<Button type='submit' disabled={!isDirty} className='min-w-24'>
 							{profileCopy.fields.save}
 						</Button>
 					</div>

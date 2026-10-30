@@ -15,15 +15,12 @@ import { useTeamsList } from '@/shared/api/use-teams'
 import { teamRoutes } from '@/shared/config'
 import { isApiError } from '@/shared/lib/api/utils'
 import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
+import { PageHeader } from '@/shared/ui/page-header'
 
 import { profileCopy } from '../config/constants'
 import {
 	profilePageContainerClassName,
-	profilePageHeaderClassName,
 	profilePageShellClassName,
-	profilePageSubtitleClassName,
-	profilePageTitleClassName,
-	profilePrimaryButtonClassName,
 	profileSectionGridClassName,
 } from '../lib/styles'
 import { getPrimaryRole } from '../lib/utils'
@@ -38,18 +35,19 @@ type ProfilePageLayoutProps = {
 
 const ProfilePageLayout = ({ children }: ProfilePageLayoutProps) => (
 	<div className={profilePageShellClassName}>
-		<div className={profilePageContainerClassName}>{children}</div>
+		<div className={profilePageContainerClassName}>
+			<PageHeader
+				title={profileCopy.title}
+				description={profileCopy.subtitle}
+				className='mb-6'
+			/>
+			{children}
+		</div>
 	</div>
 )
 
 const ProfilePageLoadingState = () => (
 	<ProfilePageLayout>
-		<header className={profilePageHeaderClassName}>
-			<div className='space-y-2'>
-				<Skeleton className='h-10 w-64' />
-				<Skeleton className='h-4 w-72' />
-			</div>
-		</header>
 		<div className={profileSectionGridClassName}>
 			<Skeleton className='h-[200px] rounded-[var(--radius-surface)]' />
 			<Skeleton className='h-[170px] rounded-[var(--radius-surface)]' />
@@ -65,14 +63,11 @@ type ProfilePageErrorStateProps = {
 const ProfilePageErrorState = ({ onRetry }: ProfilePageErrorStateProps) => (
 	<ProfilePageLayout>
 		<EmptyState
+			headingLevel='h2'
 			title={profileCopy.profileLoadError.title}
 			description={profileCopy.profileLoadError.description}
 			action={
-				<Button
-					type='button'
-					onClick={() => void onRetry()}
-					className={profilePrimaryButtonClassName}
-				>
+				<Button type='button' onClick={() => void onRetry()}>
 					{profileCopy.retryAction}
 				</Button>
 			}
@@ -150,13 +145,6 @@ const ProfilePageView = () => {
 
 	return (
 		<ProfilePageLayout>
-			<header className={profilePageHeaderClassName}>
-				<div>
-					<h1 className={profilePageTitleClassName}>{profileCopy.title}</h1>
-					<p className={profilePageSubtitleClassName}>{profileCopy.subtitle}</p>
-				</div>
-			</header>
-
 			<div className={profileSectionGridClassName}>
 				<ProfileSummaryCard
 					userId={profileQuery.data.id}

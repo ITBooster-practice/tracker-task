@@ -1,10 +1,9 @@
 import { type ReactNode } from 'react'
 
-import { Card, CardContent, CardHeader, CardTitle, cn } from '@repo/ui'
+import { Card, CardContent, CardHeader } from '@repo/ui'
 
 import {
 	profileSectionCardClassName,
-	profileSectionCompactHeaderClassName,
 	profileSectionContentClassName,
 	profileSectionHeaderClassName,
 	profileSectionIconWrapClassName,
@@ -22,16 +21,11 @@ type ProfileSectionProps = {
 const ProfileSection = ({ badge, children, icon, title }: ProfileSectionProps) => {
 	return (
 		<Card className={profileSectionCardClassName}>
-			<CardHeader
-				className={cn(
-					profileSectionHeaderClassName,
-					profileSectionCompactHeaderClassName,
-				)}
-			>
+			<CardHeader className={profileSectionHeaderClassName}>
 				<div className={profileSectionTitleRowClassName}>
 					<div className={profileSectionIconWrapClassName}>{icon}</div>
-					<div className='flex min-w-0 items-center gap-1.5'>
-						<CardTitle className={profileSectionTitleClassName}>{title}</CardTitle>
+					<div className='flex min-w-0 flex-wrap items-center gap-2'>
+						<h2 className={profileSectionTitleClassName}>{title}</h2>
 						{badge}
 					</div>
 				</div>

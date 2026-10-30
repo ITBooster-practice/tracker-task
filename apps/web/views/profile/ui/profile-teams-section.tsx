@@ -13,7 +13,6 @@ import {
 	profileListWrapClassName,
 	profileRowClassName,
 	profileRowClickableClassName,
-	profileSectionCompactContentClassName,
 } from '../lib/styles'
 import { formatMembersCount } from '../lib/utils'
 import { ProfileListSkeleton } from './profile-list-skeleton'
@@ -51,9 +50,7 @@ const ProfileTeamsSection = ({
 					description={profileCopy.teams.emptyDescription}
 				/>
 			) : (
-				<div
-					className={cn(profileListWrapClassName, profileSectionCompactContentClassName)}
-				>
+				<div className={profileListWrapClassName}>
 					{teams.map((team) => {
 						const teamRole = profileRoleSummaryByValue[team.currentUserRole]
 						const teamInitials = getNameInitials(team.name)
