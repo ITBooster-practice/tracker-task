@@ -194,9 +194,51 @@ return (
 )
 ```
 
+Примеры фото, инициалов, недоступного изображения, размеров и тёмной темы находятся в [stories Avatar](src/components/avatar.stories.tsx), раздел Storybook `Shared/UI/Avatar`.
+
+### UserSummary
+
+[UserSummary](src/components/user-summary.tsx) показывает аватар, имя и бейдж роли. Компонент принимает готовые данные и не выполняет запросы; приложение определяет пользователя и его роль. Геометрия и цвета заданы в [дизайн-системе](../../docs/design-system/README.md#usersummary).
+
+```tsx
+import { UserSummary } from '@repo/ui'
+
+export function UserBlock() {
+	return (
+		<UserSummary
+			name='Ирина Иванова'
+			initials='ИИ'
+			roleLabel='Участник'
+			roleDescription='Участник команды «Разработка»'
+		/>
+	)
+}
+```
+
+| Параметр                        | Назначение                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| `name`, `initials`, `roleLabel` | Обязательные готовые имя, инициалы и подпись роли                                |
+| `avatarSrc`                     | Необязательный URL фото; при отсутствии или ошибке загрузки видны инициалы       |
+| `roleDescription`               | Полное описание роли для `title`; по умолчанию используется `roleLabel`          |
+| `roleTone`                      | Общий тон роли `owner`, `admin` или `member`; по умолчанию `member`              |
+| `neutral`                       | Отменяет `roleTone`, показывает outline с muted-текстом; по умолчанию `false`    |
+| `pending`                       | Устанавливает `aria-busy`; подпись и нейтральное состояние задаёт вызывающий код |
+| `collapsed`                     | Оставляет видимый аватар, сохраняет имя и роль для скринридера и в `title`       |
+| `className`                     | Классы внешнего контейнера                                                       |
+
+`pending` и `collapsed` по умолчанию равны `false`. Длинное имя сокращается, полное доступно в `title`. Sidebar передаёт инициалы: текущий контракт профиля содержит `id`, `name`, `email` без URL фото. Поддержку `avatarSrc` можно использовать там, где источник изображения уже есть.
+
+[Stories UserSummary](src/components/user-summary.stories.tsx), раздел `Shared/UI/UserSummary`, показывают фото, инициалы, длинное имя, роли, нейтральное состояние, загрузку, свёрнутый вид и обе темы.
+
 ### Badge
 
 Бейдж для отображения статусов и меток.
+
+Все варианты сохраняют единый размер: высота 32px (`--badge-height: 2rem`), padding X 12px (`--badge-padding-x: 0.75rem`), Y 0, текст 12/16px с весом 500, граница 1px и `rounded-full`. Не переопределяйте эту геометрию локально; источник — [общие CSS-токены](src/globals.css) и [базовый Badge](src/components/badge/badge.tsx).
+
+Для роли команды передайте `tone='owner'`, `'admin'` или `'member'` вместе с `variant='outline'`. Тон задаёт общие фон, обводку и текст; без `tone` действует обычное оформление варианта. Точные классы обеих тем — в [палитре ролей дизайн-системы](../../docs/design-system/README.md#badge-тона-ролей), источник — [badge-tones.ts](src/lib/badge-tones.ts).
+
+`badgeToneVariants({ tone: 'owner' })` возвращает те же классы для других композиций. Helper и тип `BadgeTone` доступны через `@repo/ui` и `@repo/ui/lib/badge-tones`.
 
 ```tsx
 import { Badge } from '@repo/ui'
@@ -207,6 +249,9 @@ return (
 		<Badge variant='secondary'>Secondary</Badge>
 		<Badge variant='destructive'>Destructive</Badge>
 		<Badge variant='outline'>Outline</Badge>
+		<Badge variant='outline' tone='owner'>
+			Владелец
+		</Badge>
 	</>
 )
 ```
