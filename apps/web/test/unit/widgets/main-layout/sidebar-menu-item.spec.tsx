@@ -1,14 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { LucideIcon } from '@repo/ui/icons'
 
 import type { SidebarNavItem } from '@/widgets/main-layout/model/sidebar'
 import { SidebarMenuItem } from '@/widgets/main-layout/ui/sidebar/sidebar-menu-item'
-
-vi.mock('@repo/ui', () => ({
-	cn: (...classes: (string | undefined | false)[]) => classes.filter(Boolean).join(' '),
-}))
 
 vi.mock('next/link', () => ({
 	default: ({
@@ -33,7 +29,20 @@ const createItem = (overrides?: Partial<SidebarNavItem>): SidebarNavItem => ({
 })
 
 describe('SidebarMenuItem', () => {
-	afterEach(cleanup)
+	beforeEach(() =>
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		),
+	)
+	afterEach(() => {
+		cleanup()
+		vi.unstubAllGlobals()
+	})
 
 	it('рендерит ссылку с правильным href', () => {
 		render(<SidebarMenuItem {...createItem()} isOpen={true} />)
@@ -72,4 +81,33 @@ describe('SidebarMenuItem', () => {
 
 		expect(screen.getByRole('link').getAttribute('title')).toBe('Команды')
 	})
+	it.each([true, false])(
+		'explains unavailable entries by focus and touch without navigating (expanded %s)',
+		async (isOpen) => {
+			const onNavigate = vi.fn()
+			render(
+				<SidebarMenuItem
+					{...createItem({
+						href: undefined,
+						title: 'Доска',
+						disabledReason: 'Сначала выберите проект',
+					})}
+					isOpen={isOpen}
+					onNavigate={onNavigate}
+				/>,
+			)
+			const item = screen.getByRole('button', { name: 'Доска' })
+			expect(item.getAttribute('aria-disabled')).toBe('true')
+			expect(screen.queryByRole('link')).toBeNull()
+			fireEvent.focus(item)
+			expect((await screen.findByRole('tooltip')).textContent).toContain(
+				'Сначала выберите проект',
+			)
+			fireEvent.click(item)
+			expect((await screen.findByRole('tooltip')).textContent).toContain(
+				'Сначала выберите проект',
+			)
+			expect(onNavigate).not.toHaveBeenCalled()
+		},
+	)
 })

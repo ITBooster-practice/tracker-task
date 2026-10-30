@@ -64,10 +64,17 @@ describe('SidebarSelector — expanded (isOpen=true)', () => {
 	})
 
 	it('показывает emptyLabel и не рендерит дропдаун когда нет опций', () => {
-		render(<SidebarSelector {...defaultProps} options={[]} emptyLabel='Нет команд' />)
+		render(
+			<SidebarSelector {...defaultProps} value='' options={[]} emptyLabel='Нет команд' />,
+		)
 
 		expect(screen.getByText('Нет команд')).toBeDefined()
 		expect(screen.queryByTestId('content')).toBeNull()
+	})
+	it('retains the confirmed selection while options are empty or loading', () => {
+		render(<SidebarSelector {...defaultProps} options={[]} loading />)
+		expect(screen.getByText('Alpha')).toBeDefined()
+		expect(screen.queryByText('Нет элементов')).toBeNull()
 	})
 
 	it('показывает placeholder когда disabled=true', () => {

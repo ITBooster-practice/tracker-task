@@ -68,8 +68,14 @@ describe('SidebarUser', () => {
 		expect(screen.getByText(label).closest('[title]')?.getAttribute('title')).toContain(
 			'доступ к проекту «Проект project-1»',
 		)
-		expect(queries.team).toHaveBeenCalledWith('team-1')
-		expect(queries.project).toHaveBeenCalledWith('team-1', 'project-1')
+		expect(queries.team).toHaveBeenCalledWith('team-1', {
+			accountId: 'user-1',
+			enabled: true,
+		})
+		expect(queries.project).toHaveBeenCalledWith('team-1', 'project-1', {
+			accountId: 'user-1',
+			enabled: true,
+		})
 	})
 
 	it('явно называет командную роль вне проекта', () => {
@@ -77,7 +83,10 @@ describe('SidebarUser', () => {
 		expect(screen.getByText('Владелец').closest('[title]')?.getAttribute('title')).toBe(
 			'Владелец команды «Команда team-1»',
 		)
-		expect(queries.project).toHaveBeenCalledWith('team-1', '')
+		expect(queries.project).toHaveBeenCalledWith('team-1', '', {
+			accountId: 'user-1',
+			enabled: true,
+		})
 	})
 
 	it('не выдаёт прежнюю роль за права на экране без контекста команды', () => {
@@ -90,7 +99,7 @@ describe('SidebarUser', () => {
 				?.hasAttribute('data-tone'),
 		).toBe(false)
 		expect(screen.queryByText('Владелец')).toBeNull()
-		expect(queries.team).toHaveBeenCalledWith('')
+		expect(queries.team).toHaveBeenCalledWith('', { accountId: 'user-1', enabled: true })
 	})
 
 	it('сбрасывает прошлую роль при смене команды и проекта до загрузки нового контекста', () => {

@@ -30,12 +30,42 @@ describe('Runtime sidebar navigation', () => {
 		expect(find('Настройки команды')?.href).toBe('/teams/team-1/settings')
 		expect(find('Доска')?.href).toBe('/teams/team-1/projects/project-1/board')
 	})
-	it('keeps unresolved selectors as placeholders', () => {
-		expect(find('Проекты', snapshot, false, null)?.href).toBe('#')
-		expect(find('Задачи', snapshot, false, 'team-1', null)?.href).toBe('#')
-		expect(find('Доска', snapshot, false, 'team-1', null)?.href).toBe('#')
-		expect(find('Доска', snapshot, false, null, 'project-1')?.href).toBe('#')
-		expect(find('Обзор проекта', snapshot, false, 'team-1', null)).toBeUndefined()
+	it('keeps missing-context entries in place with explicit reasons and no fake links', () => {
+		expect(find('Проекты', snapshot, false, null)).toMatchObject({
+			disabledReason: 'Сначала выберите команду',
+		})
+		for (const title of ['Обзор проекта', 'Задачи', 'Доска']) {
+			expect(find(title, snapshot, false, 'team-1', null)).toMatchObject({
+				disabledReason: 'Сначала выберите проект',
+			})
+			expect(find(title, snapshot, false, 'team-1', null)?.href).toBeUndefined()
+			expect(find(title, snapshot, false, null, 'project-1')).toMatchObject({
+				disabledReason: 'Сначала выберите команду',
+			})
+		}
+		const titles = (team: string | null, project: string | null) =>
+			getSidebarSections(team, project, snapshot)
+				.flatMap((section) => section.items)
+				.map((item) => item.title)
+		expect(titles(null, null)).toEqual(titles('team-1', null))
+		expect(titles(null, null)).toEqual(titles('team-1', 'project-1'))
+		for (const item of getSidebarSections(null, null, snapshot).flatMap(
+			(section) => section.items,
+		))
+			expect(item.href).not.toBe('#')
+	})
+	it('hides team settings for members and keeps the team selection hint without a team', () => {
+		const sections = getSidebarSections('team-1', null, snapshot, false, false)
+		expect(
+			sections
+				.flatMap((section) => section.items)
+				.find((item) => item.title === 'Настройки команды'),
+		).toBeUndefined()
+		expect(
+			getSidebarSections(null, null, snapshot, false, null)
+				.flatMap((section) => section.items)
+				.find((item) => item.title === 'Настройки команды'),
+		).toMatchObject({ disabledReason: 'Сначала выберите команду' })
 	})
 	it('hides flagged sections before loading', () => {
 		for (const title of ['Задачи', 'Доска', 'Бэклог', 'AI Ассистент', 'Уведомления'])
@@ -67,7 +97,7 @@ describe('Runtime sidebar navigation', () => {
 		expect(find('Уведомления')).toBeDefined()
 	})
 	it('показывает пункт Бэклог только при включённом флаге', () => {
-		expect(find('Бэклог')?.href).toBe('#')
+		expect(find('Бэклог')).toMatchObject({ disabledReason: 'Раздел пока недоступен' })
 		const disabled = {
 			...snapshot,
 			flags: snapshot.flags.map((flag) => ({
