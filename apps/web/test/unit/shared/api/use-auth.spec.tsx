@@ -178,7 +178,7 @@ describe('use-auth hooks', () => {
 		await act(() =>
 			result.current.mutateAsync({ email: user.email, password: 'test password' }),
 		)
-		expect(result.current.isSuccess).toBe(true)
+		await waitFor(() => expect(result.current.isSuccess).toBe(true))
 		expect(useUserStore.getState().sessionEnded).toBe(false)
 		vi.mocked(authService.getMe).mockResolvedValue(user as User)
 		const me = renderHook(useMe, { wrapper: createWrapper(queryClient) })
