@@ -3,7 +3,7 @@
 import React from 'react'
 
 import { FEATURE_KEYS } from '@repo/types'
-import { Button, Input } from '@repo/ui'
+import { Button } from '@repo/ui'
 import { Bell } from '@repo/ui/icons'
 
 import { ThemeToggle } from '@/features/theme'
@@ -23,10 +23,6 @@ const Header = () => {
 				</div>
 
 				<MobileSidebarTrigger />
-				<Input
-					placeholder='Поиск (пока не реализовано)'
-					className='h-9 w-[220px] md:w-[280px] lg:w-[320px]'
-				/>
 			</div>
 
 			<div className='flex items-center gap-2'>

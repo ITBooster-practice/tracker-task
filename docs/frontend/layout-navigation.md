@@ -46,7 +46,7 @@ apps/web/app/
   - слева `aside` (desktop),
   - справа `header` + `main`.
 - `ui/sidebar/sidebar.tsx` — меню разделов, блок пользователя.
-- `ui/header/header.tsx` — toggle/sidebar-trigger, поиск, уведомления (заглушка), переключатель темы, профиль. Применение темы описано в [дизайн-системе](../design-system/README.md#цвета-и-темы).
+- `ui/header/header.tsx` — toggle/sidebar-trigger, уведомления (заглушка), переключатель темы, профиль. Применение темы описано в [дизайн-системе](../design-system/README.md#цвета-и-темы).
 
 ### Контекст команды и проекта
 
