@@ -66,11 +66,22 @@ const props = {
 describe('SidebarUser', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		)
 		queries.profile.mockReturnValue({ data: user })
 		queries.team.mockReturnValue({ data: makeTeam() })
 		queries.project.mockReturnValue({ data: makeProject() })
 	})
-	afterEach(cleanup)
+	afterEach(() => {
+		cleanup()
+		vi.unstubAllGlobals()
+	})
 
 	it.each([true, false])(
 		'keeps profile navigation separate from logout (expanded: %s)',
@@ -207,12 +218,12 @@ describe('SidebarUser', () => {
 		expect(screen.getByText(user.email)).toBeDefined()
 	})
 
-	it('сохраняет имя и роль для скринридера в свёрнутом меню', () => {
+	it('сохраняет имя и роль для скринридера в свёрнутом меню', async () => {
 		const { container } = render(<SidebarUser {...props} isOpen={false} />)
 		expect(screen.getByText(user.name!).parentElement?.className).toBe('sr-only')
-		expect(
-			container.querySelector('[data-slot="user-summary"]')?.getAttribute('title'),
-		).toContain(user.name)
+		expect(container.querySelector('[title]')).toBeNull()
+		fireEvent.focus(screen.getByRole('link', { name: 'Личный кабинет' }))
+		expect((await screen.findByRole('tooltip')).textContent).toContain(user.name)
 		expect(screen.getByText('Владелец')).toBeDefined()
 	})
 })

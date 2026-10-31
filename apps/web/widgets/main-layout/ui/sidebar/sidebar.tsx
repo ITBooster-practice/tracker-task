@@ -118,9 +118,10 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 				className,
 			)}
 		>
-			<div className='h-14 px-3'>
+			<div className={cn('h-14', isOpen ? 'px-3' : 'px-1.5')}>
 				<Link
 					href={ROUTES.home}
+					aria-label={sidebarWorkspace.title}
 					onClick={onNavigate}
 					className={cn(
 						'flex h-full items-center transition-colors hover:text-sidebar-accent-foreground',
@@ -144,7 +145,14 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 			</div>
 
 			<div className='flex flex-1 flex-col overflow-hidden'>
-				<div className='flex-1 overflow-y-auto px-3 py-4'>
+				<div
+					className={cn(
+						'flex-1 overflow-y-auto py-4',
+						isOpen
+							? 'px-3'
+							: 'px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+					)}
+				>
 					{isOpen ? (
 						<div className='space-y-5'>
 							<div className='space-y-2'>
@@ -171,6 +179,7 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									emptyLabel='Нет проектов'
 									placeholder='Выберите проект'
 									disabled={!teamId}
+									disabledReason={!teamId ? 'Сначала выберите команду' : undefined}
 									onSelect={handleSelectProject}
 								/>
 							</div>
@@ -222,11 +231,12 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 									emptyLabel='Нет проектов'
 									placeholder='Выберите проект'
 									disabled={!teamId}
+									disabledReason={!teamId ? 'Сначала выберите команду' : undefined}
 									onSelect={handleSelectProject}
 								/>
 							</div>
 
-							<nav className='space-y-1'>
+							<nav className='space-y-2'>
 								{collapsedItems.map((item) => (
 									<SidebarMenuItem
 										key={item.title}

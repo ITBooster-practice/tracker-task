@@ -1,12 +1,19 @@
 'use client'
 
+import { useEffect, useId, useState } from 'react'
+
 import {
+	Button,
 	cn,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from '@repo/ui'
 import { ChevronDown } from '@repo/ui/icons'
 
@@ -26,6 +33,7 @@ interface Props {
 	emptyLabel?: string
 	placeholder?: string
 	disabled?: boolean
+	disabledReason?: string
 	loading?: boolean
 	onSelect: (id: string) => void
 }
@@ -40,34 +48,89 @@ function SidebarSelector({
 	emptyLabel = 'Нет элементов',
 	placeholder,
 	disabled = false,
+	disabledReason,
 	loading = false,
 	onSelect,
 }: Props) {
+	const [menuOpen, setMenuOpen] = useState(false)
+	const [hintOpen, setHintOpen] = useState(false)
+	const descriptionId = useId()
 	const isEmpty = options.length === 0
 	const unavailableLabel = loading ? 'Загрузка…' : emptyLabel
+	useEffect(() => {
+		setMenuOpen(false)
+		setHintOpen(false)
+	}, [isOpen, disabled, isEmpty])
 
 	if (!isOpen) {
 		const collapsedDisabled = isEmpty || disabled
+		const selectionHint = disabled
+			? (disabledReason ?? placeholder ?? unavailableLabel)
+			: isEmpty
+				? [value, unavailableLabel].filter(Boolean).join('. ')
+				: value || placeholder || label
+		const hint = `${label}: ${selectionHint}`
+		const button = (
+			<Button
+				type='button'
+				variant='ghost'
+				size='icon'
+				aria-disabled={collapsedDisabled || undefined}
+				aria-describedby={collapsedDisabled ? descriptionId : undefined}
+				aria-label={`${label}: ${value || placeholder || unavailableLabel}`}
+				aria-busy={loading}
+				className='bg-sidebar-accent text-xs font-semibold text-sidebar-foreground hover:bg-sidebar-accent/70 dark:hover:bg-sidebar-accent/70 aria-disabled:cursor-not-allowed aria-disabled:opacity-50'
+				onClick={
+					collapsedDisabled
+						? (event) => {
+								event.preventDefault()
+								setHintOpen(true)
+							}
+						: undefined
+				}
+			>
+				{shortValue}
+			</Button>
+		)
+		const tooltip = (
+			<TooltipProvider>
+				<Tooltip open={hintOpen && !menuOpen} onOpenChange={setHintOpen}>
+					<TooltipTrigger asChild>
+						{collapsedDisabled ? (
+							button
+						) : (
+							<DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger>
+						)}
+					</TooltipTrigger>
+					{collapsedDisabled && (
+						<span id={descriptionId} className='sr-only'>
+							{hint}
+						</span>
+					)}
+					<TooltipContent side='right' sideOffset={8}>
+						{hint}
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+		)
+		if (collapsedDisabled) return tooltip
 		return (
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild disabled={collapsedDisabled}>
-					<button
-						title={
-							collapsedDisabled
-								? disabled
-									? placeholder
-									: unavailableLabel
-								: `${label}: ${value}`
-						}
-						disabled={collapsedDisabled}
-						aria-label={`${label}: ${value || (disabled ? placeholder : unavailableLabel)}`}
-						aria-busy={loading}
-						className='flex size-11 cursor-pointer items-center justify-center rounded-[var(--radius-control)] bg-sidebar-accent text-xs font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed disabled:opacity-50'
-					>
-						{shortValue}
-					</button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent side='right' align='start' className='min-w-[180px]'>
+			<DropdownMenu
+				key='collapsed'
+				modal={false}
+				open={menuOpen}
+				onOpenChange={(open) => {
+					setMenuOpen(open)
+					if (open) setHintOpen(false)
+				}}
+			>
+				{tooltip}
+				<DropdownMenuContent
+					side='right'
+					sideOffset={8}
+					align='start'
+					className='min-w-[180px]'
+				>
 					<DropdownMenuLabel className='text-xs uppercase tracking-wide text-muted-foreground'>
 						{label}
 					</DropdownMenuLabel>
@@ -103,7 +166,7 @@ function SidebarSelector({
 	}
 
 	return (
-		<DropdownMenu>
+		<DropdownMenu key='expanded' modal={false}>
 			<DropdownMenuTrigger asChild>
 				<button
 					aria-label={`${label}: ${value || placeholder}`}

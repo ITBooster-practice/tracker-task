@@ -48,7 +48,6 @@ function UserSummary({
 		<div
 			data-slot='user-summary'
 			aria-busy={pending}
-			title={collapsed ? `${name} — ${roleDescription ?? roleLabel}` : undefined}
 			className={cn(
 				'flex min-w-0 items-center gap-2',
 				collapsed && 'justify-center',
@@ -66,14 +65,14 @@ function UserSummary({
 				{renderProfileLink && !collapsed ? (
 					renderProfileLink(name, cn(nameClassName, linkClassName))
 				) : (
-					<div className={nameClassName} title={name}>
+					<div className={nameClassName} title={collapsed ? undefined : name}>
 						{name}
 					</div>
 				)}
 				<Badge
 					variant='outline'
 					tone={neutral ? undefined : roleTone}
-					title={roleDescription ?? roleLabel}
+					title={collapsed ? undefined : (roleDescription ?? roleLabel)}
 					className={cn('max-w-full', neutral && 'text-muted-foreground')}
 				>
 					<span className='truncate'>{roleLabel}</span>
