@@ -48,6 +48,10 @@ apps/web/app/
 - `ui/sidebar/sidebar.tsx` — меню разделов, блок пользователя.
 - `ui/header/header.tsx` — toggle/sidebar-trigger, уведомления (заглушка), переключатель темы, профиль. Применение темы описано в [дизайн-системе](../design-system/README.md#цвета-и-темы).
 
+[ProfileLink](../../apps/web/widgets/main-layout/ui/header/profile-link.tsx) в header ведёт прямо в `ROUTES.profile`. Аватар и имя в sidebar также ведут в профиль; роль остаётся вне ссылок. `SidebarUser` передаёт ссылки через `renderProfileLink` общего UserSummary и вызывает `onNavigate`, чтобы закрыть мобильный Sheet при переходе.
+
+Для выхода используйте общий [LogoutButton](../../apps/web/features/auth/ui/logout-button.tsx) из `features/auth`: в sidebar он отображается отдельной иконкой, в личном кабинете — кнопкой в `PageHeader.actions`, включая загрузку и ошибку страницы. Все экземпляры блокируют повторный выход на время запроса. [useLogout](../../apps/web/shared/api/use-auth.ts) после успеха API очищает пользователя и контекст рабочей области, отменяет запросы, очищает кэш и переводит на `/login?clearAuth=1`. При ошибке кнопка показывает toast и позволяет повторить запрос; очистка и переход не выполняются.
+
 ### Контекст команды и проекта
 
 [Store рабочей области](../../apps/web/shared/lib/workspace-context/store.ts) сохраняет `ownerId`, `teamId` и `projectId` в `localStorage` под ключом `workspace-context`. `ownerId` — идентификатор текущего пользователя: выбор принадлежит аккаунту. [useWorkspaceContext](../../apps/web/widgets/main-layout/model/use-workspace-context.ts) связывает сохранённый выбор с маршрутом и загружает списки и детали команды и проекта с ключами запросов, включающими аккаунт.
