@@ -10,7 +10,7 @@ import { ThemeToggle } from '@/features/theme'
 import { useFeature } from '@/shared/lib/feature-flags/context'
 
 import { MobileSidebarTrigger } from './mobile-sidebar-trigger'
-import { ProfileMenu } from './profile-menu'
+import { ProfileLink } from './profile-link'
 import { SidebarToggle } from './sidebar-toggle'
 
 const Header = () => {
@@ -37,7 +37,7 @@ const Header = () => {
 					</Button>
 				)}
 				<ThemeToggle size='icon-sm' iconClassName='size-4' />
-				<ProfileMenu />
+				<ProfileLink />
 			</div>
 		</div>
 	)

@@ -26,15 +26,23 @@ const createWrapper = (queryClient: QueryClient) => {
 	return QueryClientWrapper
 }
 
+const originalLocation = window.location
+const assignLogin = vi.fn()
+
 describe('use-auth hooks', () => {
 	let queryClient: QueryClient
 	afterEach(() => {
 		cleanup()
 		queryClient.clear()
+		Object.defineProperty(window, 'location', { value: originalLocation, writable: true })
 	})
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+		Object.defineProperty(window, 'location', {
+			value: { origin: 'http://localhost', assign: assignLogin },
+			writable: true,
+		})
 		useUserStore.getState().clearUser()
 		useUserStore.setState({ sessionVersion: 0, sessionEnded: false })
 		queryClient = new QueryClient({
@@ -132,6 +140,7 @@ describe('use-auth hooks', () => {
 			await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
 			expect(authService.logout).toHaveBeenCalledOnce()
+			expect(assignLogin).toHaveBeenCalledOnce()
 			expect(clearUser).toHaveBeenCalledOnce()
 			expect(clearQueries).toHaveBeenCalledOnce()
 			expect(queryClient.getQueryData(['teams', 'list'])).toBeUndefined()

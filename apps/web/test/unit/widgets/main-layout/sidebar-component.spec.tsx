@@ -6,6 +6,8 @@ import { Sidebar } from '@/widgets/main-layout/ui/sidebar'
 import { useUserStore } from '@/entities/user'
 import { useWorkspaceStore } from '@/shared/lib/workspace-context/store'
 
+vi.mock('@/features/auth', () => ({ LogoutButton: () => <button aria-label='Выйти' /> }))
+
 vi.mock('next/link', () => ({
 	default: ({
 		href,

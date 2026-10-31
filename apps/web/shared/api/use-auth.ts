@@ -9,6 +9,7 @@ import {
 import { useEffect } from 'react'
 
 import { useUserStore } from '@/entities/user'
+import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
 import { authService, type User } from '@/shared/lib/api/auth-service'
 
 import { authKeys } from './auth-keys'
@@ -91,6 +92,9 @@ export const useLogout = () => {
 			useUserStore.getState().clearUser()
 			await queryClient.cancelQueries()
 			queryClient.clear()
+			const url = new URL(ROUTES.login, window.location.origin)
+			url.searchParams.set(ROUTE_QUERY_PARAMS.clearAuth, '1')
+			window.location.assign(url)
 		},
 	})
 }

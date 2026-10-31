@@ -1,11 +1,30 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Project, Team, TeamRole, User } from '@repo/types'
 
 import { SidebarUser } from '@/widgets/main-layout/ui/sidebar/sidebar-user'
 
-const queries = vi.hoisted(() => ({ profile: vi.fn(), team: vi.fn(), project: vi.fn() }))
+const queries = vi.hoisted(() => ({
+	profile: vi.fn(),
+	team: vi.fn(),
+	project: vi.fn(),
+	logout: vi.fn(),
+}))
+vi.mock('next/link', () => ({
+	default: ({ onClick, ...props }: React.ComponentProps<'a'>) => (
+		<a
+			{...props}
+			onClick={(event) => {
+				event.preventDefault()
+				onClick?.(event)
+			}}
+		/>
+	),
+}))
+vi.mock('@/features/auth', () => ({
+	LogoutButton: () => <button aria-label='Выйти' onClick={queries.logout} />,
+}))
 vi.mock('@/shared/api/use-auth', () => ({ useMe: queries.profile }))
 vi.mock('@/shared/api/use-teams', () => ({ useTeamDetail: queries.team }))
 vi.mock('@/shared/api/use-projects', () => ({ useProjectDetail: queries.project }))
@@ -52,6 +71,30 @@ describe('SidebarUser', () => {
 		queries.project.mockReturnValue({ data: makeProject() })
 	})
 	afterEach(cleanup)
+
+	it.each([true, false])(
+		'keeps profile navigation separate from logout (expanded: %s)',
+		(isOpen) => {
+			const onNavigate = vi.fn()
+			render(<SidebarUser {...props} isOpen={isOpen} onNavigate={onNavigate} />)
+			const links = screen.getAllByRole('link', { name: 'Личный кабинет' })
+			expect(links).toHaveLength(isOpen ? 2 : 1)
+			for (const link of links) {
+				expect(link.getAttribute('href')).toBe('/profile')
+				link.focus()
+				expect(document.activeElement).toBe(link)
+				fireEvent.click(link)
+			}
+			expect(onNavigate).toHaveBeenCalledTimes(links.length)
+			expect(queries.logout).not.toHaveBeenCalled()
+			const logout = screen.getByRole('button', { name: 'Выйти' })
+			expect(logout.closest('a')).toBeNull()
+			expect(screen.getByText('Владелец').closest('a, button')).toBeNull()
+			fireEvent.click(logout)
+			expect(queries.logout).toHaveBeenCalledOnce()
+			expect(onNavigate).toHaveBeenCalledTimes(links.length)
+		},
+	)
 
 	it.each([
 		['OWNER', 'Владелец', 'owner'],

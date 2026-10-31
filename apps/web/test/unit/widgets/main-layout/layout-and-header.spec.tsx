@@ -16,8 +16,8 @@ vi.mock('@/widgets/main-layout/ui/header/mobile-sidebar-trigger', () => ({
 	MobileSidebarTrigger: () => <div data-testid='mobile-trigger' />,
 }))
 
-vi.mock('@/widgets/main-layout/ui/header/profile-menu', () => ({
-	ProfileMenu: () => <div data-testid='profile-menu' />,
+vi.mock('@/widgets/main-layout/ui/header/profile-link', () => ({
+	ProfileLink: () => <div data-testid='profile-link' />,
 }))
 
 vi.mock('@/widgets/main-layout/ui/header/sidebar-toggle', () => ({
@@ -125,7 +125,7 @@ describe('Header', () => {
 		render(<Header />)
 
 		expect(screen.getByTestId('mobile-trigger')).toBeDefined()
-		expect(screen.getByTestId('profile-menu')).toBeDefined()
+		expect(screen.getByTestId('profile-link')).toBeDefined()
 	})
 })
 
