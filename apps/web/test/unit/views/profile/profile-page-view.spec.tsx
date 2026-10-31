@@ -16,6 +16,8 @@ import { TEAM_ROLES, type MyInvitation, type TeamListItem } from '@repo/types'
 
 import { ProfilePageView } from '@/views/profile/ui/profile-page-view'
 
+vi.mock('@/features/auth', () => ({ LogoutButton: () => <button aria-label='Выйти' /> }))
+
 function createTeam(overrides?: Partial<TeamListItem>): TeamListItem {
 	return {
 		id: 'team-1',

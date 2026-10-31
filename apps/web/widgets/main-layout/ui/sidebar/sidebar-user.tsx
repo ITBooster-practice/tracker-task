@@ -1,17 +1,22 @@
 'use client'
 
+import Link from 'next/link'
+
 import type { TeamRole } from '@repo/types'
 import { cn, UserSummary, type BadgeTone } from '@repo/ui'
 
+import { LogoutButton } from '@/features/auth'
 import { useMe } from '@/shared/api/use-auth'
 import { useProjectDetail } from '@/shared/api/use-projects'
 import { useTeamDetail } from '@/shared/api/use-teams'
+import { ROUTES } from '@/shared/config'
 import { getNameInitials, getUserDisplayName } from '@/shared/lib/user'
 
 interface SidebarUserProps {
 	teamId: string | null
 	projectId: string | null
 	isOpen: boolean
+	onNavigate?: () => void
 }
 
 const ROLE_LABELS: Record<TeamRole, string> = {
@@ -26,7 +31,7 @@ const ROLE_TONES: Record<TeamRole, BadgeTone> = {
 	MEMBER: 'member',
 }
 
-function SidebarUser({ teamId, projectId, isOpen }: SidebarUserProps) {
+function SidebarUser({ teamId, projectId, isOpen, onNavigate }: SidebarUserProps) {
 	const profileQuery = useMe()
 	const options = {
 		accountId: profileQuery.data?.id ?? '',
@@ -71,16 +76,33 @@ function SidebarUser({ teamId, projectId, isOpen }: SidebarUserProps) {
 				isOpen ? 'px-3' : 'px-2',
 			)}
 		>
-			<UserSummary
-				name={name}
-				initials={getNameInitials(name)}
-				roleLabel={roleLabel ?? 'Роль не определена'}
-				roleDescription={roleDescription}
-				roleTone={role ? ROLE_TONES[role] : undefined}
-				neutral={!roleLabel}
-				pending={pending}
-				collapsed={!isOpen}
-			/>
+			<div
+				className={cn('flex gap-2', isOpen ? 'items-center' : 'flex-col items-center')}
+			>
+				<UserSummary
+					name={name}
+					initials={getNameInitials(name)}
+					roleLabel={roleLabel ?? 'Роль не определена'}
+					roleDescription={roleDescription}
+					roleTone={role ? ROLE_TONES[role] : undefined}
+					neutral={!roleLabel}
+					pending={pending}
+					collapsed={!isOpen}
+					className={isOpen ? 'flex-1' : 'w-full'}
+					renderProfileLink={(children, className) => (
+						<Link
+							href={ROUTES.profile}
+							className={className}
+							aria-label='Личный кабинет'
+							title={name}
+							onClick={onNavigate}
+						>
+							{children}
+						</Link>
+					)}
+				/>
+				<LogoutButton iconOnly />
+			</div>
 		</div>
 	)
 }

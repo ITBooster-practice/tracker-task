@@ -1,10 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import { LogOut } from '../icons'
+import { Button } from './button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
 import { UserSummary } from './user-summary'
 
 const meta = {
 	title: 'Shared/UI/UserSummary',
 	component: UserSummary,
+	argTypes: { renderProfileLink: { control: false } },
 	tags: ['autodocs'],
 	args: {
 		name: 'Ирина Иванова',
@@ -106,4 +110,38 @@ export const ShortName: Story = {
 
 export const ShortNameNeutral: Story = {
 	args: { ...Neutral.args, name: 'Макс', initials: 'М' },
+}
+
+export const ProfileActions: Story = {
+	args: {
+		renderProfileLink: (children, className) => (
+			<a href='#profile' className={className} aria-label='Личный кабинет'>
+				{children}
+			</a>
+		),
+	},
+	render: (args) => (
+		<div
+			className={
+				args.collapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-2'
+			}
+		>
+			<UserSummary {...args} className={args.collapsed ? 'w-full' : 'flex-1'} />
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button type='button' variant='ghost' size='icon-sm' aria-label='Выйти'>
+							<LogOut className='size-4' />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent side='right'>Выйти</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+		</div>
+	),
+}
+
+export const CollapsedActions: Story = {
+	...ProfileActions,
+	args: { ...ProfileActions.args, collapsed: true },
 }

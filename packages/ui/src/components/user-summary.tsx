@@ -1,5 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
+
 import { cn } from '@repo/ui/lib/utils'
 
 import { Avatar, AvatarFallback, AvatarImage } from './avatar'
@@ -16,6 +18,7 @@ export interface UserSummaryProps {
 	pending?: boolean
 	collapsed?: boolean
 	className?: string
+	renderProfileLink?: (children: ReactNode, className: string) => ReactNode
 }
 
 function UserSummary({
@@ -29,7 +32,18 @@ function UserSummary({
 	pending = false,
 	collapsed = false,
 	className,
+	renderProfileLink,
 }: UserSummaryProps) {
+	const avatar = (
+		<Avatar aria-hidden='true'>
+			{avatarSrc && <AvatarImage src={avatarSrc} alt='' className='object-cover' />}
+			<AvatarFallback>{initials}</AvatarFallback>
+		</Avatar>
+	)
+	const nameClassName =
+		'w-full truncate ps-[calc(var(--badge-padding-x)+1px)] text-sm font-medium leading-5'
+	const linkClassName =
+		'rounded-[var(--radius-control)] outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]'
 	return (
 		<div
 			data-slot='user-summary'
@@ -41,21 +55,21 @@ function UserSummary({
 				className,
 			)}
 		>
-			<Avatar aria-hidden='true'>
-				{avatarSrc && <AvatarImage src={avatarSrc} alt='' className='object-cover' />}
-				<AvatarFallback>{initials}</AvatarFallback>
-			</Avatar>
+			{renderProfileLink
+				? renderProfileLink(avatar, cn('shrink-0', linkClassName))
+				: avatar}
 			<div
 				className={
 					collapsed ? 'sr-only' : 'flex min-w-0 flex-1 flex-col items-start gap-1'
 				}
 			>
-				<div
-					className='w-full truncate ps-[calc(var(--badge-padding-x)+1px)] text-sm font-medium leading-5'
-					title={name}
-				>
-					{name}
-				</div>
+				{renderProfileLink && !collapsed ? (
+					renderProfileLink(name, cn(nameClassName, linkClassName))
+				) : (
+					<div className={nameClassName} title={name}>
+						{name}
+					</div>
+				)}
 				<Badge
 					variant='outline'
 					tone={neutral ? undefined : roleTone}

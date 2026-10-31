@@ -5,6 +5,7 @@ import { type FormEvent, type ReactNode } from 'react'
 
 import { Button, EmptyState, Skeleton, toast } from '@repo/ui'
 
+import { LogoutButton } from '@/features/auth'
 import { useMe } from '@/shared/api/use-auth'
 import {
 	useAcceptInvitation,
@@ -40,6 +41,7 @@ const ProfilePageLayout = ({ children }: ProfilePageLayoutProps) => (
 				title={profileCopy.title}
 				description={profileCopy.subtitle}
 				className='mb-6'
+				actions={<LogoutButton />}
 			/>
 			{children}
 		</div>

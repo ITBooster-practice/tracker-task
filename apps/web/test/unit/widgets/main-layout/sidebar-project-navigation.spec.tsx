@@ -9,6 +9,8 @@ import { useUserStore } from '@/entities/user'
 import { FeatureFlagsContext } from '@/shared/lib/feature-flags/context'
 import { useWorkspaceStore } from '@/shared/lib/workspace-context/store'
 
+vi.mock('@/features/auth', () => ({ LogoutButton: () => <button aria-label='Выйти' /> }))
+
 const navigation = vi.hoisted(() => ({ pathname: '/teams/team-1/projects/project-1' }))
 
 vi.mock('next/navigation', () => ({
@@ -50,8 +52,8 @@ vi.mock('@/shared/api/use-auth', () => ({
 	}),
 }))
 vi.mock('@/features/theme', () => ({ ThemeToggle: () => null }))
-vi.mock('@/widgets/main-layout/ui/header/profile-menu', () => ({
-	ProfileMenu: () => null,
+vi.mock('@/widgets/main-layout/ui/header/profile-link', () => ({
+	ProfileLink: () => null,
 }))
 vi.mock('@/widgets/main-layout/ui/header/sidebar-toggle', () => ({
 	SidebarToggle: () => null,
@@ -119,6 +121,14 @@ beforeEach(() => {
 afterEach(() => {
 	cleanup()
 	vi.unstubAllGlobals()
+})
+
+it('closes the mobile navigation container when the profile avatar is selected', () => {
+	const onNavigate = vi.fn()
+	render(<Sidebar forceOpen onNavigate={onNavigate} />, { wrapper: Wrapper })
+	fireEvent.click(screen.getAllByRole('link', { name: 'Личный кабинет' })[0]!)
+	expect(navigation.pathname).toBe('/profile')
+	expect(onNavigate).toHaveBeenCalledOnce()
 })
 
 it.each([true, false])(

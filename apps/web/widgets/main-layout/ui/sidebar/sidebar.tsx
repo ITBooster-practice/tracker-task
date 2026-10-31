@@ -241,7 +241,12 @@ const Sidebar = ({ className, forceOpen, onNavigate }: Props) => {
 					)}
 				</div>
 
-				<SidebarUser teamId={teamId} projectId={projectId} isOpen={isOpen} />
+				<SidebarUser
+					teamId={teamId}
+					projectId={projectId}
+					isOpen={isOpen}
+					onNavigate={onNavigate}
+				/>
 			</div>
 		</div>
 	)
