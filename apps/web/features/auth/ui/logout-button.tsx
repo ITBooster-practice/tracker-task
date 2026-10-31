@@ -26,7 +26,7 @@ export function LogoutButton({ iconOnly = false }: LogoutButtonProps) {
 		<Button
 			type='button'
 			variant={iconOnly ? 'ghost' : 'outline'}
-			size={iconOnly ? 'icon-sm' : 'default'}
+			size={iconOnly ? 'icon' : 'default'}
 			aria-label='Выйти'
 			aria-busy={pending}
 			disabled={pending}
@@ -46,7 +46,7 @@ export function LogoutButton({ iconOnly = false }: LogoutButtonProps) {
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>{button}</TooltipTrigger>
-				<TooltipContent side='right' sideOffset={4}>
+				<TooltipContent side='right' sideOffset={8}>
 					Выйти
 				</TooltipContent>
 			</Tooltip>

@@ -76,11 +76,17 @@ describe('SidebarMenuItem', () => {
 		expect(screen.getByRole('link').getAttribute('aria-current')).toBe('page')
 	})
 
-	it('закрытый sidebar — title показывается как tooltip', () => {
-		render(<SidebarMenuItem {...createItem()} isOpen={false} />)
-
-		expect(screen.getByRole('link').getAttribute('title')).toBe('Команды')
-	})
+	it.each(['hover', 'focus'])(
+		'uses a tooltip instead of a native title on %s',
+		async (event) => {
+			render(<SidebarMenuItem {...createItem()} isOpen={false} />)
+			const link = screen.getByRole('link')
+			expect(link.getAttribute('title')).toBeNull()
+			if (event === 'hover') fireEvent.pointerMove(link, { pointerType: 'mouse' })
+			else fireEvent.focus(link)
+			expect((await screen.findByRole('tooltip')).textContent).toBe('Команды')
+		},
+	)
 	it.each([true, false])(
 		'explains unavailable entries by focus and touch without navigating (expanded %s)',
 		async (isOpen) => {

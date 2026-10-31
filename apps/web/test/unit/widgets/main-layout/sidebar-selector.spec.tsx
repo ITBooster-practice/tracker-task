@@ -1,42 +1,13 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import Link from 'next/link'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SidebarSelector } from '@/widgets/main-layout/ui/sidebar/sidebar-selector'
-
-vi.mock('@repo/ui', () => ({
-	cn: (...args: (string | false | undefined)[]) => args.filter(Boolean).join(' '),
-	DropdownMenu: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	DropdownMenuTrigger: ({
-		children,
-		disabled,
-	}: React.PropsWithChildren<{ asChild?: boolean; disabled?: boolean }>) => (
-		<div data-testid='trigger' data-disabled={disabled}>
-			{children}
-		</div>
-	),
-	DropdownMenuContent: ({ children }: React.PropsWithChildren) => (
-		<div data-testid='content'>{children}</div>
-	),
-	DropdownMenuItem: ({
-		children,
-		onSelect,
-	}: React.PropsWithChildren<{ onSelect?: () => void; className?: string }>) => (
-		<div data-testid='menu-item' onClick={onSelect}>
-			{children}
-		</div>
-	),
-	DropdownMenuLabel: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-}))
-
-vi.mock('@repo/ui/icons', () => ({
-	ChevronDown: () => <span data-testid='chevron' />,
-}))
 
 const options = [
 	{ id: '1', name: 'Alpha', shortName: 'AL' },
 	{ id: '2', name: 'Beta', shortName: 'BE' },
 ]
-
 const defaultProps = {
 	label: 'Команда',
 	value: 'Alpha',
@@ -47,87 +18,156 @@ const defaultProps = {
 	onSelect: vi.fn(),
 }
 
-afterEach(cleanup)
+beforeEach(() => {
+	vi.clearAllMocks()
+	vi.stubGlobal(
+		'ResizeObserver',
+		class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		},
+	)
+	vi.stubGlobal('PointerEvent', MouseEvent)
+})
+afterEach(() => {
+	cleanup()
+	vi.unstubAllGlobals()
+})
 
-describe('SidebarSelector — expanded (isOpen=true)', () => {
-	it('показывает label и value', () => {
-		render(<SidebarSelector {...defaultProps} />)
+describe('SidebarSelector', () => {
+	it.each([true, false])(
+		'selects an option using the keyboard trigger (expanded: %s)',
+		async (isOpen) => {
+			const onSelect = vi.fn()
+			render(<SidebarSelector {...defaultProps} isOpen={isOpen} onSelect={onSelect} />)
+			const button = screen.getByRole('button', { name: 'Команда: Alpha' })
+			fireEvent.keyDown(button, { key: 'ArrowDown' })
+			await screen.findByRole('menu')
+			expect(screen.getAllByRole('menuitem')).toHaveLength(2)
+			fireEvent.click(screen.getByRole('menuitem', { name: 'Beta' }))
+			await waitFor(() => expect(onSelect).toHaveBeenCalledWith('2'))
+		},
+	)
 
-		expect(screen.getByText('Команда')).toBeDefined()
-		expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0)
-	})
-
-	it('показывает placeholder когда value пустой', () => {
-		render(<SidebarSelector {...defaultProps} value='' placeholder='Выберите команду' />)
-
-		expect(screen.getByText('Выберите команду')).toBeDefined()
-	})
-
-	it('показывает emptyLabel и не рендерит дропдаун когда нет опций', () => {
+	it('keeps the expanded placeholder and disabled explanation visible', () => {
 		render(
-			<SidebarSelector {...defaultProps} value='' options={[]} emptyLabel='Нет команд' />,
+			<SidebarSelector
+				{...defaultProps}
+				disabled
+				value=''
+				placeholder='Выберите команду'
+			/>,
 		)
-
-		expect(screen.getByText('Нет команд')).toBeDefined()
-		expect(screen.queryByTestId('content')).toBeNull()
+		expect(screen.getByText('Выберите команду')).toBeDefined()
+		expect(screen.queryByRole('button')).toBeNull()
 	})
+
 	it('retains the confirmed selection while options are empty or loading', () => {
 		render(<SidebarSelector {...defaultProps} options={[]} loading />)
 		expect(screen.getByText('Alpha')).toBeDefined()
 		expect(screen.queryByText('Нет элементов')).toBeNull()
 	})
 
-	it('показывает placeholder когда disabled=true', () => {
+	it('shows the empty state without a dropdown', () => {
 		render(
-			<SidebarSelector {...defaultProps} disabled={true} placeholder='Выберите проект' />,
+			<SidebarSelector {...defaultProps} value='' options={[]} emptyLabel='Нет команд' />,
 		)
-
-		expect(screen.getByText('Выберите проект')).toBeDefined()
-		expect(screen.queryByTestId('content')).toBeNull()
+		expect(screen.getByText('Нет команд')).toBeDefined()
+		expect(screen.queryByRole('menu')).toBeNull()
 	})
 
-	it('показывает все опции в списке', () => {
-		render(<SidebarSelector {...defaultProps} />)
+	it.each(['hover', 'focus'])(
+		'explains a collapsed selector on %s without a native title',
+		async (event) => {
+			const { container } = render(<SidebarSelector {...defaultProps} isOpen={false} />)
+			const button = screen.getByRole('button', { name: 'Команда: Alpha' })
+			expect(screen.getByText('AL')).toBeDefined()
+			expect(container.querySelector('[title]')).toBeNull()
+			if (event === 'hover') fireEvent.pointerMove(button, { pointerType: 'mouse' })
+			else fireEvent.focus(button)
+			expect((await screen.findByRole('tooltip')).textContent).toContain('Команда: Alpha')
+		},
+	)
 
-		expect(screen.getAllByTestId('menu-item')).toHaveLength(2)
-		expect(screen.getByText('Beta')).toBeDefined()
+	it.each([false, true])(
+		'explains an unavailable selector without permitting selection (disabled: %s)',
+		async (disabled) => {
+			const onSelect = vi.fn()
+			render(
+				<SidebarSelector
+					{...defaultProps}
+					label='Проект'
+					isOpen={false}
+					value=''
+					options={disabled ? options : []}
+					disabled={disabled}
+					disabledReason='Сначала выберите команду'
+					placeholder='Выберите проект'
+					emptyLabel='Нет проектов'
+					onSelect={onSelect}
+				/>,
+			)
+			const button = screen.getByRole('button', { name: 'Проект: Выберите проект' })
+			expect(button.getAttribute('aria-disabled')).toBe('true')
+			button.focus()
+			expect(document.activeElement).toBe(button)
+			fireEvent.focus(button)
+			expect((await screen.findByRole('tooltip')).textContent).toContain(
+				disabled ? 'Сначала выберите команду' : 'Нет проектов',
+			)
+			fireEvent.keyDown(button, { key: 'ArrowDown' })
+			fireEvent.click(button)
+			expect(screen.queryByRole('menu')).toBeNull()
+			expect(onSelect).not.toHaveBeenCalled()
+		},
+	)
+
+	it('hides the tooltip while the dropdown is open and leaves outside actions available', async () => {
+		const outsideAction = vi.fn()
+		render(
+			<>
+				<SidebarSelector {...defaultProps} isOpen={false} />
+				<Link
+					href='/teams'
+					onClick={(event) => {
+						event.preventDefault()
+						outsideAction()
+					}}
+				>
+					Команды
+				</Link>
+			</>,
+		)
+		const button = screen.getByRole('button', { name: 'Команда: Alpha' })
+		fireEvent.focus(button)
+		await screen.findByRole('tooltip')
+		fireEvent.keyDown(button, { key: 'ArrowDown' })
+		await screen.findByRole('menu')
+		await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull())
+		expect(document.body.style.pointerEvents).not.toBe('none')
+		fireEvent.click(screen.getByRole('link', { name: 'Команды' }))
+		expect(outsideAction).toHaveBeenCalledOnce()
 	})
 
-	it('вызывает onSelect при клике на опцию', () => {
-		const onSelect = vi.fn()
-		render(<SidebarSelector {...defaultProps} onSelect={onSelect} />)
-
-		screen.getAllByTestId('menu-item')[1]!.click()
-
-		expect(onSelect).toHaveBeenCalledWith('2')
-	})
-})
-
-describe('SidebarSelector — collapsed (isOpen=false)', () => {
-	it('показывает shortValue в кнопке', () => {
-		render(<SidebarSelector {...defaultProps} isOpen={false} />)
-
-		expect(screen.getByText('AL')).toBeDefined()
-	})
-
-	it('кнопка задизейблена когда нет опций', () => {
-		render(<SidebarSelector {...defaultProps} isOpen={false} options={[]} />)
-
-		const button = screen.getByRole('button')
-		expect(button.hasAttribute('disabled')).toBe(true)
-	})
-
-	it('кнопка задизейблена когда disabled=true', () => {
-		render(<SidebarSelector {...defaultProps} isOpen={false} disabled={true} />)
-
-		const button = screen.getByRole('button')
-		expect(button.hasAttribute('disabled')).toBe(true)
-	})
-
-	it('кнопка активна когда есть опции и не disabled', () => {
-		render(<SidebarSelector {...defaultProps} isOpen={false} />)
-
-		const button = screen.getByRole('button')
-		expect(button.hasAttribute('disabled')).toBe(false)
+	it('closes an open menu when the display mode or availability changes', async () => {
+		const { rerender } = render(<SidebarSelector {...defaultProps} isOpen={false} />)
+		fireEvent.keyDown(screen.getByRole('button', { name: 'Команда: Alpha' }), {
+			key: 'ArrowDown',
+		})
+		await screen.findByRole('menu')
+		rerender(
+			<SidebarSelector
+				{...defaultProps}
+				isOpen={false}
+				disabled
+				disabledReason='Нет доступа'
+			/>,
+		)
+		await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+		fireEvent.focus(screen.getByRole('button', { name: 'Команда: Alpha' }))
+		expect((await screen.findByRole('tooltip')).textContent).toContain('Нет доступа')
+		rerender(<SidebarSelector {...defaultProps} />)
+		expect(screen.queryByRole('menu')).toBeNull()
 	})
 })

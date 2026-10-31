@@ -22,7 +22,7 @@ const meta = {
 			<div
 				className={
 					args.collapsed
-						? 'w-12 bg-sidebar p-2 text-sidebar-foreground'
+						? 'w-12 bg-sidebar p-1.5 text-sidebar-foreground'
 						: 'w-56 bg-sidebar p-3 text-sidebar-foreground'
 				}
 			>
@@ -113,24 +113,44 @@ export const ShortNameNeutral: Story = {
 }
 
 export const ProfileActions: Story = {
-	args: {
-		renderProfileLink: (children, className) => (
-			<a href='#profile' className={className} aria-label='Личный кабинет'>
-				{children}
-			</a>
-		),
-	},
 	render: (args) => (
 		<div
 			className={
 				args.collapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-2'
 			}
 		>
-			<UserSummary {...args} className={args.collapsed ? 'w-full' : 'flex-1'} />
+			<UserSummary
+				{...args}
+				className={args.collapsed ? 'w-full' : 'flex-1'}
+				renderProfileLink={(children, className) => {
+					const link = (
+						<a href='#profile' className={className} aria-label='Личный кабинет'>
+							{children}
+						</a>
+					)
+					return args.collapsed ? (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button asChild size='icon' variant='ghost'>
+										{link}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent side='right' sideOffset={8}>
+									<div>Личный кабинет: {args.name}.</div>
+									<div>{args.roleDescription}</div>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					) : (
+						link
+					)
+				}}
+			/>
 			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<Button type='button' variant='ghost' size='icon-sm' aria-label='Выйти'>
+						<Button type='button' variant='ghost' size='icon' aria-label='Выйти'>
 							<LogOut className='size-4' />
 						</Button>
 					</TooltipTrigger>

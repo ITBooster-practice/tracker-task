@@ -3,7 +3,14 @@
 import Link from 'next/link'
 import { useId, useState } from 'react'
 
-import { cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@repo/ui'
+import {
+	buttonVariants,
+	cn,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@repo/ui'
 
 import type { SidebarNavItem } from '../../model/sidebar'
 
@@ -28,14 +35,17 @@ const SidebarMenuItem = ({
 	const disabled = !href || Boolean(disabledReason)
 	const reason = disabledReason ?? 'Раздел пока недоступен'
 	const className = cn(
-		'flex h-11 w-full items-center rounded-[var(--radius-control)] text-sm leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+		!isOpen && buttonVariants({ variant: 'ghost', size: 'icon' }),
+		'flex items-center rounded-[var(--radius-control)] text-sm font-normal leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
 		{
 			'justify-center': !isOpen,
-			'justify-start gap-3 px-3': isOpen,
-			'bg-sidebar-accent/80 font-medium text-sidebar-primary': isActive && !disabled,
-			'text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground':
+			'h-11 w-full justify-start gap-3 px-3': isOpen,
+			'bg-sidebar-accent/80 font-medium text-sidebar-primary hover:bg-sidebar-accent/80 hover:text-sidebar-primary dark:hover:bg-sidebar-accent/80 dark:hover:text-sidebar-primary':
+				isActive && !disabled,
+			'text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent/60 dark:hover:text-sidebar-accent-foreground':
 				!isActive && !disabled,
-			'cursor-not-allowed text-muted-foreground': disabled,
+			'cursor-not-allowed text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent dark:hover:text-muted-foreground':
+				disabled,
 		},
 	)
 	const content = (
@@ -70,22 +80,34 @@ const SidebarMenuItem = ({
 						{reason}
 					</span>
 					<TooltipContent side='right' sideOffset={8}>
+						{!isOpen && `${title}: `}
 						{reason}
 					</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
 		)
-	return (
+	const link = (
 		<Link
 			href={href!}
 			aria-label={title}
 			aria-current={isActive ? 'page' : undefined}
-			title={!isOpen ? title : undefined}
 			onClick={onNavigate}
 			className={className}
 		>
 			{content}
 		</Link>
+	)
+	return isOpen ? (
+		link
+	) : (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>{link}</TooltipTrigger>
+				<TooltipContent side='right' sideOffset={8}>
+					{title}
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
 	)
 }
 

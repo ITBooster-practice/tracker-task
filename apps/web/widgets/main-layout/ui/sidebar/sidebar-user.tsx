@@ -3,7 +3,16 @@
 import Link from 'next/link'
 
 import type { TeamRole } from '@repo/types'
-import { cn, UserSummary, type BadgeTone } from '@repo/ui'
+import {
+	Button,
+	cn,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+	UserSummary,
+	type BadgeTone,
+} from '@repo/ui'
 
 import { LogoutButton } from '@/features/auth'
 import { useMe } from '@/shared/api/use-auth'
@@ -61,19 +70,21 @@ function SidebarUser({ teamId, projectId, isOpen, onNavigate }: SidebarUserProps
 		: undefined
 	const roleLabel = role ? ROLE_LABELS[role] : undefined
 	const name = getUserDisplayName(profileQuery.isError ? null : profileQuery.data)
-	const roleDescription = roleLabel
-		? project
-			? `${roleLabel} команды «${team?.name}»: доступ к проекту «${project.name}»`
-			: `${roleLabel} команды «${team?.name}»`
+	const roleSummary = roleLabel
+		? `${roleLabel} команды «${team?.name}»`
 		: pending
 			? 'Роль в текущем контексте загружается'
 			: 'Нет подтверждённой роли в выбранной команде или проекте'
+	const roleDescription =
+		roleLabel && project
+			? `${roleSummary}: доступ к проекту «${project.name}»`
+			: roleSummary
 
 	return (
 		<div
 			className={cn(
 				'mt-auto shrink-0 border-t border-sidebar-border py-3',
-				isOpen ? 'px-3' : 'px-2',
+				isOpen ? 'px-3' : 'px-1.5',
 			)}
 		>
 			<div
@@ -89,17 +100,40 @@ function SidebarUser({ teamId, projectId, isOpen, onNavigate }: SidebarUserProps
 					pending={pending}
 					collapsed={!isOpen}
 					className={isOpen ? 'flex-1' : 'w-full'}
-					renderProfileLink={(children, className) => (
-						<Link
-							href={ROUTES.profile}
-							className={className}
-							aria-label='Личный кабинет'
-							title={name}
-							onClick={onNavigate}
-						>
-							{children}
-						</Link>
-					)}
+					renderProfileLink={(children, className) => {
+						const link = (
+							<Link
+								href={ROUTES.profile}
+								className={className}
+								aria-label='Личный кабинет'
+								title={isOpen ? name : undefined}
+								onClick={onNavigate}
+							>
+								{children}
+							</Link>
+						)
+						return isOpen ? (
+							link
+						) : (
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button asChild variant='ghost' size='icon'>
+											{link}
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent side='right' sideOffset={8}>
+										<div>Личный кабинет: {name}.</div>
+										<div>
+											{roleSummary}
+											{roleLabel && project ? ':' : ''}
+										</div>
+										{roleLabel && project && <div>доступ к проекту «{project.name}»</div>}
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						)
+					}}
 				/>
 				<LogoutButton iconOnly />
 			</div>
