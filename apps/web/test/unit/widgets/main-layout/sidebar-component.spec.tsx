@@ -1,7 +1,9 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { renderWithSidebar } from '@/test/helpers/sidebar'
+import { cleanup, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useSideBarStore } from '@/widgets/main-layout/model/sidebar'
+import { writeSidebarCookie } from '@/widgets/main-layout/model/sidebar/preference'
+import { createSideBarStore } from '@/widgets/main-layout/model/sidebar/store'
 import { Sidebar } from '@/widgets/main-layout/ui/sidebar'
 import { useUserStore } from '@/entities/user'
 import { useWorkspaceStore } from '@/shared/lib/workspace-context/store'
@@ -130,8 +132,14 @@ vi.mock('@repo/ui/icons', () => ({
 	KanbanSquare: () => <span data-testid='kanban-icon' />,
 }))
 
+let sidebarStore: ReturnType<typeof createSideBarStore>
+const render = (ui: React.ReactNode) => renderWithSidebar(ui, { sidebarStore })
+
 describe('Sidebar', () => {
 	beforeEach(() => {
+		writeSidebarCookie(undefined)
+		localStorage.removeItem('sidebar-state')
+		sidebarStore = createSideBarStore()
 		useUserStore.getState().clearUser()
 		useWorkspaceStore.setState({ hydrated: true })
 		useUserStore
@@ -150,15 +158,18 @@ describe('Sidebar', () => {
 				email: 'alex.real@test.dev',
 			},
 		})
-		useSideBarStore.setState({ isOpen: true })
+		sidebarStore.setState({ isOpen: true })
 	})
 
 	afterEach(cleanup)
 
 	it('развёрнутый (forceOpen=true) — показывает заголовок workspace', () => {
+		sidebarStore.getState().close()
 		render(<Sidebar forceOpen={true} />)
 
 		expect(screen.getByText('Tracker Task')).toBeDefined()
+		expect(sidebarStore.getState().isOpen).toBe(false)
+		expect(document.cookie).toContain('sidebar-state=false')
 	})
 
 	it('свёрнутый (forceOpen=false) — скрывает заголовок workspace', () => {

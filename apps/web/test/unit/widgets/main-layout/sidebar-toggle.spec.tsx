@@ -1,7 +1,12 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { renderWithSidebar } from '@/test/helpers/sidebar'
+import { act, cleanup, fireEvent, screen } from '@testing-library/react'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useSideBarStore } from '@/widgets/main-layout/model/sidebar'
+import { writeSidebarCookie } from '@/widgets/main-layout/model/sidebar/preference'
+import { SidebarStateProvider } from '@/widgets/main-layout/model/sidebar/provider'
+import { createSideBarStore } from '@/widgets/main-layout/model/sidebar/store'
 import { SidebarToggle } from '@/widgets/main-layout/ui/header/sidebar-toggle'
 
 vi.mock('@repo/ui', () => ({
@@ -18,12 +23,45 @@ vi.mock('@repo/ui/icons', () => ({
 	SidebarOpen: () => <span data-testid='sidebar-open' />,
 }))
 
+let sidebarStore: ReturnType<typeof createSideBarStore>
+const render = (ui: React.ReactNode) => renderWithSidebar(ui, { sidebarStore })
+
 describe('SidebarToggle', () => {
 	beforeEach(() => {
-		useSideBarStore.setState({ isOpen: true })
+		writeSidebarCookie(undefined)
+		localStorage.removeItem('sidebar-state')
+		sidebarStore = createSideBarStore()
+		sidebarStore.setState({ isOpen: true })
 	})
 
 	afterEach(cleanup)
+
+	it.each([false, true])(
+		'renders the server preference %s before hydration without changing it',
+		async (initialOpen) => {
+			writeSidebarCookie(initialOpen)
+			const view = (
+				<SidebarStateProvider initialOpen={initialOpen}>
+					<SidebarToggle />
+				</SidebarStateProvider>
+			)
+			const container = document.createElement('div')
+			container.innerHTML = renderToString(view)
+			document.body.append(container)
+			const button = container.querySelector('button')!
+			expect(button.getAttribute('aria-expanded')).toBe(String(initialOpen))
+			const recoverableError = vi.fn()
+			let root: ReturnType<typeof hydrateRoot>
+			await act(async () => {
+				root = hydrateRoot(container, view, { onRecoverableError: recoverableError })
+			})
+			expect(container.querySelector('button')).toBe(button)
+			expect(button.getAttribute('aria-expanded')).toBe(String(initialOpen))
+			expect(recoverableError).not.toHaveBeenCalled()
+			await act(async () => root!.unmount())
+			container.remove()
+		},
+	)
 
 	it('показывает SidebarClose когда sidebar открыт', () => {
 		render(<SidebarToggle />)
@@ -33,7 +71,7 @@ describe('SidebarToggle', () => {
 	})
 
 	it('показывает SidebarOpen когда sidebar закрыт', () => {
-		useSideBarStore.setState({ isOpen: false })
+		sidebarStore.setState({ isOpen: false })
 
 		render(<SidebarToggle />)
 
@@ -52,7 +90,7 @@ describe('SidebarToggle', () => {
 
 		fireEvent.click(screen.getByRole('button'))
 
-		expect(useSideBarStore.getState().isOpen).toBe(false)
+		expect(sidebarStore.getState().isOpen).toBe(false)
 	})
 
 	it('двойной клик возвращает sidebar в исходное состояние', () => {
@@ -62,6 +100,6 @@ describe('SidebarToggle', () => {
 		fireEvent.click(button)
 		fireEvent.click(button)
 
-		expect(useSideBarStore.getState().isOpen).toBe(true)
+		expect(sidebarStore.getState().isOpen).toBe(true)
 	})
 })
