@@ -1,7 +1,12 @@
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 import { MainLayout } from '@/widgets/main-layout'
+import {
+	parseSidebarOpen,
+	SIDEBAR_COOKIE_NAME,
+} from '@/widgets/main-layout/model/sidebar/preference'
 import { FeatureFlagsProvider } from '@/features/feature-flags'
 import { authKeys } from '@/shared/api/auth-keys'
 import { featureFlagsKeys } from '@/shared/api/use-feature-flags'
@@ -21,6 +26,8 @@ interface Props {
 }
 
 export default async function DashboardLayout({ children, modal }: Props) {
+	const cookieStore = await cookies()
+	const initialSidebarOpen = parseSidebarOpen(cookieStore.get(SIDEBAR_COOKIE_NAME)?.value)
 	const queryClient = getQueryClient()
 
 	try {
@@ -47,7 +54,7 @@ export default async function DashboardLayout({ children, modal }: Props) {
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<FeatureFlagsProvider>
-				<MainLayout>{children}</MainLayout>
+				<MainLayout initialSidebarOpen={initialSidebarOpen}>{children}</MainLayout>
 				{modal}
 			</FeatureFlagsProvider>
 		</HydrationBoundary>
