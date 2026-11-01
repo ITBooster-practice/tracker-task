@@ -35,6 +35,10 @@ apps/web/app/
 - `/sprints` оставлен как legacy redirect на `/boards`.
 - `/login`, `/register` используют отдельный auth-layout и не показывают sidebar/header.
 
+Подключение `tasks/new`, просмотр по `taskId` и параметры списка описаны в [руководстве по созданию, просмотру и редактированию задач](./task-workflow.md).
+
+Общая форма создания и настройки доски, локальные изменения колонок и сохранение описаны в [руководстве по редактору доски](./board-settings.md).
+
 ## 2) Где лежат Sidebar/Header
 
 Основные компоненты layout находятся в `apps/web/widgets/main-layout`:
@@ -72,7 +76,9 @@ Desktop, мобильный `<Sidebar forceOpen />` и свёрнутый sideba
 
 ## 3) Как работает сворачивание Sidebar
 
-### Desktop (>= `md`)
+### Desktop-навигация
+
+На доске desktop-навигация появляется с `xl` (1280px), на остальных страницах — с `md` (768px). Ниже соответствующего порога используется мобильная навигация через Sheet. Норма адаптивности — в [дизайн-системе](../design-system/README.md#контейнеры-отступы-и-адаптивность).
 
 - Состояние хранится в Zustand store: `widgets/main-layout/model/sidebar/store.ts`.
 - Store имеет `isOpen`, `open`, `close`, `toggle`.
@@ -86,9 +92,9 @@ Desktop, мобильный `<Sidebar forceOpen />` и свёрнутый sideba
 
 Недоступный свёрнутый `SidebarSelector` остаётся фокусируемой кнопкой с `aria-disabled`. Tooltip объясняет причину при наведении, фокусе и нажатии, например «Сначала выберите команду». Такой селектор не создаёт dropdown и не вызывает `onSelect`. У доступного селектора открытие dropdown закрывает подсказку; `modal={false}` сохраняет возможность нажимать соседние контролы. Изменение вида или доступности закрывает открытые меню и подсказку.
 
-### Mobile (`< md`)
+### Мобильная навигация
 
-- Desktop aside скрыт (`md:block`), вместо него используется `MobileSidebarTrigger`.
+- Ниже порога desktop-навигации aside скрыт, вместо него используется `MobileSidebarTrigger`.
 - `MobileSidebarTrigger` открывает `Sheet` слева.
 - Внутрь `Sheet` рендерится `<Sidebar forceOpen />`:
   - мобильный сайдбар всегда в раскрытом виде,
