@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, type SortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@repo/ui'
 
@@ -7,6 +7,9 @@ import { boardCellId, type BoardLane } from '../model/board-swimlanes'
 import { getBoardColumnContainerId } from '../model/constants'
 import type { BoardColumn } from '../model/types'
 import { BoardCard } from './board-card'
+
+// Board already projects the insertion slot into the rendered task order.
+const projectedTaskSortingStrategy: SortingStrategy = () => null
 
 interface BoardColumnTasksProps {
 	column: BoardColumn
@@ -36,16 +39,16 @@ export function BoardColumnTasks({
 			role={lane ? 'group' : undefined}
 			aria-label={lane ? `${lane.label}: ${column.title}` : undefined}
 			className={cn(
-				'flex flex-1 flex-col rounded-[var(--radius-surface)] p-2 transition-colors duration-200',
+				'flex flex-1 flex-col rounded-[var(--radius-surface)] transition-colors duration-200',
 				lane ? 'min-h-[112px]' : 'min-h-[320px]',
 				isOver && 'bg-primary/5',
 			)}
 		>
 			<SortableContext
 				items={column.tasks.map((task) => task.id)}
-				strategy={verticalListSortingStrategy}
+				strategy={projectedTaskSortingStrategy}
 			>
-				<div className='flex min-h-full flex-col gap-2'>
+				<div className='flex min-h-full flex-col gap-3'>
 					{column.tasks.length ? (
 						column.tasks.map((task) => (
 							<BoardCard

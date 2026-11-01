@@ -11,6 +11,7 @@ export interface ProjectBoardFilters {
 	type: BoardTypeFilter
 	priority: BoardPriorityFilter
 	assignee: string
+	overdue?: boolean
 }
 
 export const emptyProjectBoardFilters: ProjectBoardFilters = {
@@ -28,6 +29,7 @@ export function parseProjectBoardFilters(params: URLSearchParams): ProjectBoardF
 		type: type.success ? type.data : BOARD_FILTER_ALL,
 		priority: priority.success ? priority.data : BOARD_FILTER_ALL,
 		assignee: params.get('assignee')?.trim() || BOARD_FILTER_ALL,
+		...(params.get('overdue') === 'true' && { overdue: true }),
 	}
 }
 
@@ -46,14 +48,17 @@ export function projectBoardFilterParams(
 		if (!value || (name !== 'q' && value === BOARD_FILTER_ALL)) params.delete(name)
 		else params.set(name, value)
 	}
+	if (filters.overdue) params.set('overdue', 'true')
+	else params.delete('overdue')
 	return params
 }
 
 export const hasProjectBoardFilters = (filters: ProjectBoardFilters) =>
-	filters.query.length > 0 ||
+	filters.query.trim().length > 0 ||
 	filters.type !== BOARD_FILTER_ALL ||
 	filters.priority !== BOARD_FILTER_ALL ||
-	filters.assignee !== BOARD_FILTER_ALL
+	filters.assignee !== BOARD_FILTER_ALL ||
+	Boolean(filters.overdue)
 
 export function filterProjectBoardColumns(
 	columns: BoardColumn[],
@@ -64,9 +69,19 @@ export function filterProjectBoardColumns(
 		...column,
 		tasks: column.tasks.filter(
 			(task) =>
+				(!filters.overdue ||
+					(task.dueDate !== null &&
+						new Date(task.dueDate).getTime() < Date.now() &&
+						task.status !== 'DONE')) &&
 				(!query ||
 					task.title.toLocaleLowerCase('ru-RU').includes(query) ||
-					task.key.toLocaleLowerCase('ru-RU').includes(query)) &&
+					task.key.toLocaleLowerCase('ru-RU').includes(query) ||
+					task.labels.some((label) =>
+						label
+							.normalize('NFC')
+							.toLocaleLowerCase('ru-RU')
+							.includes(query.normalize('NFC')),
+					)) &&
 				(filters.type === BOARD_FILTER_ALL || task.type === filters.type) &&
 				(filters.priority === BOARD_FILTER_ALL || task.priority === filters.priority) &&
 				(filters.assignee === BOARD_FILTER_ALL ||

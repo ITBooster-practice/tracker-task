@@ -18,7 +18,7 @@ interface DragMoveMockEvent {
 		id: string
 		rect: {
 			current: {
-				translated?: { top: number } | null
+				translated?: { top: number; height: number } | null
 			}
 		}
 	}
@@ -37,17 +37,13 @@ interface DndContextMockProps {
 	onDragCancel: () => void
 	onDragEnd: (event: DragMoveMockEvent) => void
 	onDragOver: (event: DragMoveMockEvent) => void
+	onDragMove: (event: DragMoveMockEvent) => void
 	onDragStart: (event: DragStartMockEvent) => void
 	sensors: unknown[]
 }
 
 interface BoardColumnMockProps {
 	headerOnly?: boolean
-	onDelete?: () => void
-	dragHandle?: React.ReactNode
-	onEditTitle?: () => void
-	titleEditor?: React.ReactNode
-	editTitleDisabled?: boolean
 	activeDragTaskId: string | null
 	column: BoardColumn
 	disabled?: boolean
@@ -98,7 +94,7 @@ vi.mock('@dnd-kit/core', () => {
 		id: activeTaskId,
 		rect: {
 			current: {
-				translated: { top },
+				translated: { top, height: 60 },
 			},
 		},
 	})
@@ -199,17 +195,6 @@ vi.mock('@dnd-kit/core', () => {
 	}
 })
 
-vi.mock('@dnd-kit/sortable', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@dnd-kit/sortable')>()),
-	SortableContext: ({ children }: React.PropsWithChildren) => <>{children}</>,
-	useSortable: () => ({
-		attributes: {},
-		listeners: {},
-		setNodeRef: () => undefined,
-		setActivatorNodeRef: () => undefined,
-	}),
-}))
-
 vi.mock('@/views/boards/ui/board-column', () => ({
 	BoardColumn: (props: BoardColumnMockProps) => {
 		boardMockState.boardColumnProps.push(props)
@@ -220,26 +205,6 @@ vi.mock('@/views/boards/ui/board-column', () => ({
 				data-disabled={String(Boolean(props.disabled))}
 				data-testid={`board-column-${props.column.id}`}
 			>
-				{props.dragHandle}
-				{props.onDelete && (
-					<button
-						disabled={props.editTitleDisabled}
-						onClick={props.onDelete}
-						aria-label={`Удалить колонку «${props.column.title}»`}
-					>
-						Удалить
-					</button>
-				)}
-				{props.titleEditor ??
-					(props.onEditTitle && (
-						<button
-							disabled={props.editTitleDisabled}
-							onClick={props.onEditTitle}
-							aria-label={`Переименовать колонку «${props.column.title}»`}
-						>
-							Переименовать
-						</button>
-					))}
 				{!props.headerOnly &&
 					props.column.tasks.map((task) => (
 						<button key={task.id} type='button' onClick={() => props.onOpenTask(task.id)}>

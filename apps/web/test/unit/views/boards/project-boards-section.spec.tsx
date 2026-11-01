@@ -129,7 +129,7 @@ describe('ProjectBoardsSection', () => {
 		renderSection()
 		await screen.findByText('Поддержка')
 		fireEvent.click(screen.getByRole('button', { name: 'Создать доску' }))
-		const input = screen.getByLabelText('Название доски')
+		const input = screen.getByLabelText(/Название доски/)
 		fireEvent.change(input, { target: { value: '  Новая доска  ' } })
 		act(() => {
 			fireEvent.submit(input.closest('form')!)
@@ -139,11 +139,11 @@ describe('ProjectBoardsSection', () => {
 			expect(boardsServiceMock.create).toHaveBeenCalledExactlyOnceWith(
 				'team-1',
 				'project-1',
-				{ name: 'Новая доска' },
+				expect.objectContaining({ name: 'Новая доска' }),
 			),
 		)
-		fireEvent.click(screen.getByRole('button', { name: 'Закрыть диалог' }))
-		expect(screen.getByRole('button', { name: 'Создаём…' })).toHaveProperty(
+		fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+		expect(screen.getByRole('button', { name: 'Сохраняем…' })).toHaveProperty(
 			'disabled',
 			true,
 		)
@@ -166,16 +166,16 @@ describe('ProjectBoardsSection', () => {
 		renderSection()
 		await screen.findByText('Поддержка')
 		fireEvent.click(screen.getByRole('button', { name: 'Создать доску' }))
-		fireEvent.change(screen.getByLabelText('Название доски'), {
+		fireEvent.change(screen.getByLabelText(/Название доски/), {
 			target: { value: 'Поддержка' },
 		})
-		fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Создать доску' }))
 		await screen.findByRole('alert')
-		expect(screen.getByLabelText('Название доски')).toHaveProperty('value', 'Поддержка')
-		fireEvent.change(screen.getByLabelText('Название доски'), {
+		expect(screen.getByLabelText(/Название доски/)).toHaveProperty('value', 'Поддержка')
+		fireEvent.change(screen.getByLabelText(/Название доски/), {
 			target: { value: 'Другая доска' },
 		})
-		fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Создать доску' }))
 		await waitFor(() => expect(push).toHaveBeenCalledTimes(1))
 	})
 
@@ -251,10 +251,10 @@ describe('ProjectBoardsSection', () => {
 		const { rerender } = renderSection()
 		await screen.findByText('Поддержка')
 		fireEvent.click(screen.getByRole('button', { name: 'Создать доску' }))
-		fireEvent.change(screen.getByLabelText('Название доски'), {
+		fireEvent.change(screen.getByLabelText(/Название доски/), {
 			target: { value: 'Черновик' },
 		})
-		fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Создать доску' }))
 		await waitFor(() => expect(boardsServiceMock.create).toHaveBeenCalledTimes(1))
 		rerender(<ProjectBoardsSection teamId='team-2' projectId='project-2' />)
 		await screen.findByText('Поддержка')

@@ -49,6 +49,7 @@ function createPrismaMock() {
 				.fn()
 				.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
 					...moving,
+					labelAssignments: [],
 					status: 'TODO',
 					...data,
 					version: moving.version + 1,

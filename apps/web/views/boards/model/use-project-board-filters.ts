@@ -52,6 +52,6 @@ export function useProjectBoardFilters() {
 		),
 		isPending: filters.query !== deferredQuery,
 		update,
-		reset: () => update(emptyProjectBoardFilters),
+		reset: () => update({ ...emptyProjectBoardFilters, overdue: false }),
 	}
 }

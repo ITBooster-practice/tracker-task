@@ -68,7 +68,7 @@ export class BoardsController {
 	}
 
 	@Patch(':boardId')
-	@ApiOperation({ summary: 'Переименовать доску (OWNER / ADMIN)' })
+	@ApiOperation({ summary: 'Сохранить настройки и колонки доски (OWNER / ADMIN)' })
 	@ApiOkResponse({ type: BoardListItemResponseDto })
 	@ApiBadRequestResponse({ description: 'Некорректное название доски' })
 	@ApiConflictResponse({ description: 'Название уже занято в проекте' })

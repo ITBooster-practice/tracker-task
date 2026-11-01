@@ -6,8 +6,13 @@ import {
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { boardCellId, buildBoardLanes } from '@/views/boards/model/board-swimlanes'
+import {
+	boardCellId,
+	buildBoardLanes,
+	moveTaskInLane,
+} from '@/views/boards/model/board-swimlanes'
 import type { BoardTaskMoveInput } from '@/views/boards/model/types'
+import { moveTaskInColumns } from '@/views/boards/model/utils'
 import { Board } from '@/views/boards/ui/board'
 
 describe('Board', () => {
@@ -17,26 +22,155 @@ describe('Board', () => {
 
 	afterEach(cleanup)
 
-	it('группы содержат уникальные карточки, а действия шапок не повторяются', () => {
-		const columns = createBoardColumnsFixture(),
-			lanes = buildBoardLanes('priority', columns, [])
+	it('оставляет заголовки и общее сообщение, когда задачи доски не попали в выборку', () => {
+		const columns = createBoardColumnsFixture().map((column) => ({
+			...column,
+			tasks: [],
+		}))
 		render(
 			<Board
 				columns={columns}
-				grouping='priority'
-				lanes={lanes}
-				onOpenTask={() => undefined}
-				onRenameColumn={async () => undefined}
-				onCreateColumn={async () => undefined}
+				onOpenTask={vi.fn()}
+				grouping='assignee'
+				lanes={buildBoardLanes('assignee', columns, [])}
+				emptyState={<h2>Нет задач с такими фильтрами</h2>}
 			/>,
 		)
-		expect(screen.getAllByText('Проверить карточку задачи')).toHaveLength(1)
-		expect(screen.getAllByRole('button', { name: /Переименовать колонку/ })).toHaveLength(
-			2,
+		expect(
+			screen.getByRole('heading', { name: 'Нет задач с такими фильтрами' }),
+		).toBeDefined()
+		expect(
+			getBoardUnitMockState()
+				.boardColumnProps.slice(-columns.length)
+				.map((props) => ({ id: props.column.id, headerOnly: props.headerOnly })),
+		).toEqual(columns.map((column) => ({ id: column.id, headerOnly: true })))
+	})
+
+	it.each([false, true])(
+		'keeps the drop position until the cache takes over, including rollback (%s)',
+		async (fail) => {
+			const columns = createBoardColumnsFixture()
+			let resolve!: () => void
+			let reject!: (error: unknown) => void
+			const pending = new Promise<void>((yes, no) => {
+				resolve = yes
+				reject = no
+			})
+			const move = vi
+				.fn<(input: BoardTaskMoveInput) => Promise<void>>()
+				.mockReturnValue(pending)
+			const props = { onOpenTask: () => undefined, onMoveTask: move }
+			const { rerender } = render(<Board {...props} columns={columns} />)
+			const location = () =>
+				getBoardUnitMockState()
+					.boardColumnProps.slice(-2)
+					.find((item) => item.column.tasks.some((task) => task.id === 'task-a'))!.column
+			fireEvent.click(screen.getByTestId('drag-start'))
+			fireEvent.click(screen.getByTestId('drag-over-column'))
+			expect(location().id).toBe('DONE')
+			fireEvent.click(screen.getByTestId('drag-end-column'))
+			expect(location().id).toBe('DONE')
+			expect(screen.queryByTestId('overlay-card-task-a')).toBeNull()
+			rerender(<Board {...props} columns={columns} disableInteraction />)
+			expect(location().id).toBe('DONE')
+			const refreshed = columns.map((column) => ({
+				...column,
+				tasks: column.tasks.map((task) =>
+					task.id === 'task-a' ? { ...task, title: 'Refreshed task metadata' } : task,
+				),
+			}))
+			rerender(<Board {...props} columns={refreshed} disableInteraction />)
+			expect(location().id).toBe('DONE')
+			expect(location().tasks.find((task) => task.id === 'task-a')!.title).toBe(
+				'Refreshed task metadata',
+			)
+			const accepted = moveTaskInColumns(columns, move.mock.calls[0]![0])
+			accepted[1]!.tasks.find((task) => task.id === 'task-a')!.title =
+				'Authoritative task'
+			rerender(<Board {...props} columns={accepted} disableInteraction />)
+			expect(location().tasks.find((task) => task.id === 'task-a')!.title).toBe(
+				'Authoritative task',
+			)
+			if (fail) {
+				rerender(<Board {...props} columns={columns} disableInteraction />)
+				expect(location().id).toBe('TODO')
+				await act(async () => reject(new Error('Move failed')))
+			} else await act(async () => resolve())
+			await waitFor(() => expect(location().id).toBe(fail ? 'TODO' : 'DONE'))
+		},
+	)
+
+	it('rolls back a rejected drop even if no optimistic props arrived', async () => {
+		const columns = createBoardColumnsFixture()
+		let reject!: (error: unknown) => void
+		const move = vi.fn().mockReturnValue(
+			new Promise<void>((_, no) => {
+				reject = no
+			}),
 		)
-		expect(screen.getAllByRole('button', { name: 'Добавить колонку' })).toHaveLength(1)
-		for (const lane of lanes)
-			expect(screen.getByRole('heading', { name: lane.label })).toBeDefined()
+		render(<Board columns={columns} onOpenTask={() => undefined} onMoveTask={move} />)
+		fireEvent.click(screen.getByTestId('drag-start'))
+		fireEvent.click(screen.getByTestId('drag-end-column'))
+		expect(
+			getBoardUnitMockState()
+				.boardColumnProps.slice(-2)[1]!
+				.column.tasks.map((task) => task.id),
+		).toContain('task-a')
+		await act(async () => reject(new Error('Move failed')))
+		await waitFor(() =>
+			expect(
+				getBoardUnitMockState()
+					.boardColumnProps.slice(-2)[0]!
+					.column.tasks.map((task) => task.id),
+			).toContain('task-a'),
+		)
+	})
+
+	it('keeps grouped drop metadata during handoff and discards it when filters change', async () => {
+		const columns = createBoardColumnsFixture()
+		const lanes = buildBoardLanes('priority', columns, [])
+		const low = lanes.find((lane) => lane.priority === 'LOW')!
+		let resolve!: () => void
+		const move = vi.fn().mockReturnValue(
+			new Promise<void>((yes) => {
+				resolve = yes
+			}),
+		)
+		const props = {
+			grouping: 'priority' as const,
+			lanes,
+			columns,
+			onOpenTask: () => undefined,
+			onMoveTask: move,
+		}
+		const { rerender } = render(<Board {...props} dragScope='all' />)
+		act(() =>
+			getBoardUnitMockState().dndContextProps!.onDragStart({ active: { id: 'task-a' } }),
+		)
+		const event = {
+			active: { id: 'task-a', rect: { current: { translated: null } } },
+			over: { id: boardCellId(low, 'DONE'), rect: { top: 0, height: 100 } },
+		}
+		act(() => getBoardUnitMockState().dndContextProps!.onDragOver(event))
+		act(() => getBoardUnitMockState().dndContextProps!.onDragEnd(event))
+		const expected = moveTaskInLane(columns, move.mock.calls[0]![0], low)
+		expect(
+			getBoardUnitMockState()
+				.boardColumnProps.slice(-2)
+				.map((item) => item.column),
+		).toEqual(expected)
+		rerender(<Board {...props} dragScope='HIGH' />)
+		expect(
+			getBoardUnitMockState()
+				.boardColumnProps.slice(-2)
+				.map((item) => item.column),
+		).toEqual(columns)
+		await act(async () => resolve())
+		expect(
+			getBoardUnitMockState()
+				.boardColumnProps.slice(-2)
+				.map((item) => item.column),
+		).toEqual(columns)
 	})
 
 	it.each([false, true])(
@@ -106,207 +240,6 @@ describe('Board', () => {
 		fireEvent.click(screen.getByTestId('drag-end-column'))
 		expect(move).not.toHaveBeenCalled()
 		expect(screen.queryByTestId('overlay-card-task-a')).toBeNull()
-	})
-
-	it.each([false, true])(
-		'сохраняет полный порядок колонок и восстанавливает его при ошибке (%s)',
-		async (fail) => {
-			let resolve!: () => void
-			let reject!: (error: unknown) => void
-			const pending = new Promise<void>((yes, no) => {
-				resolve = yes
-				reject = no
-			})
-			const reorder = vi.fn<(ids: string[]) => Promise<void>>().mockReturnValue(pending)
-			const move = vi.fn()
-			render(
-				<Board
-					columns={createBoardColumnsFixture()}
-					onOpenTask={() => undefined}
-					onMoveTask={move}
-					onReorderColumns={reorder}
-				/>,
-			)
-			act(() =>
-				getBoardUnitMockState().dndContextProps!.onDragStart({
-					active: { id: 'board-column-order:TODO' },
-				}),
-			)
-			const end = {
-				active: {
-					id: 'board-column-order:TODO',
-					rect: { current: { translated: null } },
-				},
-				over: { id: 'board-column-order:DONE', rect: { top: 0, height: 100 } },
-			}
-			act(() => getBoardUnitMockState().dndContextProps!.onDragEnd(end))
-			expect(reorder).toHaveBeenCalledExactlyOnceWith(['DONE', 'TODO'])
-			expect(move).not.toHaveBeenCalled()
-			expect(
-				screen
-					.getAllByTestId(/^board-column-/)
-					.map((node) => node.getAttribute('data-testid')),
-			).toEqual(['board-column-DONE', 'board-column-TODO'])
-			expect(
-				getBoardUnitMockState()
-					.boardColumnProps.slice(-2)
-					.every((props) => props.disabled),
-			).toBe(true)
-			if (fail) await act(async () => reject({ statusCode: 409, message: 'Conflict' }))
-			else await act(async () => resolve())
-			await waitFor(() =>
-				expect(
-					screen
-						.getAllByTestId(/^board-column-/)
-						.map((node) => node.getAttribute('data-testid')),
-				).toEqual(['board-column-TODO', 'board-column-DONE']),
-			)
-			if (fail) expect(screen.getByRole('alert').textContent).toContain('изменилась')
-		},
-	)
-
-	it.each(['same', 'outside', 'cancel'])('не отправляет порядок для %s', (kind) => {
-		const reorder = vi.fn<(ids: string[]) => Promise<void>>()
-		render(
-			<Board
-				columns={createBoardColumnsFixture()}
-				onOpenTask={() => undefined}
-				onReorderColumns={reorder}
-			/>,
-		)
-		act(() =>
-			getBoardUnitMockState().dndContextProps!.onDragStart({
-				active: { id: 'board-column-order:TODO' },
-			}),
-		)
-		act(() => {
-			if (kind === 'cancel') getBoardUnitMockState().dndContextProps!.onDragCancel()
-			else
-				getBoardUnitMockState().dndContextProps!.onDragEnd({
-					active: {
-						id: 'board-column-order:TODO',
-						rect: { current: { translated: null } },
-					},
-					over:
-						kind === 'outside'
-							? null
-							: { id: 'board-column-order:TODO', rect: { top: 0, height: 100 } },
-				})
-		})
-		expect(reorder).not.toHaveBeenCalled()
-	})
-
-	it('не затирает обновлённые сервером колонки при неудачной перестановке', async () => {
-		let reject!: (error: unknown) => void
-		const reorder = vi.fn<(ids: string[]) => Promise<void>>().mockReturnValue(
-			new Promise((_, no) => {
-				reject = no
-			}),
-		)
-		const columns = createBoardColumnsFixture()
-		const props = { onOpenTask: () => undefined, onReorderColumns: reorder }
-		const { rerender } = render(<Board {...props} columns={columns} />)
-		act(() =>
-			getBoardUnitMockState().dndContextProps!.onDragStart({
-				active: { id: 'board-column-order:TODO' },
-			}),
-		)
-		act(() =>
-			getBoardUnitMockState().dndContextProps!.onDragEnd({
-				active: {
-					id: 'board-column-order:TODO',
-					rect: { current: { translated: null } },
-				},
-				over: { id: 'board-column-order:DONE', rect: { top: 0, height: 100 } },
-			}),
-		)
-		const latest = [
-			...columns,
-			{ ...columns[0]!, id: 'NEW', title: 'Добавлена другим пользователем', tasks: [] },
-		]
-		rerender(<Board {...props} columns={latest} />)
-		await act(async () => reject({ statusCode: 400, message: 'Outdated order' }))
-		expect(
-			screen
-				.getAllByTestId(/^board-column-/)
-				.map((node) => node.getAttribute('data-testid')),
-		).toEqual(['board-column-TODO', 'board-column-DONE', 'board-column-NEW'])
-	})
-
-	it('создаёт колонку inline, сохраняет черновик после ошибки и возвращает фокус', async () => {
-		const create = vi
-			.fn<(title: string) => Promise<void>>()
-			.mockRejectedValueOnce({ statusCode: 409, message: 'Conflict' })
-			.mockResolvedValueOnce(undefined)
-		render(
-			<Board
-				columns={createBoardColumnsFixture()}
-				onOpenTask={() => undefined}
-				onMoveTask={() => undefined}
-				onCreateColumn={create}
-			/>,
-		)
-		fireEvent.click(screen.getByRole('button', { name: 'Добавить колонку' }))
-		const input = screen.getByLabelText('Название новой колонки')
-		expect(document.activeElement).toBe(input)
-		expect(
-			getBoardUnitMockState()
-				.boardColumnProps.slice(-2)
-				.every((props) => props.disabled),
-		).toBe(true)
-		fireEvent.click(screen.getByTestId('drag-start'))
-		expect(screen.queryByTestId('overlay-card-task-a')).toBeNull()
-		fireEvent.change(input, { target: { value: '  Проверка  ' } })
-		fireEvent.submit(input.closest('form')!)
-		await screen.findByRole('alert')
-		expect(input).toHaveProperty('value', '  Проверка  ')
-		fireEvent.submit(input.closest('form')!)
-		await waitFor(() =>
-			expect(screen.queryByLabelText('Название новой колонки')).toBeNull(),
-		)
-		expect(create).toHaveBeenLastCalledWith('Проверка')
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				screen.getByRole('button', { name: 'Добавить колонку' }),
-			),
-		)
-		expect(
-			getBoardUnitMockState()
-				.boardColumnProps.slice(-2)
-				.every((props) => !props.disabled),
-		).toBe(true)
-	})
-
-	it('переименовывает выбранную колонку и отменяет создание по Escape', async () => {
-		const rename = vi
-			.fn<(id: string, title: string) => Promise<void>>()
-			.mockResolvedValue(undefined)
-		const create = vi.fn<(title: string) => Promise<void>>()
-		render(
-			<Board
-				columns={createBoardColumnsFixture()}
-				onOpenTask={() => undefined}
-				onCreateColumn={create}
-				onRenameColumn={rename}
-			/>,
-		)
-		fireEvent.click(
-			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
-		)
-		const input = screen.getByLabelText('Название колонки')
-		fireEvent.change(input, { target: { value: 'Новый этап' } })
-		fireEvent.submit(input.closest('form')!)
-		await waitFor(() =>
-			expect(rename).toHaveBeenCalledExactlyOnceWith('TODO', 'Новый этап'),
-		)
-		await waitFor(() => expect(screen.queryByLabelText('Название колонки')).toBeNull())
-		fireEvent.click(screen.getByRole('button', { name: 'Добавить колонку' }))
-		fireEvent.keyDown(screen.getByLabelText('Название новой колонки'), { key: 'Escape' })
-		expect(screen.queryByLabelText('Название новой колонки')).toBeNull()
-		expect(create).not.toHaveBeenCalled()
-		expect(document.activeElement).toBe(
-			screen.getByRole('button', { name: 'Добавить колонку' }),
-		)
 	})
 
 	it('оставляет открытие карточек, отключая drag без обработчика переноса', () => {
@@ -490,6 +423,57 @@ describe('Board', () => {
 			toIndex: 1,
 		})
 	})
+
+	it.each([
+		[false, 330, 2],
+		[false, 380, 3],
+		[true, 330, 2],
+		[true, 380, 3],
+	] as const)(
+		'places a tall card before or after the final task using its center (grouped=%s, top=%i)',
+		(grouped, top, expectedIndex) => {
+			const columns = createBoardColumnsFixture()
+			columns[0]!.tasks.push(
+				{ ...columns[0]!.tasks[1]!, id: 'task-c', title: 'Third task' },
+				{ ...columns[0]!.tasks[1]!, id: 'task-d', title: 'Last task' },
+			)
+			const move = vi.fn()
+			render(
+				<Board
+					columns={columns}
+					onOpenTask={() => undefined}
+					onMoveTask={move}
+					grouping={grouped ? 'priority' : 'none'}
+					lanes={grouped ? buildBoardLanes('priority', columns, []) : []}
+				/>,
+			)
+			fireEvent.click(screen.getByTestId('drag-start'))
+			const event = {
+				active: { id: 'task-a', rect: { current: { translated: { top, height: 160 } } } },
+				over: { id: 'task-d', rect: { top: 400, height: 80 } },
+			}
+			act(() =>
+				getBoardUnitMockState().dndContextProps!.onDragOver({
+					...event,
+					active: {
+						...event.active,
+						rect: { current: { translated: { top: 330, height: 160 } } },
+					},
+				}),
+			)
+			act(() => getBoardUnitMockState().dndContextProps!.onDragMove(event))
+			const preview = getBoardUnitMockState().boardColumnProps.slice(-2)[0]!.column
+			expect(preview.tasks.findIndex((task) => task.id === 'task-a')).toBe(expectedIndex)
+			act(() => getBoardUnitMockState().dndContextProps!.onDragEnd(event))
+			expect(move).toHaveBeenCalledWith(
+				expect.objectContaining({
+					taskId: 'task-a',
+					toColumnId: 'TODO',
+					toIndex: expectedIndex,
+				}),
+			)
+		},
+	)
 
 	it.each([false, true])(
 		'drop в ту же колонку задаёт индекс после удаления карточки (preview=%s)',

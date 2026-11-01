@@ -72,6 +72,31 @@ describe('Shared board contracts', () => {
 		}
 	})
 
+	it('accepts only a boolean empty-column guard without changing explicit transfers', () => {
+		const settings = {
+			name: 'Board',
+			expectedUpdatedAt: new Date(0).toISOString(),
+			columnSnapshot: [],
+			columns: [{ key: 'target', title: 'Target', color: 'gray' }],
+		}
+		for (const removal of [
+			{ id: 'source', targetKey: 'target' },
+			{ id: 'source', targetKey: 'target', requireEmpty: false },
+			{ id: 'source', targetKey: 'target', requireEmpty: true },
+		])
+			expect(
+				updateBoardSchema.parse({ ...settings, removedColumns: [removal] })
+					.removedColumns,
+			).toEqual([removal])
+		for (const requireEmpty of ['true', 1, null])
+			expect(
+				updateBoardSchema.safeParse({
+					...settings,
+					removedColumns: [{ id: 'source', targetKey: 'target', requireEmpty }],
+				}).success,
+			).toBe(false)
+	})
+
 	it.each([-1, 0.5, '1', 2_147_483_648])(
 		'rejects an invalid column/task position: %j',
 		(position) => {

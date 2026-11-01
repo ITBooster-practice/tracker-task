@@ -14,6 +14,7 @@ export interface Task {
 	id: string
 	title: string
 	description: string | null
+	labels: string[]
 	status: TaskStatus
 	priority: Priority
 	type: TaskType
@@ -21,7 +22,9 @@ export interface Task {
 	version: number
 	dueDate: string | null
 	projectId: string
+	boardColumnId: string
 	assigneeId: string | null
+	createdById: string
 	createdAt: string
 	updatedAt: string
 }

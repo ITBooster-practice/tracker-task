@@ -17,31 +17,11 @@ export function createBoardTaskFixture(overrides: Partial<BoardTask> = {}): Boar
 		id: 'task-a',
 		key: 'TT-1',
 		title: 'Проверить карточку задачи',
-		description: 'Описание задачи для unit-теста board UI.',
 		type: 'TASK',
 		priority: 'HIGH',
 		boardColumnId: 'TODO',
-		tags: ['ui', 'tests'],
 		assignee: boardTestAssignee,
 		dueDate: '2026-05-01T00:00:00.000Z',
-		checklist: { completed: 1, total: 3 },
-		comments: [
-			{
-				id: 'comment-a',
-				author: boardTestAssignee,
-				content: 'Первый комментарий',
-				createdAtLabel: 'Сегодня, 10:00',
-			},
-		],
-		history: [
-			{
-				id: 'history-a',
-				action: 'Задача создана',
-				actor: boardTestAssignee,
-				createdAtLabel: 'Сегодня, 09:00',
-			},
-		],
-		createdAtLabel: 'Сегодня, 08:30',
 		...overrides,
 	}
 }
@@ -53,7 +33,6 @@ export function createBoardColumnFixture(
 		...createBoardViewFixture().columns[0]!,
 		id: 'TODO',
 		title: 'К выполнению',
-		description: 'Готово к старту.',
 		tasks: [
 			createBoardTaskFixture(),
 			createBoardTaskFixture({
@@ -74,7 +53,6 @@ export function createBoardColumnsFixture(): BoardColumn[] {
 			key: 'DONE',
 			position: 1,
 			title: 'Готово',
-			description: 'Завершённые задачи.',
 			tasks: [
 				createBoardTaskFixture({
 					id: 'task-done',

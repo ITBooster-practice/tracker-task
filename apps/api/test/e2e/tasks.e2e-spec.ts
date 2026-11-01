@@ -8,6 +8,7 @@ import type { Redis } from 'ioredis'
 import type { BoardView } from '@repo/types'
 
 import { PrismaService } from '../../prisma/prisma.service'
+import { TasksService } from '../../src/tasks/tasks.service'
 import { createTestApp, registerAndLogin, resetE2eState } from '../helpers/e2e.helpers'
 
 describe('Tasks (e2e)', () => {
@@ -109,17 +110,22 @@ describe('Tasks (e2e)', () => {
 			.send({ title: 'Fix login bug', ...overrides })
 			.expect(201)
 
-		expect(res.body).not.toHaveProperty('boardColumnId')
+		expect(res.body).toHaveProperty('boardColumnId', expect.any(String))
 		const stored = await prisma.task.findUniqueOrThrow({
 			where: { id: res.body.id as string },
 			include: { boardColumn: { include: { board: true } } },
 		})
-		expect(stored.boardColumn).toMatchObject({
-			projectId,
-			key: stored.status,
-			isSystem: true,
-			board: { isDefault: true },
-		})
+		expect(res.body.boardColumnId).toBe(stored.boardColumnId)
+		if (overrides.boardColumnId) {
+			expect(stored.boardColumnId).toBe(overrides.boardColumnId)
+		} else {
+			expect(stored.boardColumn).toMatchObject({
+				projectId,
+				key: stored.status,
+				isSystem: true,
+				board: { isDefault: true },
+			})
+		}
 
 		return res.body as {
 			id: string
@@ -127,9 +133,12 @@ describe('Tasks (e2e)', () => {
 			description: string | null
 			status: string
 			priority: string
+			labels: string[]
 			type: string
 			position: number
 			projectId: string
+			boardColumnId: string
+			version: number
 			createdById: string
 			createdAt: string
 			updatedAt: string
@@ -145,19 +154,381 @@ describe('Tasks (e2e)', () => {
 			title: expect.any(String),
 			status: expect.any(String),
 			priority: expect.any(String),
+			labels: expect.any(Array),
 			type: expect.any(String),
 			position: expect.any(Number),
 			projectId,
+			boardColumnId: expect.any(String),
 			createdById: expect.any(String),
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			...overrides,
 		})
 		expect(task).toHaveProperty('description')
-		expect(task).not.toHaveProperty('boardColumnId')
 	}
 
+	describe('Project task labels', () => {
+		it('rolls back new catalog names when create or update cannot save the task', async () => {
+			const service = app.get(TasksService)
+			const { createdById } = await prisma.project.findUniqueOrThrow({
+				where: { id: projectId },
+			})
+			await expect(
+				service.create(teamId, projectId, createdById, {
+					title: 'Failed create',
+					labels: ['Failed create label'],
+					assigneeId: 'missing-assignee',
+				}),
+			).rejects.toMatchObject({ code: 'P2003' })
+			const task = await createTask(ownerCookies, { labels: ['Existing'] })
+			await expect(
+				service.update(teamId, projectId, task.id, createdById, {
+					labels: ['Failed update label'],
+					assigneeId: 'missing-assignee',
+				}),
+			).rejects.toMatchObject({ code: 'P2003' })
+			expect(
+				await prisma.taskLabel.findMany({ where: { projectId }, select: { name: true } }),
+			).toEqual([{ name: 'Existing' }])
+			expect(await prisma.task.count({ where: { projectId } })).toBe(1)
+			const detail = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
+				.set('Cookie', ownerCookies)
+				.expect(200)
+			expect(detail.body).toMatchObject({ labels: ['Existing'], version: 0 })
+		})
+
+		it('reuses one catalog record during concurrent creation on different boards', async () => {
+			const other = await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/boards`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Concurrent labels' })
+				.expect(201)
+			const columns = await prisma.boardColumn.findMany({
+				where: {
+					boardId: { in: [boardId, other.body.id as string] },
+					key: 'TODO',
+				},
+			})
+			const responses = await Promise.all(
+				columns.map((column, index) =>
+					request(server)
+						.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+						.set('Cookie', ownerCookies)
+						.send({
+							title: `Concurrent ${index}`,
+							boardColumnId: column.id,
+							labels: index ? ['SHARED', 'ANOTHER'] : ['Another', 'Shared'],
+						})
+						.expect(201),
+				),
+			)
+			expect(responses[0].body.labels).toEqual(responses[1].body.labels)
+			expect(
+				await prisma.taskLabel.findMany({
+					where: { projectId },
+					select: { key: true },
+					orderBy: { key: 'asc' },
+				}),
+			).toEqual([{ key: 'another' }, { key: 'shared' }])
+			expect(await prisma.taskLabelAssignment.count({ where: { projectId } })).toBe(4)
+		})
+
+		it('stores normalized labels once and reuses the first catalog spelling', async () => {
+			const first = await createTask(memberCookies, {
+				labels: [' Backend ', 'backend', ' База\t данных ', 'база данных'],
+			})
+			expect(first.labels).toEqual(['Backend', 'База данных'])
+			const second = await createTask(ownerCookies, {
+				labels: ['BACKEND', 'БАЗА ДАННЫХ'],
+			})
+			expect(second.labels).toEqual(first.labels)
+			expect(await prisma.taskLabel.count({ where: { projectId } })).toBe(2)
+			expect(await prisma.taskLabelAssignment.count({ where: { projectId } })).toBe(4)
+			const detail = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/${first.id}`)
+				.set('Cookie', memberCookies)
+				.expect(200)
+			expect(detail.body.labels).toEqual(first.labels)
+			expect(detail.body).not.toHaveProperty('labelAssignments')
+		})
+
+		it('preserves omitted labels, clears explicit arrays and keeps the catalog for reuse', async () => {
+			const task = await createTask(memberCookies, { labels: ['Backend'] })
+			const endpoint = `/teams/${teamId}/projects/${projectId}/tasks/${task.id}`
+			const kept = await request(server)
+				.patch(endpoint)
+				.set('Cookie', memberCookies)
+				.send({ title: 'Renamed' })
+				.expect(200)
+			expect(kept.body).toMatchObject({ labels: ['Backend'], version: 1 })
+			const cleared = await request(server)
+				.patch(endpoint)
+				.set('Cookie', memberCookies)
+				.send({ labels: [] })
+				.expect(200)
+			expect(cleared.body).toMatchObject({ labels: [], version: 2 })
+			expect(await prisma.taskLabelAssignment.count({ where: { taskId: task.id } })).toBe(
+				0,
+			)
+			const catalog = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/labels`)
+				.set('Cookie', memberCookies)
+				.expect(200)
+			expect(catalog.body).toEqual(['Backend'])
+		})
+
+		it('returns at most 20 sorted project catalog names and searches literal substrings', async () => {
+			await createTask(ownerCookies, {
+				labels: Array.from(
+					{ length: 20 },
+					(_, i) => `Label ${String(i).padStart(2, '0')}`,
+				),
+			})
+			await createTask(ownerCookies, {
+				labels: ['Label 20', 'z-100%_done', 'z-1000Xdone'],
+			})
+			const endpoint = `/teams/${teamId}/projects/${projectId}/tasks/labels`
+			const catalog = await request(server)
+				.get(endpoint)
+				.set('Cookie', memberCookies)
+				.expect(200)
+			expect(catalog.body).toEqual(
+				Array.from({ length: 20 }, (_, i) => `Label ${String(i).padStart(2, '0')}`),
+			)
+			const filtered = await request(server)
+				.get(endpoint)
+				.set('Cookie', memberCookies)
+				.query({ search: '  100%_  ' })
+				.expect(200)
+			expect(filtered.body).toEqual(['z-100%_done'])
+			await request(server)
+				.get(endpoint)
+				.set('Cookie', ownerCookies)
+				.query({ search: 'x'.repeat(101) })
+				.expect(400)
+		})
+
+		it.each([
+			['api', 'Backend API', 'Frontend'],
+			['100%', 'Progress 100%', 'Progress 1000'],
+			['under_score', 'under_score', 'underXscore'],
+			['C:\\work', 'C:\\work', 'C:work'],
+			['поиск', 'Русский ПоИсК', 'Other'],
+		])(
+			'finds tasks by literal label substring %s without duplicate results',
+			async (search, label, otherLabel) => {
+				const match = await createTask(ownerCookies, {
+					title: 'Match',
+					labels: [label, `Extra ${label}`],
+				})
+				await createTask(ownerCookies, { title: 'Other', labels: [otherLabel] })
+				const response = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.set('Cookie', memberCookies)
+					.query({ search, limit: 1 })
+					.expect(200)
+				expect(response.body.data.map((task: { id: string }) => task.id)).toEqual([
+					match.id,
+				])
+				expect(response.body.meta.total).toBe(1)
+				expect(response.body.data[0].labels).toEqual(match.labels)
+			},
+		)
+
+		it('isolates catalogs and label searches by project and enforces team and edit permissions', async () => {
+			const task = await createTask(ownerCookies, { labels: ['Main'] })
+			const other = await request(server)
+				.post(`/teams/${teamId}/projects`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Other labels' })
+				.expect(201)
+			await request(server)
+				.post(`/teams/${teamId}/projects/${other.body.id}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Elsewhere', labels: ['Other private'] })
+				.expect(201)
+			const endpoint = `/teams/${teamId}/projects/${projectId}/tasks`
+			const catalog = await request(server)
+				.get(`${endpoint}/labels`)
+				.set('Cookie', memberCookies)
+				.expect(200)
+			expect(catalog.body).toEqual(['Main'])
+			const search = await request(server)
+				.get(endpoint)
+				.set('Cookie', memberCookies)
+				.query({ search: 'Other private' })
+				.expect(200)
+			expect(search.body.meta.total).toBe(0)
+			await request(server)
+				.get(`${endpoint}/labels`)
+				.set('Cookie', strangerCookies)
+				.expect(403)
+			await request(server)
+				.get(`/teams/${teamId}/projects/missing-project/tasks/labels`)
+				.set('Cookie', ownerCookies)
+				.expect(404)
+			await request(server)
+				.patch(`${endpoint}/${task.id}`)
+				.set('Cookie', memberCookies)
+				.send({ labels: ['Forbidden'] })
+				.expect(403)
+			expect(
+				await prisma.taskLabel.count({ where: { projectId, key: 'forbidden' } }),
+			).toBe(0)
+		})
+
+		it('keeps labels when moving across boards and includes them in board responses', async () => {
+			const task = await createTask(ownerCookies, { labels: ['Backend'] })
+			const other = await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/boards`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Label transfers' })
+				.expect(201)
+			const source = await prisma.boardColumn.findFirstOrThrow({
+				where: { boardId, key: 'TODO' },
+			})
+			const target = await prisma.boardColumn.findFirstOrThrow({
+				where: { boardId: other.body.id, key: 'DONE' },
+			})
+			const moved = await request(server)
+				.patch(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}/move`)
+				.set('Cookie', memberCookies)
+				.send({
+					fromColumnId: source.id,
+					toColumnId: target.id,
+					position: 0,
+					expectedVersion: 0,
+				})
+				.expect(200)
+			expect(moved.body.labels).toEqual(['Backend'])
+			expect(moved.body).not.toHaveProperty('labelAssignments')
+			const board = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.set('Cookie', memberCookies)
+				.query({ boardId: other.body.id })
+				.expect(200)
+			const stored = (board.body as BoardView).columns.flatMap((column) => column.tasks)
+			expect(stored).toHaveLength(1)
+			expect(stored[0]).toMatchObject({
+				id: task.id,
+				labels: ['Backend'],
+				boardColumnId: target.id,
+			})
+			expect(stored[0]).not.toHaveProperty('labelAssignments')
+		})
+
+		it('rejects cross-project assignments at the database boundary and cascades task deletion', async () => {
+			const task = await createTask(ownerCookies, { labels: ['Main'] })
+			const other = await request(server)
+				.post(`/teams/${teamId}/projects`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Other constraints' })
+				.expect(201)
+			const label = await prisma.taskLabel.create({
+				data: { projectId: other.body.id as string, name: 'Elsewhere', key: 'elsewhere' },
+			})
+			await expect(
+				prisma.taskLabelAssignment.create({
+					data: { taskId: task.id, labelId: label.id, projectId },
+				}),
+			).rejects.toMatchObject({ code: 'P2003' })
+			await expect(
+				prisma.taskLabelAssignment.create({
+					data: {
+						taskId: task.id,
+						labelId: label.id,
+						projectId: other.body.id as string,
+					},
+				}),
+			).rejects.toMatchObject({ code: 'P2003' })
+			await request(server)
+				.delete(`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
+				.set('Cookie', ownerCookies)
+				.expect(204)
+			expect(await prisma.taskLabelAssignment.count({ where: { taskId: task.id } })).toBe(
+				0,
+			)
+			expect(await prisma.taskLabel.count({ where: { projectId } })).toBe(1)
+		})
+
+		it.each([
+			[''],
+			[' '.repeat(2)],
+			['x'.repeat(41)],
+			Array.from({ length: 21 }, (_, i) => `Label ${i}`),
+		])('rejects invalid labels before creating catalog rows: %j', async (...labels) => {
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Invalid labels', labels })
+				.expect(400)
+			expect(await prisma.taskLabel.count({ where: { projectId } })).toBe(0)
+		})
+	})
+
 	describe('POST /teams/:teamId/projects/:projectId/tasks', () => {
+		it('creates concurrent tasks directly in a custom column with independent positions', async () => {
+			const boardResponse = await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/boards`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Quality' })
+				.expect(201)
+			const customBoardId = boardResponse.body.id as string
+			const column = await prisma.boardColumn.findFirstOrThrow({
+				where: { boardId: customBoardId, key: 'IN_REVIEW' },
+			})
+			await createTask(ownerCookies, { status: 'IN_REVIEW' })
+			const responses = await Promise.all(
+				[0, 1, 2].map((index) =>
+					request(server)
+						.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+						.set('Cookie', memberCookies)
+						.send({
+							title: `Review ${index}`,
+							boardColumnId: column.id,
+							status: 'IN_REVIEW',
+						})
+						.expect(201),
+				),
+			)
+			const stored = await prisma.task.findMany({
+				where: { boardColumnId: column.id },
+				orderBy: { position: 'asc' },
+			})
+			expect(stored).toHaveLength(3)
+			expect(stored.map((task) => task.position)).toEqual([1, 2, 3])
+			expect(stored.every((task) => task.status === 'IN_REVIEW')).toBe(true)
+			expect(new Set(stored.map((task) => task.id))).toEqual(
+				new Set(responses.map((response) => response.body.id)),
+			)
+			const snapshot = await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.query({ boardId: customBoardId })
+				.set('Cookie', ownerCookies)
+				.expect(200)
+			expect(
+				(snapshot.body as BoardView).columns.find((item) => item.id === column.id)?.tasks,
+			).toHaveLength(3)
+		})
+
+		it('rejects a target column belonging to another project', async () => {
+			const other = await request(server)
+				.post(`/teams/${teamId}/projects`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Other project' })
+				.expect(201)
+			const column = await prisma.boardColumn.findFirstOrThrow({
+				where: { projectId: other.body.id as string },
+			})
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Invalid placement', boardColumnId: column.id })
+				.expect(404)
+			expect(await prisma.task.count({ where: { projectId } })).toBe(0)
+		})
+
 		it('201 — участник команды (MEMBER) создаёт задачу и получает объект задачи', async () => {
 			const res = await request(server)
 				.post(`/teams/${teamId}/projects/${projectId}/tasks`)

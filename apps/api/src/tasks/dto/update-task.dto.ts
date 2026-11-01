@@ -10,6 +10,15 @@ import { createZodDto } from 'nestjs-zod'
 
 export class UpdateTaskDto extends createZodDto(updateTaskSchema) {
 	@ApiPropertyOptional({
+		type: [String],
+		maxItems: 20,
+		example: ['Backend', 'Срочно'],
+		description:
+			'Полный набор меток. Пустой массив очищает метки; отсутствие поля сохраняет их',
+	})
+	labels?: string[]
+
+	@ApiPropertyOptional({
 		example: 'Fix login bug',
 		description: 'Название задачи (1–255 символов)',
 	})
@@ -34,6 +43,12 @@ export class UpdateTaskDto extends createZodDto(updateTaskSchema) {
 		description: 'Статус задачи',
 	})
 	status?: TaskStatus
+
+	@ApiPropertyOptional({
+		example: 'column-uuid',
+		description: 'Колонка текущей доски; задача переносится в конец выбранной колонки',
+	})
+	boardColumnId?: string
 
 	@ApiPropertyOptional({
 		example: 'MEDIUM',

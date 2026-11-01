@@ -2,6 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { type TaskType, TaskTypeSchema } from '@repo/types'
 
 export class TaskResponseDto {
+	@ApiProperty({ type: [String], example: ['Backend', 'Срочно'] })
+	labels: string[]
+
 	@ApiProperty({ example: 'c1f2d3e4-5678-90ab-cdef-1234567890ab' })
 	id: string
 
@@ -41,6 +44,9 @@ export class TaskResponseDto {
 
 	@ApiProperty({ example: 'project-uuid' })
 	projectId: string
+
+	@ApiProperty({ example: 'column-uuid' })
+	boardColumnId: string
 
 	@ApiProperty({ example: 'user-uuid' })
 	createdById: string

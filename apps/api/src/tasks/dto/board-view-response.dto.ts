@@ -5,10 +5,7 @@ import {
 } from '../../boards/dto/board-response.dto'
 import { TaskResponseDto } from './task-response.dto'
 
-export class BoardTaskResponseDto extends TaskResponseDto {
-	@ApiProperty()
-	boardColumnId: string
-}
+export class BoardTaskResponseDto extends TaskResponseDto {}
 
 export class BoardColumnWithTasksResponseDto extends BoardColumnResponseDto {
 	@ApiProperty({ type: [BoardTaskResponseDto] })

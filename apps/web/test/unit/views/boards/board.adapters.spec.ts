@@ -32,11 +32,6 @@ describe('board API adapters', () => {
 		expect(card).toMatchObject(task)
 		expect(card.key).toBe(task.id)
 		expect(card.assignee).toEqual(assignee)
-		expect(card.createdAtLabel).toMatch(/15.*2026/)
-		expect(card.tags).toEqual([])
-		expect(card.comments).toEqual([])
-		expect(card.history).toEqual([])
-		expect(card.checklist).toBeUndefined()
 	})
 
 	it('различает неназначенную задачу и исполнителя без загруженного профиля', () => {

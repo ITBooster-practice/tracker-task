@@ -160,7 +160,9 @@ describe('Board schema (e2e)', () => {
 		const created = await service.create(teamId, projectId, userId, {
 			title: 'Created task',
 		})
-		expect(created).not.toHaveProperty('boardColumnId')
+		expect(created.boardColumnId).toBe(
+			defaultBoard.columns.find((column) => column.key === 'TODO')!.id,
+		)
 		expect(
 			await prisma.task.findUniqueOrThrow({ where: { id: created.id } }),
 		).toMatchObject({
@@ -201,7 +203,7 @@ describe('Board schema (e2e)', () => {
 		const boardTask = view.columns.find((column) => column.id === target.id)!.tasks[0]
 		for (const task of [read, list.data[0], updated]) {
 			expect(task.id).toBe(created.id)
-			expect(task).not.toHaveProperty('boardColumnId')
+			expect(task.boardColumnId).toBe(board.columns[0].id)
 		}
 		for (const task of [moved, boardTask]) {
 			expect(task).toMatchObject({ id: created.id, boardColumnId: target.id })

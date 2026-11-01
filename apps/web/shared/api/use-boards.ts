@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { BoardListItem, CreateBoard } from '@repo/types'
+import type { BoardListItem, CreateBoard, UpdateBoard } from '@repo/types'
 
 import { boardsService } from '@/shared/lib/api/boards-service'
 import type { ApiError } from '@/shared/lib/api/types'
@@ -34,6 +34,36 @@ export const useCreateBoard = () => {
 				(boards) => boards && [...boards.filter((item) => item.id !== board.id), board],
 			)
 			await client.invalidateQueries({ queryKey, exact: true })
+		},
+	})
+}
+
+export const useUpdateBoard = () => {
+	const client = useQueryClient()
+	return useMutation<
+		BoardListItem,
+		ApiError,
+		{ teamId: string; projectId: string; boardId: string; data: UpdateBoard }
+	>({
+		mutationFn: ({ teamId, projectId, boardId, data }) =>
+			boardsService.update(teamId, projectId, boardId, data),
+		onSuccess: async (board, { teamId, projectId, boardId }) => {
+			const listKey = boardsKeys.list(teamId, projectId)
+			await client.cancelQueries({ queryKey: listKey, exact: true })
+			client.setQueryData<BoardListItem[]>(listKey, (boards) =>
+				boards?.map((item) => (item.id === board.id ? board : item)),
+			)
+			await Promise.all([
+				client.invalidateQueries({ queryKey: listKey, exact: true }),
+				client.invalidateQueries({
+					queryKey: tasksKeys.board(teamId, projectId, boardId),
+					exact: true,
+				}),
+				client.invalidateQueries({ queryKey: tasksKeys.projectLists(teamId, projectId) }),
+				client.invalidateQueries({
+					queryKey: tasksKeys.projectDetails(teamId, projectId),
+				}),
+			])
 		},
 	})
 }

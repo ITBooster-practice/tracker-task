@@ -81,7 +81,8 @@ vi.mock('@dnd-kit/sortable', () => ({
 	verticalListSortingStrategy: 'vertical-list-sorting-strategy',
 }))
 
-vi.mock('@repo/ui', () => ({
+vi.mock('@repo/ui', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@repo/ui')>()),
 	Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
 		<button {...props}>{children}</button>
 	),

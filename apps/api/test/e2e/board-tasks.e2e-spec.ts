@@ -1,6 +1,11 @@
 import type { INestApplication } from '@nestjs/common'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { FEATURE_KEYS, type BoardView, type MoveTaskToColumn } from '@repo/types'
+import {
+	FEATURE_KEYS,
+	type BoardListItem,
+	type BoardView,
+	type MoveTaskToColumn,
+} from '@repo/types'
 import type { Redis } from 'ioredis'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
 import type { Server } from 'node:http'
@@ -10,6 +15,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { boardData, defaultBoardData } from '../../src/boards/default-board'
+import { TasksService } from '../../src/tasks/tasks.service'
 import { createTestApp, registerAndLogin, resetE2eState } from '../helpers/e2e.helpers'
 
 describe('Board task payload and moves (e2e)', () => {
@@ -209,6 +215,280 @@ describe('Board task payload and moves (e2e)', () => {
 		)
 	}
 
+	describe('task edit placement', () => {
+		it('exposes current and newly saved custom columns and atomically edits fields, labels and order', async () => {
+			const source = extraBoard.columns[0]
+			const first = await task(source.id, 'First', 0)
+			const moving = await task(source.id, 'Moving', 1)
+			const last = await task(source.id, 'Last', 2)
+			const boardPath = `/teams/${teamId}/projects/${projectId}/boards`
+			const boards = await request(server)
+				.get(boardPath)
+				.set('Cookie', ownerCookies)
+				.expect(200)
+			const current = (boards.body as BoardListItem[]).find(
+				(board) => board.id === extraBoard.id,
+			)!
+			const saved = await request(server)
+				.patch(`${boardPath}/${extraBoard.id}`)
+				.set('Cookie', ownerCookies)
+				.send({
+					name: current.name,
+					expectedUpdatedAt: current.updatedAt,
+					columnSnapshot: current.columns.map(
+						(column: { id: string; updatedAt: string }) => ({
+							id: column.id,
+							updatedAt: column.updatedAt,
+						}),
+					),
+					columns: [
+						...current.columns.map(
+							(column: { id: string; key: string; title: string; color: string }) => ({
+								id: column.id,
+								key: column.key,
+								title: column.title,
+								color: column.color,
+							}),
+						),
+						{ key: 'new-qa', title: 'New QA', color: 'violet' },
+					],
+				})
+				.expect(200)
+			const target = (saved.body as BoardListItem).columns.find(
+				(column) => column.key === 'new-qa',
+			)!
+			const refreshed = await request(server)
+				.get(boardPath)
+				.set('Cookie', memberCookies)
+				.expect(200)
+			expect(
+				refreshed.body.find((board: { id: string }) => board.id === extraBoard.id)
+					.columns,
+			).toContainEqual(
+				expect.objectContaining({ id: target.id, title: 'New QA', isSystem: false }),
+			)
+			const targetFirst = await task(target.id, 'Target first', 4)
+			const targetLast = await task(target.id, 'Target last', 7)
+			const detail = await request(server)
+				.get(`${path()}/${moving.id}`)
+				.set('Cookie', ownerCookies)
+				.expect(200)
+			expect(detail.body.boardColumnId).toBe(source.id)
+			const tasks = await request(server)
+				.get(path())
+				.set('Cookie', ownerCookies)
+				.expect(200)
+			expect(
+				tasks.body.data.find((item: { id: string }) => item.id === moving.id)
+					.boardColumnId,
+			).toBe(source.id)
+			const updated = await request(server)
+				.patch(`${path()}/${moving.id}`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Edited together', labels: ['Backend'], boardColumnId: target.id })
+				.expect(200)
+			expect(updated.body).toMatchObject({
+				title: 'Edited together',
+				labels: ['Backend'],
+				boardColumnId: target.id,
+				status: moving.status,
+				position: 2,
+				version: 1,
+			})
+			await expectOrder(source.id, [first.id, last.id])
+			await expectOrder(target.id, [targetFirst.id, targetLast.id, moving.id])
+			expect((await list(source.id)).map(({ version }) => version)).toEqual([0, 1])
+			expect((await list(target.id)).map(({ version }) => version)).toEqual([1, 1, 1])
+		})
+
+		it('derives status from a system destination and preserves it in a custom destination', async () => {
+			const custom = await prisma.boardColumn.create({
+				data: { boardId: mainBoard.id, projectId, key: 'qa', title: 'QA', position: 4 },
+			})
+			const done = mainBoard.columns.find((column) => column.key === 'DONE')!
+			const moving = await task(custom.id, 'Moving', 0)
+			const endpoint = `${path()}/${moving.id}`
+			const completed = await request(server)
+				.patch(endpoint)
+				.set('Cookie', ownerCookies)
+				.send({ boardColumnId: done.id, status: 'TODO' })
+				.expect(200)
+			expect(completed.body).toMatchObject({
+				boardColumnId: done.id,
+				status: 'DONE',
+				version: 1,
+			})
+			const returned = await request(server)
+				.patch(endpoint)
+				.set('Cookie', ownerCookies)
+				.send({ boardColumnId: custom.id })
+				.expect(200)
+			expect(returned.body).toMatchObject({
+				boardColumnId: custom.id,
+				status: 'DONE',
+				version: 2,
+			})
+			const changed = await request(server)
+				.patch(endpoint)
+				.set('Cookie', ownerCookies)
+				.send({ status: 'IN_PROGRESS' })
+				.expect(200)
+			expect(changed.body).toMatchObject({
+				boardColumnId: custom.id,
+				status: 'IN_PROGRESS',
+				version: 3,
+			})
+		})
+
+		it('keeps positions and neighbor versions when saving the same column', async () => {
+			const source = extraBoard.columns[0]
+			const moving = await task(source.id, 'Moving', 3)
+			const neighbor = await task(source.id, 'Neighbor', 9)
+			const updated = await request(server)
+				.patch(`${path()}/${moving.id}`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Edited', boardColumnId: source.id })
+				.expect(200)
+			expect(updated.body).toMatchObject({
+				title: 'Edited',
+				position: 3,
+				boardColumnId: source.id,
+				version: 1,
+			})
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: neighbor.id } })).toEqual(
+				neighbor,
+			)
+		})
+
+		it('rejects foreign board/project targets and unauthorized edits without partial fields or labels', async () => {
+			const moving = await task(mainBoard.columns[0].id, 'Protected', 0)
+			const foreignBoard = await createBoard('Foreign', otherProjectId)
+			for (const boardColumnId of [
+				extraBoard.columns[0].id,
+				foreignBoard.columns[0].id,
+			]) {
+				await request(server)
+					.patch(`${path()}/${moving.id}`)
+					.set('Cookie', ownerCookies)
+					.send({ title: 'Rejected', labels: ['Rejected'], boardColumnId })
+					.expect(404)
+			}
+			for (const cookies of [memberCookies, outsiderCookies]) {
+				await request(server)
+					.patch(`${path()}/${moving.id}`)
+					.set('Cookie', cookies)
+					.send({ title: 'Rejected', boardColumnId: mainBoard.columns[1].id })
+					.expect(403)
+			}
+			expect(await prisma.task.findUniqueOrThrow({ where: { id: moving.id } })).toEqual(
+				moving,
+			)
+			expect(
+				await prisma.taskLabel.count({ where: { projectId, key: 'rejected' } }),
+			).toBe(0)
+		})
+
+		it.each(['creator', 'admin'] as const)(
+			'allows the %s to change a custom column',
+			async (role) => {
+				const moving = await task(extraBoard.columns[0].id, 'Owned', 0)
+				if (role === 'creator')
+					await prisma.task.update({
+						where: { id: moving.id },
+						data: { createdById: memberId },
+					})
+				await request(server)
+					.patch(`${path()}/${moving.id}`)
+					.set('Cookie', role === 'creator' ? memberCookies : adminCookies)
+					.send({ boardColumnId: extraBoard.columns[1].id })
+					.expect(200)
+				expect(
+					await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+				).toMatchObject({ boardColumnId: extraBoard.columns[1].id, version: 1 })
+			},
+		)
+
+		it('rolls back fields, labels, placement and neighbor versions when the write fails', async () => {
+			const [source, target] = extraBoard.columns
+			const moving = await task(source.id, 'Moving', 0)
+			await task(source.id, 'Neighbor', 1)
+			await task(target.id, 'Target', 0)
+			const before = await prisma.task.findMany({
+				where: { projectId },
+				orderBy: { id: 'asc' },
+			})
+			await expect(
+				app.get(TasksService).update(teamId, projectId, moving.id, ownerId, {
+					title: 'Rejected',
+					boardColumnId: target.id,
+					labels: ['Rejected'],
+					assigneeId: 'missing-assignee',
+				}),
+			).rejects.toMatchObject({ code: 'P2003' })
+			expect(
+				await prisma.task.findMany({ where: { projectId }, orderBy: { id: 'asc' } }),
+			).toEqual(before)
+			expect(
+				await prisma.taskLabel.count({ where: { projectId, key: 'rejected' } }),
+			).toBe(0)
+		})
+
+		it('serializes task edits with column reordering', async () => {
+			const [source, target] = extraBoard.columns
+			const moving = await task(source.id, 'Moving', 0)
+			const columnIds = extraBoard.columns.map(({ id }) => id).reverse()
+			const [updated, reordered] = await Promise.all([
+				request(server)
+					.patch(`${path()}/${moving.id}`)
+					.set('Cookie', ownerCookies)
+					.send({ title: 'Edited', boardColumnId: target.id }),
+				request(server)
+					.patch(`/boards/${extraBoard.id}/columns/reorder`)
+					.set('Cookie', ownerCookies)
+					.send({ columnIds }),
+			])
+			expect(updated.status).toBe(200)
+			expect(reordered.status).toBe(200)
+			expect(
+				(
+					await prisma.boardColumn.findMany({
+						where: { boardId: extraBoard.id },
+						orderBy: { position: 'asc' },
+					})
+				).map(({ id }) => id),
+			).toEqual(columnIds)
+			await expectOrder(target.id, [moving.id])
+		})
+
+		it('serializes task edits with source deletion and transfer without deadlocks or duplicate positions', async () => {
+			const [source, target] = extraBoard.columns
+			const moving = await task(source.id, 'Moving', 0)
+			const remaining = await task(source.id, 'Remaining', 1)
+			const existing = await task(target.id, 'Existing', 0)
+			const [updated, deleted] = await Promise.all([
+				request(server)
+					.patch(`${path()}/${moving.id}`)
+					.set('Cookie', ownerCookies)
+					.send({ title: 'Edited', boardColumnId: target.id }),
+				request(server)
+					.delete(`/boards/${extraBoard.id}/columns/${source.id}`)
+					.set('Cookie', ownerCookies)
+					.send({ targetColumnId: target.id }),
+			])
+			expect([200, 404, 409]).toContain(updated.status)
+			expect(deleted.status).toBe(204)
+			await expectOrder(target.id, [existing.id, moving.id, remaining.id])
+			expect(
+				await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
+			).toMatchObject({
+				title: updated.status === 200 ? 'Edited' : 'Moving',
+				boardColumnId: target.id,
+				version: updated.status === 200 ? updated.body.version : 1,
+			})
+			if (updated.status === 200) expect([1, 2]).toContain(updated.body.version)
+		})
+	})
+
 	it('returns only the selected board, including empty columns, with ordered tasks and serialized dates', async () => {
 		const [first, second] = extraBoard.columns
 		await prisma.boardColumn.update({ where: { id: first.id }, data: { position: -1 } })
@@ -222,6 +502,7 @@ describe('Board task payload and moves (e2e)', () => {
 		await task(mainBoard.columns[0].id, 'Another board', 0)
 		const result = await view(extraBoard.id)
 		expect(result.board).toEqual({
+			description: null,
 			id: extraBoard.id,
 			projectId,
 			name: 'Development',
@@ -636,6 +917,67 @@ describe('Board task payload and moves (e2e)', () => {
 		expect(
 			await prisma.task.findUniqueOrThrow({ where: { id: moving.id } }),
 		).toMatchObject({ status: 'DONE', boardColumnId: mainBoard.columns[3].id, projectId })
+	})
+
+	it('keeps a custom board placement when task details update its status', async () => {
+		const current = await task(extraBoard.columns[0].id, 'Custom task', 0)
+		await request(server)
+			.patch(`${path()}/${current.id}`)
+			.set('Cookie', ownerCookies)
+			.send({ status: 'DONE' })
+			.expect(200)
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: current.id } }),
+		).toMatchObject({
+			boardColumnId: extraBoard.columns[0].id,
+			status: 'DONE',
+			version: current.version + 1,
+		})
+		expect((await view(extraBoard.id)).columns[0].tasks).toEqual([
+			expect.objectContaining({ id: current.id, status: 'DONE' }),
+		])
+		expect(
+			(await view(mainBoard.id)).columns.flatMap((column) => column.tasks),
+		).toHaveLength(0)
+	})
+
+	it('updates a system status in the corresponding default board column', async () => {
+		const current = await task(mainBoard.columns[0].id, 'System task', 0)
+		await request(server)
+			.patch(`${path()}/${current.id}`)
+			.set('Cookie', ownerCookies)
+			.send({ status: 'DONE' })
+			.expect(200)
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: current.id } }),
+		).toMatchObject({ boardColumnId: mainBoard.columns[3].id, status: 'DONE' })
+	})
+
+	it('finds a task by its key without losing project scoping', async () => {
+		const current = await task(mainBoard.columns[0].id, 'Search task', 0)
+		const response = await request(server)
+			.get(path())
+			.query({ search: current.id })
+			.set('Cookie', ownerCookies)
+			.expect(200)
+		expect(response.body.data.map((item: { id: string }) => item.id)).toEqual([
+			current.id,
+		])
+	})
+
+	it('rejects mismatched team and project in task detail, update and deletion', async () => {
+		const current = await task(mainBoard.columns[0].id, 'Scoped task', 0)
+		const wrongPath = `${path(otherTeamId, projectId)}/${current.id}`
+		await request(server).get(wrongPath).set('Cookie', ownerCookies).expect(404)
+		await request(server)
+			.patch(wrongPath)
+			.set('Cookie', ownerCookies)
+			.send({ title: 'Changed' })
+			.expect(404)
+		await request(server).delete(wrongPath).set('Cookie', ownerCookies).expect(404)
+		expect(
+			await prisma.task.findUniqueOrThrow({ where: { id: current.id } }),
+		).toMatchObject({ title: 'Scoped task' })
 	})
 
 	it('accepts insertion at the end of another column', async () => {
@@ -1170,7 +1512,11 @@ describe('Board task payload and moves (e2e)', () => {
 			required: ['board', 'columns'],
 		})
 		expect(document.components?.schemas?.TaskResponseDto).toMatchObject({
+			required: expect.arrayContaining(['boardColumnId']),
 			properties: { version: { type: 'number', minimum: 0 } },
+		})
+		expect(document.components?.schemas?.UpdateTaskDto).toMatchObject({
+			properties: { boardColumnId: { type: 'string' } },
 		})
 		expect(document.components?.schemas?.TaskMoveConflictResponseDto).toMatchObject({
 			properties: {

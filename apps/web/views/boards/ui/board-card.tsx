@@ -1,12 +1,17 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useId, type ReactNode } from 'react'
 
-import { Avatar, AvatarFallback, Button, Card, CardContent, cn } from '@repo/ui'
-import { GripVertical, MessageSquare, SquareCheckBig } from '@repo/ui/icons'
+import { Avatar, AvatarFallback, Card, CardContent, cn } from '@repo/ui'
+import { CalendarDays } from '@repo/ui/icons'
 
-import { TaskPriorityBadge, TaskTypeBadge } from '@/entities/task'
+import {
+	taskChoiceToneClasses,
+	taskPriorityChoices,
+	taskTypeChoices,
+} from '@/features/tasks/ui/task-choice-options'
+import { TaskLabels } from '@/features/tasks/ui/task-labels'
 
+import { BOARD_PRIORITY_LABELS, BOARD_TYPE_OPTIONS } from '../model/constants'
 import type { BoardColumnId, BoardTask } from '../model/types'
 
 interface BoardCardProps {
@@ -19,132 +24,138 @@ interface BoardCardProps {
 	laneKey?: string
 }
 
+const dateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
 function BoardCardBody({
 	task,
 	isDragOverlay = false,
-	dragHandle,
-}: Pick<BoardCardProps, 'task' | 'isDragOverlay'> & { dragHandle?: ReactNode }) {
+}: Pick<BoardCardProps, 'task' | 'isDragOverlay'>) {
+	const TypeIcon = taskTypeChoices[task.type].Icon
+	const PriorityIcon = taskPriorityChoices[task.priority].Icon
+	const overdue = Boolean(
+		task.dueDate &&
+		new Date(task.dueDate).getTime() < Date.now() &&
+		task.status !== 'DONE',
+	)
 	return (
 		<Card
 			className={cn(
-				'gap-0 rounded-[12px] border-border/70 bg-card py-0 shadow-[0_4px_16px_-8px_rgba(12,18,32,0.6)] transition-[box-shadow,border-color,transform] duration-200',
-				isDragOverlay &&
-					'border-primary/30 shadow-[0_24px_56px_-28px_rgba(46,84,255,0.55)]',
+				'gap-0 border-border bg-card py-0 shadow-[var(--shadow-1)] transition-[box-shadow,border-color] duration-200 hover:border-primary/40',
+				isDragOverlay && 'border-primary/50 shadow-[var(--shadow-3)]',
 			)}
 		>
-			<CardContent className='space-y-2.5 px-3 py-3'>
-				<div className='flex min-w-0 items-center gap-2'>
-					<TaskTypeBadge type={task.type} />
-					<span className='text-[10px] font-medium tracking-[0.02em] text-muted-foreground'>
-						{task.key}
+			<CardContent className='space-y-3 p-3'>
+				<div className='flex min-w-0 items-center justify-between gap-2 text-xs text-muted-foreground'>
+					<div className='flex min-w-0 items-center gap-1.5'>
+						<TypeIcon
+							aria-hidden
+							className={cn(
+								'size-3 shrink-0',
+								taskChoiceToneClasses[taskTypeChoices[task.type].tone],
+							)}
+						/>
+						<span className='sr-only'>
+							{BOARD_TYPE_OPTIONS.find((option) => option.value === task.type)?.label}
+						</span>
+						<span className='truncate' title={task.key}>
+							{task.key}
+						</span>
+					</div>
+					<span
+						className={cn(
+							'inline-flex shrink-0 items-center gap-1',
+							taskChoiceToneClasses[taskPriorityChoices[task.priority].tone],
+						)}
+					>
+						<PriorityIcon aria-hidden className='size-3' />
+						{BOARD_PRIORITY_LABELS[task.priority]}
 					</span>
 				</div>
-
-				<p className='text-[13px] font-medium leading-[1.4] text-foreground'>
+				<p className='min-h-12 text-base leading-6 font-medium break-words text-foreground'>
 					{task.title}
 				</p>
-
-				<div className='flex items-center gap-2.5 text-[11px] text-muted-foreground'>
-					<TaskPriorityBadge priority={task.priority} />
-
-					{task.checklist ? (
-						<div className='inline-flex items-center gap-1'>
-							<SquareCheckBig className='size-3' />
-							<span>
-								{task.checklist.completed}/{task.checklist.total}
-							</span>
-						</div>
-					) : null}
-
-					{task.comments.length > 0 ? (
-						<div className='inline-flex items-center gap-1'>
-							<MessageSquare className='size-3' />
-							<span>{task.comments.length}</span>
-						</div>
-					) : null}
-				</div>
-
-				<div className='flex items-center justify-between gap-2'>
-					{dragHandle}
-					<div className='flex min-w-0 flex-wrap gap-1'>
-						{task.tags.map((tag) => (
-							<span
-								key={tag}
-								className='rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground'
-							>
-								{tag}
-							</span>
-						))}
+				<TaskLabels labels={task.labels} />
+				<div className='flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground'>
+					<span
+						className={cn(
+							'inline-flex items-center gap-1',
+							overdue && 'text-destructive',
+						)}
+					>
+						<CalendarDays aria-hidden className='size-3 shrink-0' />
+						{task.dueDate ? (
+							<time dateTime={task.dueDate}>
+								{dateFormatter.format(new Date(task.dueDate))}
+								{overdue && ' · просрочено'}
+							</time>
+						) : (
+							'Без срока'
+						)}
+					</span>
+					<div className='ml-auto flex min-w-0 items-center gap-1.5'>
+						<Avatar className='size-5 shrink-0'>
+							<AvatarFallback className='bg-primary/10 text-xs font-normal text-primary'>
+								{task.assignee?.initials ?? '—'}
+							</AvatarFallback>
+						</Avatar>
+						<span className='max-w-28 truncate' title={task.assignee?.name}>
+							{task.assignee?.name ?? 'Без исполнителя'}
+						</span>
 					</div>
-
-					<Avatar className='size-6 shrink-0 border border-border/70'>
-						<AvatarFallback className='bg-primary/10 text-[9px] font-semibold text-primary'>
-							{task.assignee?.initials ?? '—'}
-						</AvatarFallback>
-					</Avatar>
 				</div>
 			</CardContent>
 		</Card>
 	)
 }
 
-function BoardCardPlaceholder({
-	task,
-	hasDragHandle,
-}: Pick<BoardCardProps, 'task'> & { hasDragHandle?: boolean }) {
+function BoardCardPlaceholder({ task }: Pick<BoardCardProps, 'task'>) {
 	return (
 		<div className='relative'>
 			<div className='pointer-events-none opacity-0'>
-				<BoardCardBody
-					task={task}
-					dragHandle={hasDragHandle ? <span className='size-8 shrink-0' /> : undefined}
-				/>
+				<BoardCardBody task={task} />
 			</div>
-			<div className='absolute inset-0 rounded-[calc(var(--radius-surface)-4px)] border border-dashed border-primary/45 bg-primary/8 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]' />
+			<div className='absolute inset-0 rounded-[var(--radius-surface)] border border-dashed border-primary/45 bg-primary/8' />
 		</div>
 	)
 }
 
-function BoardCard({
+function BoardCard(props: BoardCardProps) {
+	if (props.isDragOverlay) {
+		return (
+			<div className='select-none' data-testid={`board-task-overlay-${props.task.id}`}>
+				<BoardCardBody task={props.task} isDragOverlay />
+			</div>
+		)
+	}
+	return <SortableBoardCard {...props} />
+}
+
+function SortableBoardCard({
 	task,
 	boardColumnId,
 	onOpenTask,
 	disabled = false,
 	isActiveDragItem = false,
-	isDragOverlay = false,
 	laneKey,
-}: BoardCardProps) {
-	const instructionsId = useId()
-	const {
-		attributes,
-		listeners,
-		setNodeRef,
-		setActivatorNodeRef,
-		transform,
-		transition,
-		isDragging,
-	} = useSortable({
-		id: task.id,
-		data: {
-			type: 'task',
-			taskId: task.id,
-			boardColumnId,
-			laneKey,
-		},
-		disabled: disabled || isDragOverlay,
-	})
+}: Omit<BoardCardProps, 'isDragOverlay'>) {
+	const instructionsId = `board-task-instructions-${task.id}`
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+		useSortable({
+			id: task.id,
+			data: {
+				type: 'task',
+				taskId: task.id,
+				boardColumnId,
+				laneKey,
+			},
+			disabled,
+		})
 
-	const style = isDragOverlay
-		? undefined
-		: {
-				transform: CSS.Transform.toString(transform),
-				transition,
-			}
+	const style = { transform: CSS.Transform.toString(transform), transition }
 
 	if (isActiveDragItem) {
 		return (
 			<div ref={setNodeRef} style={style} data-testid={`board-task-${task.id}`}>
-				<BoardCardPlaceholder task={task} hasDragHandle={Boolean(laneKey)} />
+				<BoardCardPlaceholder task={task} />
 			</div>
 		)
 	}
@@ -152,15 +163,27 @@ function BoardCard({
 	return (
 		<div
 			ref={setNodeRef}
+			id={`board-task-${task.id}`}
 			style={style}
 			data-testid={`board-task-${task.id}`}
 			{...attributes}
-			{...listeners}
+			role='button'
+			tabIndex={0}
+			aria-label={task.title}
+			aria-disabled={undefined}
+			aria-describedby={disabled ? undefined : instructionsId}
+			onPointerDown={(event) => {
+				if (event.pointerType !== 'touch') listeners?.onPointerDown?.(event)
+			}}
+			onTouchStart={(event) => listeners?.onTouchStart?.(event)}
 			onClick={() => onOpenTask(task.id)}
 			onKeyDown={(event) => {
-				if (event.key === 'Enter' || event.key === ' ') {
+				if (isDragging) return
+				if (event.key === 'Enter' || (disabled && event.key === ' ')) {
 					event.preventDefault()
 					onOpenTask(task.id)
+				} else {
+					listeners?.onKeyDown?.(event)
 				}
 			}}
 			title={
@@ -168,44 +191,21 @@ function BoardCard({
 					? 'Открыть задачу'
 					: 'Клик открывает задачу. Зажмите и потяните, чтобы перенести её.'
 			}
-			className={cn('select-none outline-none', {
-				'cursor-grab active:cursor-grabbing': !disabled,
-				'cursor-default': disabled,
-				'opacity-85': isDragging,
-			})}
-		>
-			{laneKey && !isDragOverlay && (
-				<span id={instructionsId} className='sr-only'>
-					Нажмите Пробел, чтобы взять задачу. Стрелки перемещают её между карточками,
-					группами и колонками. Пробел или Enter сохраняет перенос, Escape отменяет.
-				</span>
+			className={cn(
+				'relative select-none rounded-[var(--radius-surface)] outline-none focus-visible:ring-2 focus-visible:ring-ring',
+				{
+					'cursor-grab active:cursor-grabbing': !disabled,
+					'cursor-default': disabled,
+					'opacity-85': isDragging,
+				},
 			)}
-			<BoardCardBody
-				task={task}
-				isDragOverlay={isDragOverlay}
-				dragHandle={
-					laneKey && !isDragOverlay ? (
-						<Button
-							id={`board-task-handle-${task.id}`}
-							ref={setActivatorNodeRef}
-							type='button'
-							variant='ghost'
-							size='icon-sm'
-							disabled={disabled}
-							{...attributes}
-							aria-label={`Переместить задачу «${task.title}»`}
-							aria-describedby={instructionsId}
-							onClick={(event) => event.stopPropagation()}
-							onKeyDown={(event) => {
-								event.stopPropagation()
-								listeners?.onKeyDown?.(event)
-							}}
-						>
-							<GripVertical aria-hidden='true' />
-						</Button>
-					) : undefined
-				}
-			/>
+		>
+			<span id={instructionsId} className='sr-only'>
+				Enter открывает задачу. Нажмите Пробел, чтобы взять задачу. Стрелки перемещают её
+				между карточками, группами и колонками. Пробел или Enter сохраняет перенос, Escape
+				отменяет.
+			</span>
+			<BoardCardBody task={task} />
 		</div>
 	)
 }

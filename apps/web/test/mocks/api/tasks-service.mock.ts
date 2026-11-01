@@ -3,6 +3,7 @@ import { vi, type MockedFunction } from 'vitest'
 type TasksService = typeof import('@/shared/lib/api/tasks-service').tasksService
 
 type MockedTasksService = {
+	getLabels: MockedFunction<TasksService['getLabels']>
 	getBoard: MockedFunction<TasksService['getBoard']>
 	move: MockedFunction<TasksService['move']>
 	getAll: MockedFunction<TasksService['getAll']>
@@ -13,6 +14,7 @@ type MockedTasksService = {
 }
 
 export const tasksServiceMock: MockedTasksService = {
+	getLabels: vi.fn<TasksService['getLabels']>(async () => []),
 	getBoard: vi.fn<TasksService['getBoard']>(),
 	move: vi.fn<TasksService['move']>(),
 	getAll: vi.fn<TasksService['getAll']>(),
@@ -26,6 +28,7 @@ export function resetTasksServiceMock() {
 	for (const mockFn of Object.values(tasksServiceMock)) {
 		mockFn.mockReset()
 	}
+	tasksServiceMock.getLabels.mockResolvedValue([])
 }
 
 vi.mock('@/shared/lib/api/tasks-service', () => ({

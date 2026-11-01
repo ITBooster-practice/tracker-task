@@ -1,102 +1,95 @@
-import '@/test/mocks/views/boards/board-toolbar.mock'
-
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import { emptyProjectBoardFilters } from '@/views/boards/model/project-board-filters'
 import { BoardToolbar } from '@/views/boards/ui/board-toolbar'
 
-const assigneeOptions = [
-	{ label: 'Все исполнители', value: 'ALL' },
-	{ label: 'Без исполнителя', value: 'UNASSIGNED' },
-	{ label: 'Анна', value: 'anna' },
-]
-const groupingProps = { grouping: 'none' as const, onGroupingChange: () => undefined }
 afterEach(cleanup)
-it('переключает группировку отдельно от сброса фильтров', () => {
+const props = {
+	grouping: 'none' as const,
+	onGroupingChange: vi.fn(),
+	filters: emptyProjectBoardFilters,
+	assigneeOptions: [
+		{ label: 'Все исполнители', value: 'ALL' },
+		{ label: 'Без исполнителя', value: 'UNASSIGNED' },
+		{ label: 'Анна', value: 'anna' },
+	],
+	onChange: vi.fn(),
+	onReset: vi.fn(),
+	currentUserId: 'anna',
+	totalTasks: 4,
+	visibleTasks: 4,
+}
+
+it('раскрытие панели сохраняет условия и оставляет снимаемые фильтры видимыми', () => {
 	const change = vi.fn()
 	render(
 		<BoardToolbar
-			{...groupingProps}
-			onGroupingChange={change}
-			filters={emptyProjectBoardFilters}
-			assigneeOptions={assigneeOptions}
-			onChange={() => undefined}
-			onReset={() => undefined}
+			{...props}
+			filters={{ ...emptyProjectBoardFilters, type: 'BUG', priority: 'HIGH' }}
+			onChange={change}
 		/>,
 	)
-	fireEvent.change(screen.getByRole('combobox', { name: 'Группировка' }), {
-		target: { value: 'assignee' },
-	})
-	expect(change).toHaveBeenCalledExactlyOnceWith('assignee')
-	expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toHaveProperty(
-		'disabled',
-		true,
+	expect(screen.queryByRole('radiogroup', { name: 'Тип задачи' })).toBeNull()
+	expect(screen.getByRole('button', { name: /Снять фильтр: Баг/ })).toBeDefined()
+	fireEvent.click(screen.getByRole('button', { name: 'Фильтры · 2', expanded: false }))
+	expect(
+		screen.getByRole('button', { name: 'Скрыть фильтры · 2', expanded: true }),
+	).toBeDefined()
+	expect(screen.getByRole('radiogroup', { name: 'Тип задачи' })).toBeDefined()
+	fireEvent.click(
+		within(screen.getByRole('radiogroup', { name: 'Приоритет' })).getByRole('radio', {
+			name: 'Низкий',
+		}),
 	)
+	expect(change).toHaveBeenCalledWith({ priority: 'LOW' })
+	fireEvent.click(screen.getByRole('button', { name: 'Скрыть фильтры · 2' }))
+	expect(
+		screen.getByRole('button', { name: 'Фильтры · 2', expanded: false }),
+	).toBeDefined()
+	expect(screen.getByRole('button', { name: /Снять фильтр: Баг/ })).toBeDefined()
 })
-it('показывает связанные подписи полей и блокирует сброс без фильтров', () => {
-	render(
-		<BoardToolbar
-			{...groupingProps}
-			filters={emptyProjectBoardFilters}
-			assigneeOptions={assigneeOptions}
-			onChange={() => undefined}
-			onReset={() => undefined}
-		/>,
-	)
-	expect(screen.getByLabelText('Поиск задач')).toHaveProperty('value', '')
-	for (const name of ['Исполнитель', 'Приоритет', 'Тип задачи'])
-		expect(screen.getByRole('combobox', { name })).toHaveProperty('value', 'ALL')
-	expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toHaveProperty(
-		'disabled',
-		true,
-	)
+
+it('быстрые условия и группировка изменяют независимые параметры', () => {
+	const change = vi.fn(),
+		group = vi.fn()
+	render(<BoardToolbar {...props} onChange={change} onGroupingChange={group} />)
+	fireEvent.click(screen.getByRole('button', { name: 'Только мои' }))
+	fireEvent.click(screen.getByRole('button', { name: 'Без исполнителя' }))
+	fireEvent.click(screen.getByRole('button', { name: 'Просроченные' }))
+	expect(change.mock.calls).toEqual([
+		[{ assignee: 'anna' }],
+		[{ assignee: 'UNASSIGNED' }],
+		[{ overdue: true }],
+	])
+	fireEvent.click(screen.getByRole('radio', { name: 'По исполнителю' }))
+	expect(group).toHaveBeenCalledWith('assignee')
 })
-it('передаёт изменения поиска, всех фильтров и сброс', () => {
+
+it('передаёт поиск, снимает одно условие и сбрасывает все условия', () => {
 	const change = vi.fn(),
 		reset = vi.fn()
 	render(
 		<BoardToolbar
-			{...groupingProps}
-			filters={{ ...emptyProjectBoardFilters, priority: 'HIGH' }}
-			assigneeOptions={assigneeOptions}
+			{...props}
+			filters={{ ...emptyProjectBoardFilters, assignee: 'anna' }}
 			onChange={change}
 			onReset={reset}
 		/>,
 	)
 	fireEvent.change(screen.getByLabelText('Поиск задач'), { target: { value: 'TT-1' } })
-	fireEvent.change(screen.getByRole('combobox', { name: 'Приоритет' }), {
-		target: { value: 'LOW' },
-	})
-	fireEvent.change(screen.getByRole('combobox', { name: 'Тип задачи' }), {
-		target: { value: 'BUG' },
-	})
-	fireEvent.change(screen.getByRole('combobox', { name: 'Исполнитель' }), {
-		target: { value: 'anna' },
-	})
-	expect(change.mock.calls).toEqual([
-		[{ query: 'TT-1' }, true],
-		[{ priority: 'LOW' }],
-		[{ type: 'BUG' }],
-		[{ assignee: 'anna' }],
-	])
-	fireEvent.click(screen.getByRole('button', { name: 'Сбросить фильтры' }))
-	expect(reset).toHaveBeenCalledTimes(1)
+	expect(change).toHaveBeenCalledWith({ query: 'TT-1' }, true)
+	fireEvent.click(screen.getByRole('button', { name: 'Снять фильтр: Только мои' }))
+	expect(change).toHaveBeenCalledWith({ assignee: 'ALL' })
+	fireEvent.click(screen.getByRole('button', { name: 'Сбросить всё' }))
+	expect(reset).toHaveBeenCalledOnce()
 })
-it('объясняет загрузку и ошибку исполнителей и позволяет повторить', () => {
+
+it('показывает ошибку списка исполнителей и повторяет запрос', () => {
 	const retry = vi.fn()
-	const props = {
-		...groupingProps,
-		filters: emptyProjectBoardFilters,
-		assigneeOptions,
-		onChange: () => undefined,
-		onReset: () => undefined,
-		onRetryAssignees: retry,
-	}
-	const { rerender } = render(<BoardToolbar {...props} assigneesPending />)
-	expect(screen.getByRole('status').textContent).toContain('Загружаем исполнителей')
-	rerender(<BoardToolbar {...props} assigneesError />)
+	render(<BoardToolbar {...props} assigneesError onRetryAssignees={retry} />)
+	fireEvent.click(screen.getByRole('button', { name: /^Фильтры/ }))
 	expect(screen.getByRole('alert').textContent).toContain('Не удалось')
 	fireEvent.click(screen.getByRole('button', { name: 'Повторить' }))
-	expect(retry).toHaveBeenCalledTimes(1)
+	expect(retry).toHaveBeenCalledOnce()
 })

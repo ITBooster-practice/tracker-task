@@ -37,6 +37,7 @@ import { TaskResponseDto } from './dto/task-response.dto'
 import { TaskMoveConflictResponseDto } from './dto/task-move-conflict-response.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TaskFilterQueryDto } from './dto/task-filter-query.dto'
+import { TaskLabelsQueryDto } from './dto/task-labels-query.dto'
 import { TasksService } from './tasks.service'
 
 @RequireFeatures(FEATURE_KEYS.TASKS)
@@ -52,6 +53,8 @@ export class TasksController {
 
 	@ApiOperation({ summary: 'Создать задачу' })
 	@ApiCreatedResponse({ type: TaskResponseDto, description: 'Задача успешно создана' })
+	@ApiBadRequestResponse({ description: 'Некорректные поля или статус задачи' })
+	@ApiNotFoundResponse({ description: 'Проект или целевая колонка не найдены' })
 	@ApiForbiddenResponse({ description: 'Вы не являетесь участником этой команды' })
 	@Post()
 	@HttpCode(HttpStatus.CREATED)
@@ -100,6 +103,21 @@ export class TasksController {
 		return this.boardTasksService.getBoard(teamId, projectId, query.boardId, userId)
 	}
 
+	@ApiOperation({ summary: 'Справочник меток проекта' })
+	@ApiOkResponse({ type: [String], description: 'До 20 меток по алфавиту' })
+	@ApiBadRequestResponse({ description: 'Поисковая строка длиннее 100 символов' })
+	@ApiForbiddenResponse({ description: 'Нет доступа к команде' })
+	@ApiNotFoundResponse({ description: 'Проект не найден в этой команде' })
+	@Get('labels')
+	findLabels(
+		@Param('teamId') teamId: string,
+		@Param('projectId') projectId: string,
+		@Authorized('id') userId: string,
+		@Query() query: TaskLabelsQueryDto,
+	) {
+		return this.tasksService.findLabels(teamId, projectId, userId, query)
+	}
+
 	@ApiOperation({ summary: 'Получить задачу по ID' })
 	@ApiOkResponse({ type: TaskResponseDto, description: 'Данные задачи' })
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
@@ -118,6 +136,10 @@ export class TasksController {
 	@ApiOkResponse({ type: TaskResponseDto, description: 'Задача обновлена' })
 	@ApiNotFoundResponse({ description: 'Задача не найдена' })
 	@ApiForbiddenResponse({ description: 'Недостаточно прав для обновления задачи' })
+	@ApiConflictResponse({
+		description:
+			'Задача изменилась во время сохранения. Обновите данные и повторите запрос.',
+	})
 	@Patch(':taskId')
 	update(
 		@Param('teamId') teamId: string,

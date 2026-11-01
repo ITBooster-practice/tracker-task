@@ -2,13 +2,6 @@ import type { BoardTask as ApiBoardTask, BoardView } from '@repo/types'
 
 import type { BoardAssignee, BoardColumn, BoardTask } from './types'
 
-const createdAtFormatter = new Intl.DateTimeFormat('ru-RU', {
-	day: 'numeric',
-	month: 'short',
-	year: 'numeric',
-	timeZone: 'UTC',
-})
-
 export const toBoardCardViewModel = (
 	task: ApiBoardTask,
 	assignees: readonly BoardAssignee[] = [],
@@ -23,10 +16,6 @@ export const toBoardCardViewModel = (
 					name: 'Неизвестный пользователь',
 					initials: '?',
 				}),
-	tags: [],
-	comments: [],
-	history: [],
-	createdAtLabel: createdAtFormatter.format(new Date(task.createdAt)),
 })
 
 export const toBoardColumnsViewModel = (

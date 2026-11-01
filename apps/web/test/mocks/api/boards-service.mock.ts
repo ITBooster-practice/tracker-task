@@ -5,6 +5,7 @@ type BoardsService = typeof import('@/shared/lib/api/boards-service').boardsServ
 export const boardsServiceMock = {
 	getAll: vi.fn<BoardsService['getAll']>(),
 	create: vi.fn<BoardsService['create']>(),
+	update: vi.fn<BoardsService['update']>(),
 	delete: vi.fn<BoardsService['delete']>(),
 }
 

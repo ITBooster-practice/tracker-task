@@ -16,6 +16,11 @@ export class BoardColumnResponseDto {
 	@ApiProperty({ example: 'К выполнению' })
 	title: string
 
+	@ApiProperty({
+		enum: ['gray', 'blue', 'cyan', 'green', 'yellow', 'orange', 'red', 'violet'],
+	})
+	color: string
+
 	@ApiProperty({ example: 0 })
 	position: number
 
@@ -38,6 +43,9 @@ export class BoardResponseDto {
 
 	@ApiProperty({ example: 'Разработка' })
 	name: string
+
+	@ApiProperty({ type: String, nullable: true })
+	description: string | null
 
 	@ApiProperty()
 	isDefault: boolean

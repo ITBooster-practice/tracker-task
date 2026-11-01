@@ -8,7 +8,7 @@ export default async function TaskNewModalPage() {
 	await requireServerFeature(FEATURE_KEYS.TASKS)
 	return (
 		<FeatureGate feature={FEATURE_KEYS.TASKS}>
-			<CreateTaskDialog />
+			<CreateTaskDialog intercepted />
 		</FeatureGate>
 	)
 }

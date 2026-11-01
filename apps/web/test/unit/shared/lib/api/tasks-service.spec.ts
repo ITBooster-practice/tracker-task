@@ -16,6 +16,30 @@ describe('tasksService', () => {
 		resetApiClientMock()
 	})
 
+	it('запрашивает каталог меток проекта с поиском и сигналом отмены', async () => {
+		const labels = ['refactor', 'Frontend']
+		const { signal } = new AbortController()
+		mockApiClient.get.mockResolvedValue(axiosResponse(labels))
+
+		await expect(
+			tasksService.getLabels('team-1', 'project-1', '  front  ', signal),
+		).resolves.toEqual(labels)
+		expect(mockApiClient.get).toHaveBeenCalledWith(
+			'/teams/team-1/projects/project-1/tasks/labels',
+			{ params: { search: 'front' }, signal },
+		)
+	})
+
+	it('запрашивает начальный каталог без поисковой строки', async () => {
+		mockApiClient.get.mockResolvedValue(axiosResponse([]))
+
+		await tasksService.getLabels('team-1', 'project-1')
+		expect(mockApiClient.get).toHaveBeenCalledWith(
+			'/teams/team-1/projects/project-1/tasks/labels',
+			{ params: { search: undefined }, signal: undefined },
+		)
+	})
+
 	it('загружает выбранную доску и передаёт сигнал отмены', async () => {
 		const board = createBoardViewFixture('board-2')
 		const { signal } = new AbortController()
