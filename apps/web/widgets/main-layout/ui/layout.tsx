@@ -4,12 +4,15 @@ interface Props {
 	sidebar: React.ReactNode
 	header: React.ReactNode
 	children: React.ReactNode
+	wideNavigation?: boolean
 }
 
-function Layout({ header, sidebar, children }: Props) {
+function Layout({ header, sidebar, children, wideNavigation = false }: Props) {
 	return (
 		<div className='flex h-screen overflow-hidden bg-background'>
-			<aside className='hidden shrink-0 border-r border-r-sidebar-border bg-sidebar text-sidebar-foreground md:block'>
+			<aside
+				className={`hidden shrink-0 border-r border-r-sidebar-border bg-sidebar text-sidebar-foreground ${wideNavigation ? 'xl:block' : 'md:block'}`}
+			>
 				{sidebar}
 			</aside>
 			<div className='flex flex-col min-h-0 flex-1 overflow-hidden'>
