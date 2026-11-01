@@ -7,6 +7,7 @@ import {
 import { Prisma, TeamRole } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { boardData } from './default-board'
+import { saveBoardSettings } from './board-settings'
 import { CreateBoardDto } from './dto/create-board.dto'
 import { UpdateBoardDto } from './dto/update-board.dto'
 
@@ -68,7 +69,21 @@ export class BoardsService {
 		await this.assertAccess(teamId, projectId, userId, true)
 		try {
 			const board = await this.prisma.board.create({
-				data: { projectId, ...boardData(dto.name) },
+				data: {
+					projectId,
+					...boardData(dto.name),
+					description: dto.description,
+					...(dto.columns && {
+						columns: {
+							create: dto.columns.map(({ key, title, color }, position) => ({
+								key,
+								title,
+								color,
+								position,
+							})),
+						},
+					}),
+				},
 				include: boardInclude,
 			})
 			return toBoardListItem(board)
@@ -86,11 +101,25 @@ export class BoardsService {
 	) {
 		await this.assertAccess(teamId, projectId, userId, true)
 		try {
-			const board = await this.prisma.board.update({
-				where: { id: boardId, projectId },
-				data: { name: dto.name },
-				include: boardInclude,
-			})
+			const update = (tx: Pick<Prisma.TransactionClient, 'board'>) =>
+				tx.board.update({
+					where: { id: boardId, projectId },
+					data: {
+						name: dto.name,
+						...(dto.description !== undefined && { description: dto.description }),
+					},
+					include: boardInclude,
+				})
+			const board =
+				dto.columns || dto.expectedUpdatedAt
+					? await this.prisma.$transaction(
+							async (tx) => {
+								await saveBoardSettings(tx, projectId, boardId, dto)
+								return update(tx)
+							},
+							{ timeout: 15_000 },
+						)
+					: await update(this.prisma)
 			return toBoardListItem(board)
 		} catch (error) {
 			this.writeError(error, 'update')
@@ -118,7 +147,7 @@ export class BoardsService {
 	private writeError(error: unknown, operation: 'create' | 'update' | 'delete'): never {
 		if (error instanceof Prisma.PrismaClientKnownRequestError) {
 			if (error.code === 'P2002') {
-				throw new ConflictException('Доска с таким названием уже существует в проекте')
+				throw new ConflictException('Название доски или колонки уже занято')
 			}
 			if (error.code === 'P2025' || (error.code === 'P2003' && operation === 'create')) {
 				throw new NotFoundException('Доска или проект больше не существует')
@@ -126,6 +155,12 @@ export class BoardsService {
 			if (error.code === 'P2003' && operation === 'delete') {
 				throw new ConflictException('Перед удалением доски перенесите её задачи')
 			}
+			if (
+				['P2003', 'P2034'].includes(error.code) ||
+				(error.code === 'P2010' &&
+					['23503', '40P01', '40001'].includes(String(error.meta?.code)))
+			)
+				throw new ConflictException('Данные доски изменились, повторите операцию')
 		}
 		throw error
 	}

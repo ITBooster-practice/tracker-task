@@ -6,7 +6,9 @@ import type {
 } from 'react'
 import { vi } from 'vitest'
 
-vi.mock('@repo/ui', () => ({
+vi.mock('@repo/ui', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@repo/ui')>()),
+	useMediaQuery: () => true,
 	Button: ({
 		children,
 		...props

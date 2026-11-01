@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { taskLabelsKeys } from '@/shared/api/use-task-labels'
 import {
 	tasksKeys,
 	useCreateTask,
@@ -157,6 +158,10 @@ describe('use-tasks hooks', () => {
 			})
 			const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
 			queryClient.setQueryData(boardKey, { columns: [] })
+			const labelsKey = taskLabelsKeys.list('team-1', 'project-1', 'refactor')
+			const otherProjectLabelsKey = taskLabelsKeys.list('team-1', 'project-other', '')
+			queryClient.setQueryData(labelsKey, ['refactor'])
+			queryClient.setQueryData(otherProjectLabelsKey, ['other'])
 
 			result.current.mutate({
 				teamId: 'team-1',
@@ -171,6 +176,8 @@ describe('use-tasks hooks', () => {
 			})
 			expect(result.current.data).toEqual(task)
 			expect(queryClient.getQueryState(boardKey)?.isInvalidated).toBe(true)
+			expect(queryClient.getQueryState(labelsKey)?.isInvalidated).toBe(true)
+			expect(queryClient.getQueryState(otherProjectLabelsKey)?.isInvalidated).toBe(false)
 			expect(invalidateSpy).toHaveBeenCalledWith({
 				queryKey: tasksKeys.projectLists('team-1', 'project-1'),
 			})
@@ -193,6 +200,8 @@ describe('use-tasks hooks', () => {
 			const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
 			queryClient.setQueryData(detailKey, createTaskFixture())
 			queryClient.setQueryData(boardKey, { columns: [] })
+			const labelsKey = taskLabelsKeys.list('team-1', 'project-1', '')
+			queryClient.setQueryData(labelsKey, ['refactor'])
 
 			result.current.mutate({
 				teamId: 'team-1',
@@ -211,6 +220,7 @@ describe('use-tasks hooks', () => {
 			)
 			expect(result.current.data).toEqual(task)
 			expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true)
+			expect(queryClient.getQueryState(labelsKey)?.isInvalidated).toBe(true)
 			expect(queryClient.getQueryState(boardKey)?.isInvalidated).toBe(true)
 			expect(invalidateSpy).toHaveBeenCalledWith({
 				queryKey: tasksKeys.projectLists('team-1', 'project-1'),
@@ -233,6 +243,8 @@ describe('use-tasks hooks', () => {
 			queryClient.setQueryData(tasksKeys.detail('team-1', 'project-1', 'task-1'), task)
 			const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
 			queryClient.setQueryData(boardKey, { columns: [] })
+			const labelsKey = taskLabelsKeys.list('team-1', 'project-1', '')
+			queryClient.setQueryData(labelsKey, ['refactor'])
 
 			tasksServiceMock.delete.mockResolvedValue(undefined)
 
@@ -267,6 +279,7 @@ describe('use-tasks hooks', () => {
 				queryClient.getQueryData(tasksKeys.detail('team-1', 'project-1', 'task-1')),
 			).toBeUndefined()
 			expect(queryClient.getQueryState(boardKey)?.isInvalidated).toBe(true)
+			expect(queryClient.getQueryState(labelsKey)?.isInvalidated).toBe(true)
 
 			invalidateSpy.mockRestore()
 		})

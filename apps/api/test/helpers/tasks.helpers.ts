@@ -5,7 +5,7 @@ import { TEAM_ID, USER_ID } from './teams.helpers'
 export { TEAM_ID, USER_ID }
 
 export function createPrismaMock() {
-	return {
+	const prisma = {
 		teamMember: {
 			findUnique: vi.fn(),
 		},
@@ -13,25 +13,61 @@ export function createPrismaMock() {
 			findUnique: vi.fn(),
 		},
 		boardColumn: {
-			findFirstOrThrow: vi.fn().mockResolvedValue({ id: 'system-column-id' }),
+			findFirst: vi.fn().mockImplementation(({ where }) => ({
+				id:
+					where.id ??
+					(where.key && where.key !== 'TODO'
+						? `${where.key.toLowerCase()}-column-id`
+						: 'system-column-id'),
+				boardId: where.boardId ?? 'main-board-id',
+				projectId: PROJECT_ID,
+				key: where.key ?? 'TODO',
+				isSystem: true,
+			})),
+			findFirstOrThrow: vi
+				.fn()
+				.mockResolvedValue({ id: 'system-column-id', isSystem: true }),
 		},
 		task: {
 			aggregate: vi.fn(),
-			create: vi.fn(),
+			create: vi.fn().mockResolvedValue(MOCK_TASK),
 			findMany: vi.fn(),
 			findUnique: vi.fn(),
 			count: vi.fn(),
 			update: vi.fn(),
 			delete: vi.fn(),
 		},
-	} as unknown as PrismaService & {
+		taskLabel: {
+			createMany: vi.fn(),
+			findMany: vi.fn().mockResolvedValue([]),
+		},
+		$queryRaw: vi
+			.fn()
+			.mockImplementation((query) =>
+				query.strings.join('').includes('FROM "Task"')
+					? [MOCK_TASK]
+					: [{ id: 'main-board-id' }],
+			),
+		$executeRaw: vi.fn().mockResolvedValue(1),
+		$transaction: vi.fn(),
+	}
+	prisma.$transaction.mockImplementation((callback) => callback(prisma))
+	return prisma as unknown as PrismaService & {
+		$queryRaw: ReturnType<typeof vi.fn>
+		$executeRaw: ReturnType<typeof vi.fn>
+		$transaction: ReturnType<typeof vi.fn>
 		teamMember: {
 			findUnique: ReturnType<typeof vi.fn>
 		}
 		project: {
 			findUnique: ReturnType<typeof vi.fn>
 		}
+		taskLabel: {
+			createMany: ReturnType<typeof vi.fn>
+			findMany: ReturnType<typeof vi.fn>
+		}
 		boardColumn: {
+			findFirst: ReturnType<typeof vi.fn>
 			findFirstOrThrow: ReturnType<typeof vi.fn>
 		}
 		task: {
@@ -86,7 +122,7 @@ export const MOCK_PROJECT = {
 	updatedAt: new Date(),
 }
 
-export const MOCK_TASK = {
+const MOCK_TASK_FIELDS = {
 	id: TASK_ID,
 	title: 'Fix login bug',
 	description: null,
@@ -97,11 +133,15 @@ export const MOCK_TASK = {
 	version: 0,
 	dueDate: null,
 	projectId: PROJECT_ID,
+	boardColumnId: 'system-column-id',
 	assigneeId: null,
 	createdById: USER_ID,
 	createdAt: new Date(),
 	updatedAt: new Date(),
 }
+
+export const MOCK_TASK = { ...MOCK_TASK_FIELDS, labelAssignments: [] }
+export const MOCK_TASK_RESPONSE = { ...MOCK_TASK_FIELDS, labels: [] }
 
 export const CREATE_TASK_DTO = {
 	title: 'Fix login bug',

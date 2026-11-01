@@ -1,4 +1,5 @@
 import {
+	getBoardCardDragListeners,
 	getBoardCardSortableCalls,
 	resetBoardCardUnitMocks,
 	setBoardCardIsDragging,
@@ -29,7 +30,7 @@ describe('BoardCard', () => {
 
 	it('рендерит данные задачи и регистрирует sortable с колонкой', () => {
 		let openedTaskId = ''
-		const task = createTaskFixture()
+		const task = createTaskFixture({ labels: ['refactor', 'Frontend'] })
 
 		render(
 			<BoardCard
@@ -45,7 +46,9 @@ describe('BoardCard', () => {
 
 		expect(screen.getByText('TT-1')).toBeDefined()
 		expect(screen.getByText('Проверить карточку задачи')).toBeDefined()
-		expect(screen.getByText('1/3')).toBeDefined()
+		expect(screen.getByText('refactor')).toBeDefined()
+		expect(screen.getByText('Frontend')).toBeDefined()
+		expect(screen.getByText(/просрочено/)).toBeDefined()
 		expect(openedTaskId).toBe('task-a')
 		expect(getBoardCardSortableCalls().at(-1)).toMatchObject({
 			data: {
@@ -58,7 +61,7 @@ describe('BoardCard', () => {
 		})
 	})
 
-	it('открывает задачу с клавиатуры', () => {
+	it('открывает задачу по Enter и начинает перенос по Пробелу на самой карточке', () => {
 		const openedTaskIds: string[] = []
 		const task = createTaskFixture()
 
@@ -73,17 +76,21 @@ describe('BoardCard', () => {
 		)
 
 		const card = screen.getByTestId('board-task-task-a')
-		fireEvent.keyDown(card, { key: 'Enter' })
-		fireEvent.keyDown(card, { key: ' ' })
+		fireEvent.keyDown(card, { key: 'Enter', code: 'Enter' })
+		fireEvent.keyDown(card, { key: ' ', code: 'Space' })
 
-		expect(openedTaskIds).toEqual(['task-a', 'task-a'])
+		expect(openedTaskIds).toEqual(['task-a'])
+		expect(getBoardCardDragListeners().onKeyDown).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ code: 'Space' }),
+		)
+		expect(card.getAttribute('aria-describedby')).toBeTruthy()
 	})
 
-	it('отделяет управление переносом в группе от открытия карточки', () => {
+	it('начинает перенос за название и нижнюю часть карточки', () => {
 		let opened = 0
 		render(
 			<BoardCard
-				task={createTaskFixture()}
+				task={createTaskFixture({ assignee: null, assigneeId: null })}
 				boardColumnId='TODO'
 				laneKey='priority-high'
 				onOpenTask={() => {
@@ -91,16 +98,46 @@ describe('BoardCard', () => {
 				}}
 			/>,
 		)
-		const handle = screen.getByRole('button', {
-			name: 'Переместить задачу «Проверить карточку задачи»',
-		})
-		fireEvent.click(handle)
-		fireEvent.keyDown(handle, { key: ' ', code: 'Space' })
-		fireEvent.keyDown(handle, { key: 'Enter', code: 'Enter' })
+		fireEvent.pointerDown(screen.getByText('Проверить карточку задачи'))
+		fireEvent.touchStart(screen.getByText('Без исполнителя'))
+		expect(getBoardCardDragListeners().onPointerDown).toHaveBeenCalledOnce()
+		expect(getBoardCardDragListeners().onTouchStart).toHaveBeenCalledOnce()
 		expect(opened).toBe(0)
-		expect(handle.getAttribute('aria-describedby')).toBeTruthy()
-		fireEvent.keyDown(screen.getByTestId('board-task-task-a'), { key: 'Enter' })
-		expect(opened).toBe(1)
+	})
+
+	it('оставляет открытие с клавиатуры доступным при заблокированном переносе', () => {
+		const openedTaskIds: string[] = []
+		render(
+			<BoardCard
+				task={createTaskFixture()}
+				boardColumnId='TODO'
+				disabled
+				onOpenTask={(taskId) => openedTaskIds.push(taskId)}
+			/>,
+		)
+		const card = screen.getByTestId('board-task-task-a')
+		fireEvent.pointerDown(card)
+		fireEvent.keyDown(card, { key: 'Enter', code: 'Enter' })
+		fireEvent.keyDown(card, { key: ' ', code: 'Space' })
+		expect(openedTaskIds).toEqual(['task-a', 'task-a'])
+		expect(getBoardCardDragListeners().onKeyDown).not.toHaveBeenCalled()
+		expect(getBoardCardDragListeners().onPointerDown).not.toHaveBeenCalled()
+	})
+
+	it('не открывает задачу при завершении переноса с клавиатуры', () => {
+		setBoardCardIsDragging(true)
+		let opened = 0
+		render(
+			<BoardCard
+				task={createTaskFixture()}
+				boardColumnId='TODO'
+				onOpenTask={() => opened++}
+			/>,
+		)
+		const card = screen.getByTestId('board-task-task-a')
+		fireEvent.keyDown(card, { key: 'Enter', code: 'Enter' })
+		expect(opened).toBe(0)
+		expect(getBoardCardDragListeners().onKeyDown).not.toHaveBeenCalled()
 	})
 
 	it('передаёт disabled в sortable и показывает dragging class', () => {
@@ -142,7 +179,7 @@ describe('BoardCard', () => {
 		expect(openCalls).toBe(0)
 	})
 
-	it('drag overlay отключает sortable и не выставляет transform style', () => {
+	it('renders the drag overlay without registering a duplicate sortable task', () => {
 		render(
 			<BoardCard
 				task={createTaskFixture({ id: 'task-overlay' })}
@@ -152,12 +189,10 @@ describe('BoardCard', () => {
 			/>,
 		)
 
-		const card = screen.getByTestId('board-task-task-overlay')
+		const card = screen.getByTestId('board-task-overlay-task-overlay')
 
 		expect(card.getAttribute('style')).toBeNull()
-		expect(getBoardCardSortableCalls().at(-1)).toMatchObject({
-			disabled: true,
-			id: 'task-overlay',
-		})
+		expect(getBoardCardSortableCalls()).toHaveLength(0)
+		expect(card.getAttribute('role')).toBeNull()
 	})
 })

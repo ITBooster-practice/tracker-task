@@ -58,7 +58,7 @@ export class TaskFilterQueryDto extends createZodDto(taskFilterQuerySchema) {
 		example: 'login',
 		maxLength: 255,
 		description:
-			'Поиск буквальной подстроки в title без учёта регистра. Пробелы по краям удаляются; пустое или пробельное значение не фильтрует список.',
+			'Поиск по ID задачи и буквальной подстроке в названии или метках без учёта регистра. Пробелы по краям удаляются; пустое значение не фильтрует список.',
 	})
 	search?: string
 

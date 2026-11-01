@@ -2,42 +2,29 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import { TaskStatusSchema, type BoardView } from '@repo/types'
+import { type BoardView } from '@repo/types'
 import {
 	Button,
-	ConfirmDialog,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 	EmptyState,
-	Label,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
 	Skeleton,
 	toast,
 } from '@repo/ui'
-import { ChevronRight, Plus } from '@repo/ui/icons'
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Settings2 } from '@repo/ui/icons'
 
-import {
-	useCreateBoardColumn,
-	useDeleteBoardColumn,
-	useReorderBoardColumns,
-	useUpdateBoardColumn,
-} from '@/shared/api/use-board-columns'
+import { TaskCreateDialog, TaskDetailsDialog, useTaskDialogRoute } from '@/features/tasks'
+import { useUserStore } from '@/entities/user'
 import { useBoardsList } from '@/shared/api/use-boards'
 import { useProjectDetail } from '@/shared/api/use-projects'
-import {
-	useBoardQuery,
-	useCreateTask,
-	useDeleteTask,
-	useMoveTask,
-	useUpdateTask,
-} from '@/shared/api/use-tasks'
+import { useBoardQuery, useMoveTask } from '@/shared/api/use-tasks'
 import { useTeamMemberOptions } from '@/shared/api/use-team-members'
 import { ROUTES, teamRoutes } from '@/shared/config'
-import { isApiError } from '@/shared/lib/api/utils'
 import { PageHeader } from '@/shared/ui/page-header'
 
 import { toBoardColumnsViewModel } from '../model/adapters'
@@ -48,12 +35,13 @@ import {
 	hasProjectBoardFilters,
 	projectBoardAssigneeOptions,
 } from '../model/project-board-filters'
-import type { BoardTask, BoardTaskFormValues, BoardTaskMoveInput } from '../model/types'
+import { formatBoardTaskCount } from '../model/task-count'
+import type { BoardTaskMoveInput } from '../model/types'
 import { useProjectBoardFilters } from '../model/use-project-board-filters'
 import { findBoardTask } from '../model/utils'
 import { Board } from './board'
-import { BoardTaskDetailsDialog } from './board-task-details-dialog'
-import { BoardTaskFormDialog } from './board-task-form-dialog'
+import { BoardEditorDialog } from './board-editor-dialog'
+import { BoardEmptyState } from './board-empty-state'
 import { BoardToolbar } from './board-toolbar'
 import { CreateBoardDialog } from './create-board-dialog'
 
@@ -66,28 +54,23 @@ interface ProjectBoardPageViewProps {
 function ProjectBoardContent({
 	view,
 	teamId,
+	projectName,
 	renderHeader,
+	canManage,
 }: {
 	view: BoardView
 	teamId: string
-	renderHeader: (actions?: ReactNode) => ReactNode
+	projectName?: string
+	renderHeader: (actions?: ReactNode, taskCount?: string) => ReactNode
+	canManage: boolean
 }) {
-	const [openedTaskId, setOpenedTaskId] = useState<string | null>(null)
-	const [taskForm, setTaskForm] = useState<{
-		mode: 'create' | 'edit'
-		task: BoardTask | null
+	const taskDialog = useTaskDialogRoute()
+	const [createColumnId, setCreateColumnId] = useState<string | null>(null)
+	const [taskBusy, setTaskBusy] = useState(false)
+	const [editor, setEditor] = useState<{
+		columnId?: string
 	} | null>(null)
-	const [formError, setFormError] = useState<string | null>(null)
-	const [taskPendingDelete, setTaskPendingDelete] = useState<BoardTask | null>(null)
-	const [deleteError, setDeleteError] = useState<string | null>(null)
-	const creating = useCreateTask()
-	const updating = useUpdateTask()
-	const deleting = useDeleteTask()
-	const creatingColumn = useCreateBoardColumn()
-	const updatingColumn = useUpdateBoardColumn()
-	const deletingColumn = useDeleteBoardColumn()
-	const reorderingColumns = useReorderBoardColumns()
-	const columnBusy = useRef(false)
+	const currentUserId = useUserStore((state) => state.user?.id)
 	const membersQuery = useTeamMemberOptions(teamId, true)
 	const {
 		filters,
@@ -121,6 +104,10 @@ function ProjectBoardContent({
 		[membersQuery.data],
 	)
 	const crudBusy = useRef(false)
+	const setTaskPending = useCallback((pending: boolean) => {
+		crudBusy.current = pending
+		setTaskBusy(pending)
+	}, [])
 	const moving = useRef(false)
 	const mounted = useRef(true)
 	useEffect(() => {
@@ -165,155 +152,18 @@ function ProjectBoardContent({
 		(count, column) => count + column.tasks.length,
 		0,
 	)
-	const createColumns = useMemo(
-		() =>
-			columns.filter(
-				(column) =>
-					view.board.isDefault &&
-					column.isSystem &&
-					TaskStatusSchema.safeParse(column.key).success,
-			),
-		[columns, view.board.isDefault],
-	)
-	const isSaving = creating.isPending || updating.isPending
-	const isMutating =
-		isSaving ||
-		deleting.isPending ||
-		creatingColumn.isPending ||
-		updatingColumn.isPending ||
-		deletingColumn.isPending ||
-		reorderingColumns.isPending
-	const mutateColumn = async (action: () => Promise<unknown>) => {
-		if (columnBusy.current || crudBusy.current || moving.current)
-			throw new Error('Дождитесь завершения текущего действия.')
-		columnBusy.current = true
-		try {
-			await action()
-		} finally {
-			columnBusy.current = false
-		}
-	}
-	const columnContext = {
-		teamId,
-		projectId: view.board.projectId,
-		boardId: view.board.id,
-	}
-	const handleCreateColumn = (title: string) =>
-		mutateColumn(() =>
-			creatingColumn.mutateAsync({
-				...columnContext,
-				data: { title, key: `column_${crypto.randomUUID()}` },
-			}),
+	const createColumns = columns
+	const isMutating = taskBusy || editor !== null
+	const openCreateForm = (columnId?: string) => {
+		if (crudBusy.current || moving.current || !createColumns.length) return
+		if (columnId && !createColumns.some((column) => column.id === columnId)) return
+		if (taskDialog.taskId) taskDialog.close()
+		setCreateColumnId(
+			columnId ??
+				createColumns.find((column) => column.key === 'TODO')?.id ??
+				createColumns[0]!.id,
 		)
-	const handleRenameColumn = (columnId: string, title: string) =>
-		mutateColumn(() =>
-			updatingColumn.mutateAsync({ ...columnContext, columnId, data: { title } }),
-		)
-	const handleDeleteColumn = (columnId: string, targetColumnId: string) =>
-		mutateColumn(() =>
-			deletingColumn.mutateAsync({
-				...columnContext,
-				columnId,
-				data: { targetColumnId },
-			}),
-		)
-	const handleReorderColumns = (columnIds: string[]) =>
-		mutateColumn(() =>
-			reorderingColumns.mutateAsync({ ...columnContext, data: { columnIds } }),
-		)
-	const openCreateForm = () => {
-		if (crudBusy.current || moving.current || columnBusy.current || !createColumns.length)
-			return
-		setOpenedTaskId(null)
-		setFormError(null)
-		setTaskForm({ mode: 'create', task: null })
 	}
-	const handleSubmitTask = async (values: BoardTaskFormValues) => {
-		if (!taskForm || crudBusy.current || moving.current || columnBusy.current) return
-		crudBusy.current = true
-		setFormError(null)
-		const data = {
-			title: values.title,
-			description: values.description,
-			priority: values.priority,
-			type: values.type,
-		}
-		try {
-			if (taskForm.mode === 'create') {
-				const column = createColumns.find((item) => item.id === values.boardColumnId)
-				const status = TaskStatusSchema.safeParse(column?.key)
-				if (!status.success) {
-					setFormError('Выберите доступную колонку.')
-					return
-				}
-				await creating.mutateAsync({
-					teamId,
-					projectId: view.board.projectId,
-					data: {
-						...data,
-						status: status.data,
-						...(values.assigneeId && { assigneeId: values.assigneeId }),
-						...(values.dueDate && { dueDate: new Date(values.dueDate).toISOString() }),
-					},
-				})
-			} else if (taskForm.task) {
-				const task = taskForm.task
-				await updating.mutateAsync({
-					teamId,
-					projectId: view.board.projectId,
-					taskId: task.id,
-					data: {
-						...data,
-						assigneeId: values.assigneeId || null,
-						dueDate:
-							values.dueDate === (task.dueDate?.slice(0, 10) ?? '')
-								? task.dueDate
-								: values.dueDate
-									? new Date(values.dueDate).toISOString()
-									: null,
-					},
-				})
-			}
-			if (mounted.current) setTaskForm(null)
-		} catch (error) {
-			if (mounted.current)
-				setFormError(
-					isApiError(error) && error.statusCode === 403
-						? 'Недостаточно прав для изменения задачи.'
-						: 'Не удалось сохранить задачу. Повторите попытку.',
-				)
-		} finally {
-			crudBusy.current = false
-		}
-	}
-	const handleDeleteTask = async () => {
-		if (!taskPendingDelete || crudBusy.current || moving.current || columnBusy.current)
-			return
-		crudBusy.current = true
-		setDeleteError(null)
-		try {
-			await deleting.mutateAsync({
-				teamId,
-				projectId: view.board.projectId,
-				taskId: taskPendingDelete.id,
-			})
-			if (mounted.current) {
-				setTaskPendingDelete(null)
-				setOpenedTaskId(null)
-			}
-		} catch (error) {
-			if (mounted.current)
-				setDeleteError(
-					isApiError(error) && error.statusCode === 403
-						? 'Удаление доступно владельцу и администратору команды.'
-						: 'Не удалось удалить задачу. Повторите попытку.',
-				)
-		} finally {
-			crudBusy.current = false
-		}
-	}
-	const selectedTask = findBoardTask(columns, openedTaskId)
-	const hasTasks = columns.some((column) => column.tasks.length > 0)
 	const handleMoveTask = ({
 		taskId,
 		toColumnId,
@@ -325,7 +175,6 @@ function ProjectBoardContent({
 			moving.current ||
 			moveTask.isPending ||
 			crudBusy.current ||
-			columnBusy.current ||
 			filtersPending ||
 			isMutating
 		)
@@ -391,16 +240,36 @@ function ProjectBoardContent({
 	return (
 		<>
 			{renderHeader(
-				createColumns.length > 0 ? (
-					<>
-						<Button onClick={openCreateForm} disabled={isMutating || moveTask.isPending}>
+				<>
+					{canManage && (
+						<Button
+							id={`board-settings-${view.board.id}`}
+							variant='outline'
+							disabled={isMutating || moveTask.isPending}
+							onClick={() => setEditor({})}
+						>
+							<Settings2 aria-hidden />
+							Настроить доску
+						</Button>
+					)}
+					{createColumns.length > 0 && (
+						<Button
+							onClick={() => openCreateForm()}
+							disabled={isMutating || moveTask.isPending}
+						>
 							<Plus aria-hidden='true' />
 							Создать задачу
 						</Button>
-					</>
-				) : undefined,
+					)}
+				</>,
+				hasProjectBoardFilters(effectiveFilters)
+					? `${visibleTasks} из ${formatBoardTaskCount(totalTasks, 'genitive')}`
+					: formatBoardTaskCount(totalTasks),
 			)}
 			<BoardToolbar
+				currentUserId={currentUserId}
+				totalTasks={totalTasks}
+				visibleTasks={visibleTasks}
 				grouping={grouping}
 				onGroupingChange={setGrouping}
 				filters={filters}
@@ -414,24 +283,6 @@ function ProjectBoardContent({
 					void membersQuery.refetch()
 				}}
 			/>
-			{hasTasks && (
-				<p className='text-sm text-muted-foreground' role='status' aria-live='polite'>
-					Показано задач: {visibleTasks} из {totalTasks}
-				</p>
-			)}
-			{hasTasks && visibleTasks === 0 && hasProjectBoardFilters(filters) && (
-				<EmptyState
-					headingLevel='h2'
-					className='mx-auto'
-					title='Задачи не найдены'
-					description='Измените поиск или фильтры, чтобы увидеть задачи.'
-					action={
-						<Button variant='outline' onClick={clearFilters}>
-							Показать все задачи
-						</Button>
-					}
-				/>
-			)}
 			{columns.length === 0 && (
 				<EmptyState
 					headingLevel='h2'
@@ -440,103 +291,99 @@ function ProjectBoardContent({
 					description='Добавьте колонку, чтобы распределять задачи по этапам.'
 				/>
 			)}
-			{columns.length > 0 && !hasTasks && (
-				<EmptyState
-					headingLevel='h2'
-					className='mx-auto'
-					title='На доске пока нет задач'
-					description={
-						view.board.isDefault
-							? 'Создайте первую задачу, чтобы начать работу.'
-							: 'Здесь будут отображаться задачи, добавленные на эту доску.'
-					}
-				/>
-			)}
 			{moveTask.isPending && (
 				<span role='status' className='sr-only'>
 					Сохраняем положение задачи
 				</span>
 			)}
-			<Board
-				grouping={grouping}
-				lanes={lanes}
-				columns={visibleColumns}
-				onOpenTask={setOpenedTaskId}
-				onMoveTask={handleMoveTask}
-				disableInteraction={moveTask.isPending || isMutating || filtersPending}
-				dragScope={dragScope}
-				onCreateColumn={handleCreateColumn}
-				onRenameColumn={handleRenameColumn}
-				onDeleteColumn={handleDeleteColumn}
-				onReorderColumns={handleReorderColumns}
-				columnActionsDisabled={moveTask.isPending || isMutating}
-			/>
-			<BoardTaskDetailsDialog
-				task={taskForm || taskPendingDelete ? null : selectedTask}
-				showActivity={false}
-				actionsDisabled={moveTask.isPending || isMutating}
-				onEditTask={(task) => {
-					if (moving.current || crudBusy.current || columnBusy.current) return
-					setFormError(null)
-					setTaskForm({ mode: 'edit', task })
-				}}
-				onDeleteTask={(task) => {
-					if (moving.current || crudBusy.current || columnBusy.current) return
-					setDeleteError(null)
-					setTaskPendingDelete(task)
-				}}
-				onOpenChange={(open) => {
-					if (!open) setOpenedTaskId(null)
-				}}
-			/>
-			<BoardTaskFormDialog
-				open={taskForm !== null}
-				mode={taskForm?.mode ?? 'create'}
-				task={taskForm?.task ?? null}
-				columns={taskForm?.mode === 'edit' ? columns : createColumns}
-				assignees={assignees}
-				showTags={false}
-				allowColumnChange={taskForm?.mode !== 'edit'}
-				isPending={isSaving}
-				error={formError}
-				assigneesPending={membersQuery.isPending}
-				assigneesError={membersQuery.isError}
-				onRetryAssignees={() => {
-					void membersQuery.refetch()
-				}}
-				onSubmit={(values) => {
-					void handleSubmitTask(values)
-				}}
-				onOpenChange={(open) => {
-					if (!open && !crudBusy.current) setTaskForm(null)
-				}}
-			/>
-			<ConfirmDialog
-				open={taskPendingDelete !== null}
-				title='Удалить задачу?'
-				description={`Задача «${taskPendingDelete?.title ?? ''}» будет удалена из проекта. Это действие нельзя отменить.`}
-				confirmLabel='Удалить'
-				pendingLabel='Удаляем…'
-				isPending={deleting.isPending}
-				onConfirm={handleDeleteTask}
-				onOpenChange={(open) => {
-					if (!open && !crudBusy.current) setTaskPendingDelete(null)
-				}}
-			>
-				{deleteError && (
-					<p role='alert' className='text-sm text-destructive'>
-						{deleteError}
-					</p>
-				)}
-			</ConfirmDialog>
+			{columns.length > 0 && (
+				<Board
+					emptyState={
+						visibleTasks === 0 ? (
+							<BoardEmptyState
+								totalTasks={totalTasks}
+								filters={effectiveFilters}
+								assigneeOptions={assigneeOptions}
+								onCreateTask={() => openCreateForm()}
+								onClearSearch={() => {
+									updateFilters({ query: '' })
+									searchInput.current?.focus()
+								}}
+								onResetFilters={clearFilters}
+								disabled={isMutating || moveTask.isPending}
+							/>
+						) : undefined
+					}
+					grouping={grouping}
+					lanes={lanes}
+					columns={visibleColumns}
+					columnTaskCounts={Object.fromEntries(
+						columns.map((column) => [column.id, column.tasks.length]),
+					)}
+					onOpenTask={taskDialog.open}
+					onCreateTask={createColumns.length ? openCreateForm : undefined}
+					onMoveTask={handleMoveTask}
+					disableInteraction={moveTask.isPending || isMutating || filtersPending}
+					dragScope={dragScope}
+					onConfigureColumn={
+						canManage ? (columnId) => setEditor({ columnId }) : undefined
+					}
+					columnActionsDisabled={moveTask.isPending || isMutating}
+				/>
+			)}
+			{editor && (
+				<BoardEditorDialog
+					teamId={teamId}
+					projectId={view.board.projectId}
+					projectName={projectName}
+					view={view}
+					selectedColumnId={editor.columnId}
+					onClose={() => setEditor(null)}
+				/>
+			)}
+			{taskDialog.taskId && (
+				<TaskDetailsDialog
+					key={taskDialog.taskId}
+					teamId={teamId}
+					projectId={view.board.projectId}
+					taskId={taskDialog.taskId}
+					projectName={projectName}
+					boardName={view.board.name}
+					onClose={taskDialog.close}
+					onPendingChange={setTaskPending}
+				/>
+			)}
+			{createColumnId && (
+				<TaskCreateDialog
+					teamId={teamId}
+					projectId={view.board.projectId}
+					columns={createColumns}
+					initialColumnId={createColumnId}
+					boardName={view.board.name}
+					visibilityWarning={
+						hasProjectBoardFilters(effectiveFilters)
+							? currentUserId && effectiveFilters.assignee === currentUserId
+								? 'Включён фильтр «Только мои». Задача без исполнителя будет скрыта.'
+								: 'На доске включены фильтры. Новая задача может быть скрыта текущими условиями.'
+							: undefined
+					}
+					onPendingChange={setTaskPending}
+					onClose={() => setCreateColumnId(null)}
+				/>
+			)}
 		</>
 	)
 }
 
 function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewProps) {
 	const router = useRouter()
+	const userId = useUserStore((state) => state.user?.id)
+	const memberQuery = useTeamMemberOptions(teamId, true)
+	const role = memberQuery.data?.find((member) => member.userId === userId)?.role
+	const canManage = role === 'OWNER' || role === 'ADMIN'
 	const openBoard = (id: string) => {
 		const params = new URLSearchParams(window.location.search)
+		params.delete('taskId')
 		params.set('boardId', id)
 		router.push(
 			`${teamRoutes.projectBoard(teamId, projectId)}?${params}${window.location.hash}`,
@@ -559,72 +406,114 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 		else void boardQuery.refetch()
 	}
 
-	const renderHeader = (actions?: ReactNode) => (
+	const renderHeader = (actions?: ReactNode, taskCount?: string) => (
 		<>
 			<PageHeader
-				actions={
-					<>
-						{actions}
-						<Button variant='outline' onClick={() => setCreatingBoard(true)}>
-							<Plus aria-hidden='true' />
-							Создать доску
-						</Button>
-					</>
+				actions={actions}
+				title={
+					<span className='inline-flex max-w-full flex-wrap items-center gap-3'>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									type='button'
+									variant='outline'
+									className='h-auto min-w-0 max-w-full justify-start gap-2.5 border-border bg-card px-2.5 py-1.5 text-left text-[length:inherit] leading-[inherit] font-semibold tracking-[inherit] shadow-none'
+									title='Переключить доску'
+								>
+									<span className='truncate py-1'>
+										{boardQuery.data?.board.name ??
+											selectedBoard?.name ??
+											'Доска проекта'}
+									</span>
+									<ChevronDown aria-hidden className='size-5 shrink-0' />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent
+								align='start'
+								className='w-(--radix-dropdown-menu-trigger-width) min-w-0 max-w-(--radix-dropdown-menu-content-available-width)'
+							>
+								{boardsQuery.data?.map((board) => (
+									<DropdownMenuItem
+										key={board.id}
+										onSelect={() => openBoard(board.id)}
+										aria-current={board.id === selectedBoard?.id ? 'page' : undefined}
+									>
+										<span className='min-w-0 flex-1 truncate'>{board.name}</span>
+										<span className='shrink-0 text-xs whitespace-nowrap text-muted-foreground'>
+											{board.taskCount} задач
+										</span>
+									</DropdownMenuItem>
+								))}
+								{canManage && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem onSelect={() => setCreatingBoard(true)}>
+											<Plus aria-hidden />
+											Создать доску
+										</DropdownMenuItem>
+									</>
+								)}
+							</DropdownMenuContent>
+						</DropdownMenu>
+						<span
+							aria-hidden
+							className='text-sm font-normal tracking-normal text-muted-foreground'
+						>
+							{taskCount ??
+								formatBoardTaskCount(
+									boardQuery.data?.columns.reduce(
+										(total, column) => total + column.tasks.length,
+										0,
+									) ??
+										selectedBoard?.taskCount ??
+										0,
+								)}
+						</span>
+					</span>
 				}
-				title={boardQuery.data?.board.name ?? selectedBoard?.name ?? 'Доска проекта'}
-				description='Задачи проекта по этапам работы.'
+				description={
+					boardQuery.data?.board.description ||
+					'Задачи проекта по этапам: от бэклога до готового результата.'
+				}
 				navigation={
 					<nav
 						aria-label='Хлебные крошки'
 						className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'
 					>
-						<Link href={ROUTES.teams} className='transition-colors hover:text-foreground'>
+						<Link
+							href={ROUTES.teams}
+							className='hidden transition-colors hover:text-foreground sm:inline'
+						>
 							Команды
 						</Link>
-						<ChevronRight className='size-4' />
+						<ChevronRight aria-hidden className='hidden size-4 sm:block' />
 						<Link
 							href={teamRoutes.projects(teamId)}
-							className='transition-colors hover:text-foreground'
+							className='hidden transition-colors hover:text-foreground sm:inline'
 						>
 							Проекты
 						</Link>
-						<ChevronRight className='size-4' />
+						<ChevronRight aria-hidden className='hidden size-4 sm:block' />
 						<Link
 							href={teamRoutes.project(teamId, projectId)}
-							className='text-sm text-muted-foreground hover:text-foreground'
+							className='inline-flex min-w-0 items-center gap-2 text-sm text-muted-foreground hover:text-foreground'
 						>
-							{projectQuery.data?.name ?? 'Проект'}
+							<ChevronLeft aria-hidden className='size-4 shrink-0 sm:hidden' />
+							<span className='truncate'>{projectQuery.data?.name ?? 'Проект'}</span>
 						</Link>
-						<ChevronRight className='size-4' />
-						<span aria-current='page' className='text-foreground'>
+						<ChevronRight aria-hidden className='hidden size-4 sm:block' />
+						<span aria-current='page' className='hidden text-foreground sm:inline'>
 							Доска
 						</span>
 					</nav>
 				}
 			/>
-			{boardsQuery.data && boardsQuery.data.length > 0 && (
-				<div className='w-full max-w-sm space-y-2'>
-					<Label htmlFor='project-board-select'>Доска проекта</Label>
-					<Select value={selectedBoard?.id ?? ''} onValueChange={openBoard}>
-						<SelectTrigger id='project-board-select' className='w-full'>
-							<SelectValue placeholder='Выберите доску' />
-						</SelectTrigger>
-						<SelectContent>
-							{boardsQuery.data.map((board) => (
-								<SelectItem key={board.id} value={board.id}>
-									{board.name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-			)}
 		</>
 	)
 
 	return (
-		<div className='flex min-h-full flex-col bg-background text-foreground'>
-			<div className='mx-auto flex w-full max-w-[1760px] flex-1 flex-col gap-6 px-4 py-5 sm:px-6'>
+		<div className='flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground'>
+			<div className='flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 sm:gap-6 sm:px-6'>
 				{(!selectedBoard || !boardQuery.data || hasError || isLoading) && renderHeader()}
 				{hasError ? (
 					<EmptyState
@@ -641,7 +530,7 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 						className='flex gap-4 overflow-hidden'
 					>
 						{Array.from({ length: 3 }, (_, index) => (
-							<Skeleton key={index} className='h-80 w-[260px] shrink-0 rounded-xl' />
+							<Skeleton key={index} className='h-80 w-[330px] shrink-0 rounded-xl' />
 						))}
 					</div>
 				) : !selectedBoard ? (
@@ -664,23 +553,33 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 								>
 									К списку досок
 								</Link>
+							) : canManage ? (
+								<Button onClick={() => setCreatingBoard(true)}>
+									<Plus aria-hidden />
+									Создать доску
+								</Button>
 							) : undefined
 						}
 					/>
 				) : boardQuery.data ? (
 					<ProjectBoardContent
+						projectName={projectQuery.data?.name}
 						key={JSON.stringify([teamId, projectId, selectedBoard.id])}
+						canManage={canManage}
 						view={boardQuery.data}
 						renderHeader={renderHeader}
 						teamId={teamId}
 					/>
 				) : null}
 				<CreateBoardDialog
+					projectName={projectQuery.data?.name}
 					open={creatingBoard}
 					teamId={teamId}
 					projectId={projectId}
 					onOpenChange={setCreatingBoard}
-					onCreated={(board) => openBoard(board.id)}
+					onCreated={(board) =>
+						router.push(teamRoutes.projectBoard(teamId, projectId, board.id))
+					}
 				/>
 			</div>
 		</div>

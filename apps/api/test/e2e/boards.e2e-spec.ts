@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { FEATURE_KEYS, type BoardListItem } from '@repo/types'
+import { FEATURE_KEYS, type BoardListItem, type UpdateBoard } from '@repo/types'
 import type { Server } from 'node:http'
 import type { Redis } from 'ioredis'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
@@ -129,6 +129,297 @@ describe('Boards (e2e)', () => {
 			.expect(201)
 		return response.body as BoardListItem
 	}
+
+	const settings = (board: BoardListItem): UpdateBoard => ({
+		name: board.name,
+		description: board.description,
+		expectedUpdatedAt: board.updatedAt,
+		columnSnapshot: board.columns.map(({ id, updatedAt }) => ({ id, updatedAt })),
+		columns: board.columns.map(({ id, key, title, color }) => ({
+			id,
+			key,
+			title,
+			color,
+		})),
+		removedColumns: [],
+	})
+
+	it('serializes competing settings and rejects the stale writer', async () => {
+		const board = await createBoard()
+		const first = {
+			...settings(board),
+			name: 'First settings',
+			description: 'First description',
+		}
+		const second = {
+			...settings(board),
+			name: 'Second settings',
+			description: 'Second description',
+		}
+		second.columns = second.columns!.slice().reverse()
+		const responses = await Promise.all(
+			[first, second].map((payload) =>
+				request(server)
+					.patch(`${path()}/${board.id}`)
+					.set('Cookie', ownerCookies)
+					.send(payload),
+			),
+		)
+		expect(responses.map((response) => response.status).sort()).toEqual([200, 409])
+		const accepted = responses.findIndex((response) => response.status === 200)
+		const payload = [first, second][accepted]!
+		const saved = await snapshotBoard(board.id)
+		expect(saved).toMatchObject({ name: payload.name, description: payload.description })
+		expect(
+			saved.columns
+				.slice()
+				.sort((a, b) => a.position - b.position)
+				.map((column) => column.id),
+		).toEqual(payload.columns!.map((column) => column.id))
+	})
+
+	it('creates a board with its description and custom initial column order and colors', async () => {
+		const response = await request(server)
+			.post(path())
+			.set('Cookie', ownerCookies)
+			.send({
+				name: 'Iteration',
+				description: 'Current iteration',
+				columns: [
+					{ key: 'waiting', title: 'Waiting', color: 'cyan' },
+					{ key: 'ready', title: 'Ready', color: 'green' },
+				],
+			})
+			.expect(201)
+		expect(response.body).toMatchObject({
+			description: 'Current iteration',
+			taskCount: 0,
+			columns: [
+				{ key: 'waiting', position: 0, color: 'cyan', isSystem: false },
+				{ key: 'ready', position: 1, color: 'green', isSystem: false },
+			],
+		})
+	})
+
+	it('saves metadata, swapped titles, order, drafts and all transferred tasks together', async () => {
+		const board = await createBoard()
+		const source = board.columns[0]!
+		const task = await prisma.task.create({
+			data: {
+				title: 'Hidden task',
+				projectId,
+				boardColumnId: source.id,
+				createdById: ownerId,
+				version: 3,
+			},
+		})
+		const payload = settings(board)
+		const remaining = payload.columns!.slice(1).reverse()
+		const title = remaining[0]!.title
+		remaining[0]!.title = remaining[1]!.title
+		remaining[1]!.title = title
+		remaining[0]!.color = 'red'
+		payload.columns = [...remaining, { key: 'release', title: 'Release', color: 'cyan' }]
+		payload.name = 'Updated board'
+		payload.description = 'Updated description'
+		payload.removedColumns = [{ id: source.id, targetKey: 'release' }]
+		const response = await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(payload)
+			.expect(200)
+		expect(response.body).toMatchObject({
+			name: payload.name,
+			description: payload.description,
+			taskCount: 1,
+		})
+		expect(
+			response.body.columns.map(
+				(column: { key: string; position: number; title: string; color: string }) => ({
+					key: column.key,
+					position: column.position,
+					title: column.title,
+					color: column.color,
+				}),
+			),
+		).toEqual(
+			payload.columns.map(({ key, title, color }, position) => ({
+				key,
+				position,
+				title,
+				color,
+			})),
+		)
+		const release = response.body.columns.find(
+			(column: { key: string }) => column.key === 'release',
+		)
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject(
+			{ boardColumnId: release.id, version: 4, title: 'Hidden task' },
+		)
+		expect(await prisma.boardColumn.findUnique({ where: { id: source.id } })).toBeNull()
+	})
+
+	it('rejects a guarded empty-column removal if a task appears after the snapshot', async () => {
+		const board = await createBoard()
+		const source = board.columns[0]!
+		expect(board.taskCount).toBe(0)
+		const original = await snapshotBoard(board.id)
+		const payload = settings(board)
+		payload.name = 'Must not rename'
+		payload.description = 'Must not change'
+		payload.columns = payload.columns!.slice(1).reverse()
+		payload.columns[0]!.title = 'Must not rename column'
+		payload.columns.push({ key: 'draft', title: 'Must not create', color: 'red' })
+		payload.removedColumns = [
+			{ id: source.id, targetKey: payload.columns[0]!.key, requireEmpty: true },
+		]
+		const created = await request(server)
+			.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+			.set('Cookie', ownerCookies)
+			.send({ title: 'Added while settings were open', boardColumnId: source.id })
+			.expect(201)
+		const task = await prisma.task.findUniqueOrThrow({
+			where: { id: created.body.id as string },
+		})
+		expect(await snapshotBoard(board.id)).toEqual(original)
+		const response = await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(payload)
+			.expect(409)
+		expect(response.body.message).toBe(
+			'В колонке появились задачи. Откройте настройки заново и выберите, куда их перенести.',
+		)
+		expect(await snapshotBoard(board.id)).toEqual(original)
+		expect(await prisma.task.findMany({ where: { projectId } })).toEqual([task])
+	})
+
+	it('saves a guarded removal when the column is still empty', async () => {
+		const board = await createBoard()
+		const source = board.columns[0]!
+		const payload = settings(board)
+		payload.name = 'Saved empty removal'
+		payload.columns = payload.columns!.slice(1)
+		payload.removedColumns = [
+			{ id: source.id, targetKey: payload.columns[0]!.key, requireEmpty: true },
+		]
+		const response = await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(payload)
+			.expect(200)
+		expect(response.body).toMatchObject({ name: payload.name, taskCount: 0 })
+		expect((response.body as BoardListItem).columns.map((column) => column.id)).toEqual(
+			payload.columns.map((column) => column.id),
+		)
+		expect(await prisma.boardColumn.findUnique({ where: { id: source.id } })).toBeNull()
+	})
+
+	it('rolls back task transfers and every column change if board metadata conflicts', async () => {
+		await createBoard('Taken')
+		const board = await createBoard()
+		const source = board.columns[0]!
+		const task = await prisma.task.create({
+			data: {
+				title: 'Keep task',
+				projectId,
+				boardColumnId: source.id,
+				createdById: ownerId,
+				version: 8,
+			},
+		})
+		const original = await snapshotBoard(board.id)
+		const payload = settings(board)
+		payload.name = 'Taken'
+		payload.description = 'Must roll back'
+		payload.columns = payload.columns!.slice(1).reverse()
+		payload.removedColumns = [{ id: source.id, targetKey: payload.columns[0]!.key }]
+		await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(payload)
+			.expect(409)
+		expect(await snapshotBoard(board.id)).toEqual(original)
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: task.id } })).toEqual(task)
+	})
+
+	it('rejects stale column snapshots and foreign transfer targets without partial writes', async () => {
+		const board = await createBoard()
+		const payload = settings(board)
+		await prisma.boardColumn.update({
+			where: { id: board.columns[0]!.id },
+			data: { title: 'Concurrent title', updatedAt: new Date(Date.now() + 1000) },
+		})
+		const current = await snapshotBoard(board.id)
+		payload.name = 'Stale board'
+		payload.columns!.push({ key: 'draft', title: 'Draft', color: 'orange' })
+		await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(payload)
+			.expect(409)
+		expect(await snapshotBoard(board.id)).toEqual(current)
+		const refreshed = (
+			await request(server).get(path()).set('Cookie', ownerCookies).expect(200)
+		).body.find((item: BoardListItem) => item.id === board.id) as BoardListItem
+		const invalid = settings(refreshed)
+		invalid.columns = invalid.columns!.slice(1)
+		invalid.removedColumns = [{ id: refreshed.columns[0]!.id, targetKey: 'foreign-key' }]
+		await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(invalid)
+			.expect(400)
+		expect(await snapshotBoard(board.id)).toEqual(current)
+	})
+
+	it('preserves system columns and synchronizes status and version on transfer into them', async () => {
+		const source = await prisma.boardColumn.create({
+			data: {
+				boardId: defaultBoardId,
+				projectId,
+				key: 'custom',
+				title: 'Custom',
+				position: 10,
+			},
+		})
+		const task = await prisma.task.create({
+			data: {
+				title: 'Transfer to done',
+				projectId,
+				boardColumnId: source.id,
+				createdById: ownerId,
+			},
+		})
+		const board = (
+			await request(server).get(path()).set('Cookie', ownerCookies).expect(200)
+		).body.find((item: BoardListItem) => item.id === defaultBoardId) as BoardListItem
+		const payload = settings(board)
+		const done = board.columns.find((column) => column.key === 'DONE')!
+		payload.columns = payload.columns!.filter((column) => column.id !== source.id)
+		payload.removedColumns = [{ id: source.id, targetKey: done.key }]
+		await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(payload)
+			.expect(200)
+		expect(await prisma.task.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject(
+			{ boardColumnId: done.id, status: 'DONE', version: task.version + 1 },
+		)
+		const refreshed = (
+			await request(server).get(path()).set('Cookie', ownerCookies).expect(200)
+		).body.find((item: BoardListItem) => item.id === defaultBoardId) as BoardListItem
+		const invalid = settings(refreshed)
+		invalid.columns = invalid.columns!.filter((column) => column.id !== done.id)
+		invalid.removedColumns = [{ id: done.id, targetKey: invalid.columns[0]!.key }]
+		const original = await snapshotBoard(board.id)
+		await request(server)
+			.patch(`${path()}/${board.id}`)
+			.set('Cookie', ownerCookies)
+			.send(invalid)
+			.expect(409)
+		expect(await snapshotBoard(board.id)).toEqual(original)
+	})
 
 	it('lists the project default board with ordered columns and serialized dates for a member', async () => {
 		const response = await request(server)
@@ -540,6 +831,16 @@ describe('Boards (e2e)', () => {
 			required: ['name'],
 			properties: { name: { type: 'string', minLength: 1, maxLength: 100 } },
 			additionalProperties: false,
+		})
+		expect(document.components?.schemas?.UpdateBoardDto).toMatchObject({
+			properties: {
+				removedColumns: {
+					items: {
+						required: ['id', 'targetKey'],
+						properties: { requireEmpty: { type: 'boolean' } },
+					},
+				},
+			},
 		})
 		expect(document.components?.schemas?.BoardListItemResponseDto).toMatchObject({
 			properties: {

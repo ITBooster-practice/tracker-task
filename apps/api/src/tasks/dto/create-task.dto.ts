@@ -9,6 +9,14 @@ import {
 import { createZodDto } from 'nestjs-zod'
 
 export class CreateTaskDto extends createZodDto(createTaskSchema) {
+	@ApiPropertyOptional({
+		type: [String],
+		maxItems: 20,
+		example: ['Backend', 'Срочно'],
+		description: 'Метки проекта: до 20 имён длиной 1–40 символов',
+	})
+	labels?: string[]
+
 	@ApiProperty({
 		example: 'Fix login bug',
 		description: 'Название задачи (1–255 символов)',
@@ -48,6 +56,13 @@ export class CreateTaskDto extends createZodDto(createTaskSchema) {
 		description: 'ID исполнителя',
 	})
 	assigneeId?: string
+
+	@ApiPropertyOptional({
+		example: 'column-uuid',
+		description:
+			'Колонка проекта, в которой создаётся задача; без неё используется основная доска',
+	})
+	boardColumnId?: string
 
 	@ApiPropertyOptional({
 		example: '2025-12-31T23:59:59.000Z',

@@ -16,6 +16,7 @@ function column(id: string, position: number, isSystem = false): BoardColumn {
 		boardId: 'board',
 		projectId: 'project',
 		key: id,
+		color: 'gray',
 		title: id,
 		isSystem,
 		createdAt: new Date(0),

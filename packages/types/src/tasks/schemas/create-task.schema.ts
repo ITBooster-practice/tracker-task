@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { taskLabelsSchema } from './task-label.schema'
 
 export const TaskStatusSchema = z.enum([
 	'TODO',
@@ -24,11 +25,13 @@ export const createTaskSchema = z.object({
 	status: TaskStatusSchema.optional(),
 	priority: PrioritySchema.optional(),
 	assigneeId: z.string({ message: 'ID исполнителя должен быть строкой' }).optional(),
+	boardColumnId: z.string().min(1, 'Выберите колонку доски').optional(),
 	dueDate: z
 		.string({ message: 'Дата дедлайна должна быть строкой' })
 		.datetime({ message: 'Дата дедлайна должна быть в формате ISO 8601' })
 		.optional(),
 	type: TaskTypeSchema.optional(),
+	labels: taskLabelsSchema.optional(),
 })
 
 export type CreateTask = z.infer<typeof createTaskSchema>

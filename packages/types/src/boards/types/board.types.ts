@@ -1,7 +1,10 @@
+import type { BoardColumnColor } from '../schemas/board.schema'
+
 export interface Board {
 	id: string
 	projectId: string
 	name: string
+	description: string | null
 	isDefault: boolean
 	createdAt: string
 	updatedAt: string
@@ -13,6 +16,7 @@ export interface BoardColumn {
 	projectId: string
 	key: string
 	title: string
+	color: BoardColumnColor
 	position: number
 	isSystem: boolean
 	createdAt: string
@@ -25,10 +29,7 @@ export interface BoardListItem extends Board {
 }
 import type { Task } from '../../tasks/types/task.types'
 
-export interface BoardTask extends Task {
-	boardColumnId: string
-	createdById: string
-}
+export type BoardTask = Task
 
 export interface BoardColumnWithTasks extends BoardColumn {
 	tasks: BoardTask[]

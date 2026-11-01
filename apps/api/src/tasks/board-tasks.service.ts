@@ -7,24 +7,13 @@ import {
 } from '@nestjs/common'
 import type {
 	MoveTaskToColumn,
-	Priority,
 	TaskMoveConflict,
 	TaskMoveConflictReason,
 } from '@repo/types'
-import { Prisma, TaskStatus, TeamRole } from 'generated/prisma/client'
+import { Prisma, TeamRole } from 'generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
-
-type OrderedTask = {
-	id: string
-	boardColumnId: string
-	position: number
-	version: number
-	priority: Priority
-	assigneeId: string | null
-	createdById: string
-}
-const byPosition = (a: OrderedTask, b: OrderedTask) =>
-	a.position - b.position || a.id.localeCompare(b.id)
+import { serializeTaskLabels, taskLabelsInclude } from './task-labels.util'
+import { lockColumnTasks, updateTaskPlacement } from './task-placement'
 
 @Injectable()
 export class BoardTasksService {
@@ -51,13 +40,24 @@ export class BoardTasksService {
 					include: {
 						columns: {
 							orderBy: [{ position: 'asc' }, { id: 'asc' }],
-							include: { tasks: { orderBy: [{ position: 'asc' }, { id: 'asc' }] } },
+							include: {
+								tasks: {
+									include: taskLabelsInclude,
+									orderBy: [{ position: 'asc' }, { id: 'asc' }],
+								},
+							},
 						},
 					},
 				})
 				if (!result) throw new NotFoundException('Доска не найдена в этом проекте')
 				const { columns, ...board } = result
-				return { board, columns }
+				return {
+					board,
+					columns: columns.map((column) => ({
+						...column,
+						tasks: column.tasks.map(serializeTaskLabels),
+					})),
+				}
 			},
 			{ isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
 		)
@@ -101,11 +101,7 @@ export class BoardTasksService {
 					const columns = await this.columns(tx, projectId, ids)
 					const source = columns.find((column) => column.id === dto.fromColumnId)!
 					const target = columns.find((column) => column.id === dto.toColumnId)!
-					const tasks = await tx.$queryRaw<OrderedTask[]>(Prisma.sql`
-						SELECT "id", "boardColumnId", "position", "version", "priority", "assigneeId", "createdById" FROM "Task"
-					WHERE "projectId" = ${projectId} AND "boardColumnId" IN (${Prisma.join(ids)})
-					ORDER BY "id" FOR UPDATE
-				`)
+					const tasks = await lockColumnTasks(tx, projectId, ids)
 					const moving = tasks.find((task) => task.id === taskId)
 					if (!moving) {
 						const exists = await tx.task.findUnique({
@@ -151,51 +147,20 @@ export class BoardTasksService {
 							throw new BadRequestException('Исполнитель не является участником команды')
 						}
 					}
-					const targetTasks = tasks
-						.filter((task) => task.boardColumnId === target.id && task.id !== taskId)
-						.sort(byPosition)
-					if (dto.position > targetTasks.length) {
-						throw new BadRequestException('Позиция задачи выходит за границы колонки')
-					}
-					targetTasks.splice(dto.position, 0, moving)
-					const updated = await tx.task.update({
-						where: {
-							id: taskId,
-							projectId,
-							boardColumnId: source.id,
-							version: dto.expectedVersion,
-						},
+					const updated = await updateTaskPlacement(tx, {
+						projectId,
+						source,
+						target,
+						moving,
+						tasks,
+						expectedVersion: dto.expectedVersion,
+						position: dto.position,
 						data: {
-							boardColumnId: target.id,
-							position: dto.position,
-							version: { increment: 1 },
 							...(priorityChanged ? { priority: dto.priority } : {}),
 							...(assigneeChanged ? { assigneeId: dto.assigneeId } : {}),
-							...(target.isSystem &&
-							Object.values(TaskStatus).includes(target.key as TaskStatus)
-								? { status: target.key as TaskStatus }
-								: {}),
 						},
 					})
-					await this.setPositions(
-						tx,
-						targetTasks
-							.map((task, nextPosition) => ({
-								...task,
-								nextPosition,
-							}))
-							.filter((task) => task.id !== taskId),
-					)
-					if (source.id !== target.id) {
-						const remaining = tasks
-							.filter((task) => task.boardColumnId === source.id && task.id !== taskId)
-							.sort(byPosition)
-						await this.setPositions(
-							tx,
-							remaining.map((task, nextPosition) => ({ ...task, nextPosition })),
-						)
-					}
-					return updated
+					return serializeTaskLabels(updated)
 				},
 				{ timeout: 10_000 },
 			)
@@ -236,21 +201,5 @@ export class BoardTasksService {
 			message,
 		}
 		return new ConflictException(response)
-	}
-
-	private async setPositions(
-		tx: Prisma.TransactionClient,
-		tasks: (OrderedTask & { nextPosition: number })[],
-	) {
-		const changed = tasks.filter((task) => task.position !== task.nextPosition)
-		for (let offset = 0; offset < changed.length; offset += 500) {
-			const rows = changed
-				.slice(offset, offset + 500)
-				.map((task) => Prisma.sql`(${task.id}, ${task.nextPosition}::integer)`)
-			await tx.$executeRaw(Prisma.sql`
-				UPDATE "Task" AS task SET "position" = ordered.position, "version" = task."version" + 1, "updatedAt" = ${new Date()}
-				FROM (VALUES ${Prisma.join(rows)}) AS ordered(id, position) WHERE task."id" = ordered.id
-			`)
-		}
 	}
 }

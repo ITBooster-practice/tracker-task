@@ -15,61 +15,52 @@ import { BoardColumn } from '@/views/boards/ui/board-column'
 describe('BoardColumn', () => {
 	beforeEach(() => {
 		resetBoardColumnUnitMocks()
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		)
 	})
 
-	afterEach(cleanup)
-
-	it('скрывает удаление системной колонки и блокирует действие во время операции', () => {
-		const remove = vi.fn()
-		const props = {
-			column: createBoardColumnFixture(),
-			activeDragTaskId: null,
-			onOpenTask: () => undefined,
-			onDelete: remove,
-		}
-		const { rerender } = render(<BoardColumn {...props} />)
-		fireEvent.click(
-			screen.getByRole('button', { name: 'Удалить колонку «К выполнению»' }),
-		)
-		expect(remove).toHaveBeenCalledTimes(1)
-		rerender(<BoardColumn {...props} editTitleDisabled />)
-		expect(
-			screen.getByRole('button', { name: 'Удалить колонку «К выполнению»' }),
-		).toHaveProperty('disabled', true)
-		rerender(<BoardColumn {...props} column={{ ...props.column, isSystem: true }} />)
-		expect(
-			screen.queryByRole('button', { name: 'Удалить колонку «К выполнению»' }),
-		).toBeNull()
+	afterEach(() => {
+		cleanup()
+		vi.unstubAllGlobals()
 	})
 
-	it('позволяет переименовать системную колонку и возвращает фокус после редактора', () => {
-		const column = createBoardColumnFixture({ isSystem: true })
-		const edit = vi.fn()
-		const props = {
-			column,
-			activeDragTaskId: null,
-			onOpenTask: () => undefined,
-			onEditTitle: edit,
-		}
-		const { rerender } = render(<BoardColumn {...props} />)
-		fireEvent.click(
-			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
-		)
-		expect(edit).toHaveBeenCalledTimes(1)
-		rerender(
-			<BoardColumn {...props} titleEditor={<input aria-label='Редактор названия' />} />,
-		)
-		expect(screen.queryByRole('heading')).toBeNull()
-		expect(screen.getByLabelText('Редактор названия')).toBeDefined()
-		rerender(<BoardColumn {...props} />)
-		expect(document.activeElement).toBe(
-			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
-		)
-		rerender(<BoardColumn {...props} editTitleDisabled />)
-		expect(
-			screen.getByRole('button', { name: 'Переименовать колонку «К выполнению»' }),
-		).toHaveProperty('disabled', true)
-	})
+	it.each([
+		{ visible: 1, total: 4, context: 'Бэклог · 1 из 4 задач' },
+		{ visible: 0, total: 1, context: 'Бэклог · 0 из 1 задачи' },
+		{ visible: 2, total: 2, context: 'Бэклог · 2 задачи' },
+	])(
+		'показывает контекст меню $context и открывает настройки колонки',
+		({ visible, total, context }) => {
+			const configure = vi.fn()
+			render(
+				<BoardColumn
+					headerOnly
+					column={createBoardColumnFixture({
+						title: 'Бэклог',
+						tasks: Array.from({ length: visible }, (_, index) =>
+							createBoardTaskFixture({ id: `task-${index}` }),
+						),
+					})}
+					totalTasks={total}
+					activeDragTaskId={null}
+					onOpenTask={vi.fn()}
+					onConfigure={configure}
+				/>,
+			)
+			fireEvent.keyDown(screen.getByRole('button', { name: 'Меню колонки «Бэклог»' }), {
+				key: 'Enter',
+			})
+			expect(screen.getByText(context)).toBeDefined()
+			fireEvent.click(screen.getByRole('menuitem', { name: 'Настроить колонку' }))
+			expect(configure).toHaveBeenCalledExactlyOnceWith()
+		},
+	)
 
 	it('рендерит заголовок, счётчик и карточки колонки', () => {
 		let openedTaskId = ''

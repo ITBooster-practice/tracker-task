@@ -23,6 +23,7 @@ import type { ApiError } from '@/shared/lib/api/types'
 import { optimisticBoardMove } from '@/shared/lib/optimistic-board-move'
 
 import { boardsKeys } from './boards-keys'
+import { taskLabelsKeys } from './use-task-labels'
 
 export const tasksKeys = {
 	all: ['tasks'] as const,
@@ -50,6 +51,7 @@ const refreshProjectTasks = async (
 ) => {
 	const keys = [
 		boardsKeys.list(teamId, projectId),
+		taskLabelsKeys.project(teamId, projectId),
 		tasksKeys.projectLists(teamId, projectId),
 		tasksKeys.projectBoards(teamId, projectId),
 		tasksKeys.projectDetails(teamId, projectId),

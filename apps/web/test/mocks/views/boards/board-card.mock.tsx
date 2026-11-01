@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi, type Mock } from 'vitest'
 
 interface UseSortableInput {
 	id: string
@@ -28,12 +28,20 @@ const boardCardMockState = vi.hoisted(() => ({
 			})
 			.join(' '),
 	isDragging: false,
+	dragListeners: {
+		onKeyDown: vi.fn(),
+		onPointerDown: vi.fn(),
+		onTouchStart: vi.fn(),
+	},
 	sortableCalls: [] as UseSortableInput[],
 }))
 
 export function resetBoardCardUnitMocks() {
 	boardCardMockState.isDragging = false
 	boardCardMockState.sortableCalls = []
+	Object.values(boardCardMockState.dragListeners).forEach((listener) =>
+		listener.mockClear(),
+	)
 }
 
 export function setBoardCardIsDragging(value: boolean) {
@@ -42,6 +50,13 @@ export function setBoardCardIsDragging(value: boolean) {
 
 export function getBoardCardSortableCalls() {
 	return [...boardCardMockState.sortableCalls]
+}
+
+export function getBoardCardDragListeners(): Record<
+	'onKeyDown' | 'onPointerDown' | 'onTouchStart',
+	Mock
+> {
+	return boardCardMockState.dragListeners
 }
 
 vi.mock('@dnd-kit/sortable', () => ({
@@ -53,10 +68,7 @@ vi.mock('@dnd-kit/sortable', () => ({
 				'data-sortable-id': input.id,
 			},
 			isDragging: boardCardMockState.isDragging,
-			listeners: {
-				onKeyDown: vi.fn(),
-				'data-dnd-listener': 'true',
-			},
+			listeners: input.disabled ? undefined : boardCardMockState.dragListeners,
 			setNodeRef: () => undefined,
 			transform: { x: 8, y: 12, scaleX: 1, scaleY: 1 },
 			transition: 'transform 120ms ease',
@@ -74,8 +86,8 @@ vi.mock('@dnd-kit/utilities', () => ({
 }))
 
 vi.mock('@repo/ui', () => ({
-	Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
-		<button {...props}>{children}</button>
+	Badge: ({ children, className }: React.PropsWithChildren<{ className?: string }>) => (
+		<span className={className}>{children}</span>
 	),
 	Avatar: ({ children, className }: React.PropsWithChildren<{ className?: string }>) => (
 		<div className={className}>{children}</div>
@@ -96,25 +108,4 @@ vi.mock('@repo/ui', () => ({
 		<div className={className}>{children}</div>
 	),
 	cn: (...args: unknown[]) => boardCardMockState.buildClassName(args),
-}))
-
-vi.mock('@repo/ui/icons', () => ({
-	GripVertical: ({ className }: { className?: string }) => (
-		<span className={className} data-testid='icon-grip' />
-	),
-	MessageSquare: ({ className }: { className?: string }) => (
-		<span className={className} data-testid='icon-message' />
-	),
-	SquareCheckBig: ({ className }: { className?: string }) => (
-		<span className={className} data-testid='icon-checklist' />
-	),
-}))
-
-vi.mock('@/entities/task', () => ({
-	TaskPriorityBadge: ({ priority }: { priority: string }) => (
-		<span data-testid='priority-badge'>{priority}</span>
-	),
-	TaskTypeBadge: ({ type }: { type: string }) => (
-		<span data-testid='type-badge'>{type}</span>
-	),
 }))

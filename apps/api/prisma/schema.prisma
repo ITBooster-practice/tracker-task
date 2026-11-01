@@ -117,30 +117,32 @@ model TeamInvitation {
 }
 
 model Project {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   description String?
   teamId      String
-  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team        Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdBy   User        @relation(fields: [createdById], references: [id])
   tasks       Task[]
+  taskLabels  TaskLabel[]
   boards      Board[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([teamId])
 }
 
 model Board {
-  id        String        @id @default(uuid())
-  projectId String
-  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name      String
-  isDefault Boolean       @default(false)
-  columns   BoardColumn[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id          String        @id @default(uuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isDefault   Boolean       @default(false)
+  columns     BoardColumn[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@unique([projectId, name])
   @@unique([id, projectId])
@@ -153,6 +155,7 @@ model BoardColumn {
   board     Board    @relation(fields: [boardId, projectId], references: [id, projectId], onDelete: Cascade)
   key       String
   title     String
+  color     String   @default("gray")
   position  Int
   isSystem  Boolean  @default(false)
   tasks     Task[]
@@ -166,28 +169,53 @@ model BoardColumn {
 }
 
 model Task {
-  id            String      @id @default(uuid())
-  title         String
-  description   String?
-  status        TaskStatus  @default(TODO)
-  priority      Priority    @default(MEDIUM)
-  type          TaskType    @default(TASK)
-  position      Int         @default(0)
-  version       Int         @default(0)
-  dueDate       DateTime?
-  projectId     String
-  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  boardColumnId String
-  boardColumn   BoardColumn @relation(fields: [boardColumnId, projectId], references: [id, projectId], onDelete: NoAction)
-  assigneeId    String?
-  assignee      User?       @relation(fields: [assigneeId], references: [id])
-  createdById   String
-  createdBy     User        @relation("CreatedTasks", fields: [createdById], references: [id])
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id               String                @id @default(uuid())
+  title            String
+  description      String?
+  status           TaskStatus            @default(TODO)
+  priority         Priority              @default(MEDIUM)
+  type             TaskType              @default(TASK)
+  position         Int                   @default(0)
+  version          Int                   @default(0)
+  dueDate          DateTime?
+  projectId        String
+  project          Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  boardColumnId    String
+  boardColumn      BoardColumn           @relation(fields: [boardColumnId, projectId], references: [id, projectId], onDelete: NoAction)
+  assigneeId       String?
+  assignee         User?                 @relation(fields: [assigneeId], references: [id])
+  createdById      String
+  createdBy        User                  @relation("CreatedTasks", fields: [createdById], references: [id])
+  labelAssignments TaskLabelAssignment[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
+  @@unique([id, projectId])
   @@index([projectId, status, position])
   @@index([projectId, type])
   @@index([projectId, createdAt, id])
   @@index([boardColumnId, position])
+}
+
+model TaskLabel {
+  id          String                @id @default(uuid())
+  projectId   String
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  key         String
+  assignments TaskLabelAssignment[]
+
+  @@unique([projectId, key])
+  @@unique([id, projectId])
+}
+
+model TaskLabelAssignment {
+  taskId    String
+  labelId   String
+  projectId String
+  task      Task      @relation(fields: [taskId, projectId], references: [id, projectId], onDelete: Cascade)
+  label     TaskLabel @relation(fields: [labelId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+  @@index([labelId, projectId])
 }

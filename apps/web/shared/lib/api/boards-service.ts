@@ -1,8 +1,20 @@
-import type { BoardListItem, CreateBoard } from '@repo/types'
+import type { BoardListItem, CreateBoard, UpdateBoard } from '@repo/types'
 
 import { client } from './client'
 
 export const boardsService = {
+	update: async (
+		teamId: string,
+		projectId: string,
+		boardId: string,
+		data: UpdateBoard,
+	): Promise<BoardListItem> => {
+		const response = await client.patch<BoardListItem>(
+			`/teams/${teamId}/projects/${projectId}/boards/${boardId}`,
+			data,
+		)
+		return response.data
+	},
 	create: async (
 		teamId: string,
 		projectId: string,

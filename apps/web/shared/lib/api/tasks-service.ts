@@ -21,6 +21,19 @@ const buildBoardEndpoint = (teamId: string, projectId: string) =>
 	`${buildTasksEndpoint(teamId, projectId)}/board`
 
 export const tasksService = {
+	getLabels: async (
+		teamId: string,
+		projectId: string,
+		search = '',
+		signal?: AbortSignal,
+	): Promise<string[]> => {
+		const response = await client.get<string[]>(
+			`${buildTasksEndpoint(teamId, projectId)}/labels`,
+			{ params: { search: search.trim() || undefined }, signal },
+		)
+		return response.data
+	},
+
 	getBoard: async (
 		teamId: string,
 		projectId: string,

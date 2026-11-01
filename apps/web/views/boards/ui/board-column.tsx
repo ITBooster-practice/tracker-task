@@ -1,23 +1,36 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useRef } from 'react'
 
-import { Button } from '@repo/ui'
-import { Pencil, Plus, Trash2 } from '@repo/ui/icons'
+import {
+	Button,
+	cn,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@repo/ui'
+import { MoreHorizontal, Plus, Settings2 } from '@repo/ui/icons'
 
+import { columnColors } from '../model/column-colors'
+import { formatBoardTaskCount } from '../model/task-count'
 import type { BoardColumn } from '../model/types'
 import { BoardColumnTasks } from './board-column-tasks'
 
 interface BoardColumnProps {
 	headerOnly?: boolean
+	stretch?: boolean
 	column: BoardColumn
 	onOpenTask: (taskId: string) => void
 	onCreateTask?: () => void
 	activeDragTaskId: string | null
 	disabled?: boolean
-	onEditTitle?: () => void
-	titleEditor?: ReactNode
-	editTitleDisabled?: boolean
-	dragHandle?: ReactNode
-	onDelete?: () => void
+	onConfigure?: () => void
+	actionsDisabled?: boolean
+	totalTasks?: number
 }
 
 function BoardColumn({
@@ -26,76 +39,107 @@ function BoardColumn({
 	onCreateTask,
 	activeDragTaskId,
 	disabled = false,
-	onEditTitle,
-	titleEditor,
-	editTitleDisabled = false,
-	dragHandle,
-	onDelete,
+	onConfigure,
+	actionsDisabled = false,
 	headerOnly = false,
+	stretch = false,
+	totalTasks = column.tasks.length,
 }: BoardColumnProps) {
-	const editTrigger = useRef<HTMLButtonElement>(null)
-	const wasEditing = useRef(false)
-	const isEditingTitle = Boolean(titleEditor)
-	useEffect(() => {
-		if (wasEditing.current && !isEditingTitle) editTrigger.current?.focus()
-		wasEditing.current = isEditingTitle
-	}, [isEditingTitle])
-
+	const openingEditor = useRef(false)
+	const configure = () => {
+		openingEditor.current = true
+		onConfigure?.()
+	}
+	const context = `${column.title} · ${column.tasks.length === totalTasks ? formatBoardTaskCount(totalTasks) : `${column.tasks.length} из ${formatBoardTaskCount(totalTasks, 'genitive')}`}`
 	return (
-		<section className='flex w-[260px] shrink-0 flex-col'>
-			<header className='mb-2 px-2'>
-				{titleEditor ?? (
-					<div className='flex items-start justify-between gap-2'>
-						{dragHandle}
-						<div className='flex min-w-0 flex-1 items-start gap-2'>
-							<h2 className='min-w-0 text-lg leading-7 font-semibold break-words text-foreground'>
+		<section
+			className={cn(
+				'flex shrink-0 flex-col',
+				stretch
+					? 'min-w-[310px] flex-1 sm:min-w-[300px]'
+					: 'w-[310px] sm:w-[300px] xl:w-[330px]',
+			)}
+		>
+			<header
+				className={cn(
+					'mb-3 flex h-11 items-center gap-2 border-b-2',
+					columnColors[column.color]?.borderClassName ??
+						columnColors.gray.borderClassName,
+				)}
+			>
+				<span
+					aria-hidden
+					className={cn(
+						'size-2 shrink-0 rounded-full',
+						columnColors[column.color]?.className ?? columnColors.gray.className,
+					)}
+				/>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<h2
+								className='min-w-0 truncate text-base font-semibold text-foreground'
+								tabIndex={0}
+							>
 								{column.title}
 							</h2>
-							<span className='mt-1 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-muted-foreground'>
-								{column.tasks.length}
-							</span>
-						</div>
-						{onEditTitle && (
-							<Button
-								ref={editTrigger}
-								type='button'
-								variant='ghost'
-								size='icon-sm'
-								disabled={editTitleDisabled}
-								onClick={onEditTitle}
-								aria-label={`Переименовать колонку «${column.title}»`}
+						</TooltipTrigger>
+						<TooltipContent>{column.title}</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+				<span className='shrink-0 text-xs text-muted-foreground'>
+					{column.tasks.length}
+				</span>
+				<div className='ml-auto flex shrink-0 items-center gap-1'>
+					{onCreateTask && (
+						<Button
+							type='button'
+							onClick={onCreateTask}
+							disabled={disabled}
+							variant='ghost'
+							size='icon-sm'
+							aria-label={`Создать задачу в колонке «${column.title}»`}
+						>
+							<Plus aria-hidden />
+						</Button>
+					)}
+					{onConfigure && (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									id={`board-column-menu-${column.id}`}
+									type='button'
+									variant='ghost'
+									size='icon-sm'
+									disabled={actionsDisabled}
+									aria-label={`Меню колонки «${column.title}»`}
+								>
+									<MoreHorizontal aria-hidden />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent
+								align='end'
+								className='w-70 max-w-[calc(100vw-2rem)] space-y-0.5 rounded-[var(--radius-control)] p-1.5'
+								onCloseAutoFocus={(event) => {
+									if (openingEditor.current) event.preventDefault()
+									openingEditor.current = false
+								}}
 							>
-								<Pencil aria-hidden='true' />
-							</Button>
-						)}
-
-						{onCreateTask && (
-							<Button
-								type='button'
-								onClick={onCreateTask}
-								variant='ghost'
-								size='icon-sm'
-								aria-label='Создать задачу'
-							>
-								<Plus aria-hidden='true' />
-							</Button>
-						)}
-						{onDelete && !column.isSystem && (
-							<Button
-								type='button'
-								variant='ghost'
-								size='icon-sm'
-								disabled={editTitleDisabled}
-								onClick={onDelete}
-								aria-label={`Удалить колонку «${column.title}»`}
-							>
-								<Trash2 aria-hidden='true' />
-							</Button>
-						)}
-					</div>
-				)}
+								<DropdownMenuLabel
+									className='truncate px-3 py-2 text-xs font-normal text-muted-foreground'
+									title={context}
+								>
+									{context}
+								</DropdownMenuLabel>
+								<DropdownMenuItem className='px-3 py-3 font-normal' onSelect={configure}>
+									<Settings2 aria-hidden />
+									Настроить колонку
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
+				</div>
 			</header>
-
 			{!headerOnly && (
 				<BoardColumnTasks
 					column={column}

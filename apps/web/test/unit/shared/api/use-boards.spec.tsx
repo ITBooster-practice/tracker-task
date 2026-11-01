@@ -14,6 +14,7 @@ import {
 	useBoardsList,
 	useCreateBoard,
 	useDeleteBoard,
+	useUpdateBoard,
 } from '@/shared/api/use-boards'
 import { tasksKeys } from '@/shared/api/use-tasks'
 
@@ -21,6 +22,42 @@ beforeEach(() => {
 	boardsServiceMock.getAll.mockReset()
 	boardsServiceMock.create.mockReset()
 	boardsServiceMock.delete.mockReset()
+	boardsServiceMock.update.mockReset()
+})
+
+it('обновляет настройки и задачи только выбранного проекта', async () => {
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+	})
+	const key = boardsKeys.list('team-1', 'project-1')
+	const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
+	const detailKey = tasksKeys.detail('team-1', 'project-1', 'task-1')
+	const foreign = tasksKeys.board('team-2', 'project-1', 'board-1')
+	const original = createBoardListItemFixture()
+	const saved = { ...original, name: 'Новое имя', description: 'Контекст' }
+	client.setQueryData(key, [original])
+	for (const queryKey of [boardKey, detailKey, foreign])
+		client.setQueryData(queryKey, { unchanged: true })
+	boardsServiceMock.update.mockResolvedValue(saved)
+	const { result, unmount } = renderHook(() => useUpdateBoard(), {
+		wrapper: ({ children }) => (
+			<QueryClientProvider client={client}>{children}</QueryClientProvider>
+		),
+	})
+	await act(async () => {
+		await result.current.mutateAsync({
+			teamId: 'team-1',
+			projectId: 'project-1',
+			boardId: 'board-1',
+			data: { name: saved.name, description: saved.description },
+		})
+	})
+	expect(client.getQueryData(key)).toEqual([saved])
+	expect(client.getQueryState(boardKey)?.isInvalidated).toBe(true)
+	expect(client.getQueryState(detailKey)?.isInvalidated).toBe(true)
+	expect(client.getQueryState(foreign)?.isInvalidated).toBe(false)
+	unmount()
+	client.clear()
 })
 
 it('добавляет созданную доску только в список её проекта и помечает его для обновления', async () => {

@@ -73,13 +73,13 @@ it('применяет фильтры совместно и не удаляет 
 	expect(result[1]!.tasks).toEqual([])
 	expect(columns).toEqual(snapshot)
 })
-it('ищет по видимому ключу и названию, не по имени или тегам', () => {
+it('ищет по видимому ключу, названию и меткам без учёта регистра', () => {
 	const columns = createBoardColumnsFixture()
 	columns[0]!.tasks = [
 		createBoardTaskFixture({
 			key: 'TT-ABC',
 			title: 'Прототип',
-			tags: ['needle'],
+			labels: ['Frontend', 'Refactor'],
 			assignee: { id: 'user', name: 'needle', initials: 'N' },
 		}),
 	]
@@ -90,12 +90,63 @@ it('ищет по видимому ключу и названию, не по и�
 			query: 'tt-abc',
 		})[0]!.tasks,
 	).toHaveLength(1)
+	for (const query of ['прототип', ' FRONT ', 'refactor']) {
+		expect(
+			filterProjectBoardColumns(columns, {
+				...emptyProjectBoardFilters,
+				query,
+			})[0]!.tasks,
+		).toHaveLength(1)
+	}
 	expect(
 		filterProjectBoardColumns(columns, {
 			...emptyProjectBoardFilters,
 			query: 'needle',
 		})[0]!.tasks,
 	).toHaveLength(0)
+})
+
+it('совмещает поиск по метке с типом, приоритетом и исполнителем', () => {
+	const columns = createBoardColumnsFixture()
+	columns[0]!.tasks = [
+		createBoardTaskFixture({
+			id: 'match',
+			labels: ['Refactor'],
+			type: 'BUG',
+			priority: 'HIGH',
+			assigneeId: 'anna',
+		}),
+		createBoardTaskFixture({
+			id: 'different-type',
+			labels: ['Refactor'],
+			type: 'TASK',
+			priority: 'HIGH',
+			assigneeId: 'anna',
+		}),
+		createBoardTaskFixture({
+			id: 'different-priority',
+			labels: ['Refactor'],
+			type: 'BUG',
+			priority: 'LOW',
+			assigneeId: 'anna',
+		}),
+		createBoardTaskFixture({
+			id: 'different-assignee',
+			labels: ['Refactor'],
+			type: 'BUG',
+			priority: 'HIGH',
+			assigneeId: 'other',
+		}),
+	]
+	const snapshot = structuredClone(columns)
+	const filtered = filterProjectBoardColumns(columns, {
+		query: 'REFACTOR',
+		type: 'BUG',
+		priority: 'HIGH',
+		assignee: 'anna',
+	})
+	expect(filtered[0]!.tasks.map((task) => task.id)).toEqual(['match'])
+	expect(columns).toEqual(snapshot)
 })
 it('отдельно выбирает задачи без исполнителя', () => {
 	const columns = createBoardColumnsFixture()
@@ -166,4 +217,33 @@ it('перенос внутри колонки исключает исходну
 	expect(fullBoardMovePosition(columns, visible, 'a', 'TODO', 0)).toBe(0)
 	expect(fullBoardMovePosition(columns, visible, 'a', 'TODO', 1)).toBe(2)
 	expect(fullBoardMovePosition(columns, visible, 'a', 'missing', 0)).toBeNull()
+})
+
+it('отбирает просроченные незавершённые задачи и сохраняет условие в ссылке', () => {
+	const columns = createBoardColumnsFixture()
+	columns[0]!.tasks = [
+		createBoardTaskFixture({
+			id: 'overdue',
+			dueDate: '2020-01-01T00:00:00.000Z',
+			status: 'TODO',
+		}),
+		createBoardTaskFixture({
+			id: 'completed',
+			dueDate: '2020-01-01T00:00:00.000Z',
+			status: 'DONE',
+		}),
+		createBoardTaskFixture({ id: 'future', dueDate: '2099-01-01T00:00:00.000Z' }),
+		createBoardTaskFixture({ id: 'no-date', dueDate: null }),
+	]
+	const filters = { ...emptyProjectBoardFilters, overdue: true }
+	expect(
+		filterProjectBoardColumns(columns, filters)[0]!.tasks.map((task) => task.id),
+	).toEqual(['overdue'])
+	const params = projectBoardFilterParams(
+		new URLSearchParams('boardId=board&extra=keep'),
+		filters,
+	)
+	expect(parseProjectBoardFilters(params).overdue).toBe(true)
+	const cleared = projectBoardFilterParams(params, { ...filters, overdue: false })
+	expect(cleared.toString()).toBe('boardId=board&extra=keep')
 })
