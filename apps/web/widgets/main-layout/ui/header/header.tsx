@@ -13,16 +13,16 @@ import { MobileSidebarTrigger } from './mobile-sidebar-trigger'
 import { ProfileLink } from './profile-link'
 import { SidebarToggle } from './sidebar-toggle'
 
-const Header = () => {
+const Header = ({ wideNavigation = false }: { wideNavigation?: boolean }) => {
 	const notificationsEnabled = useFeature(FEATURE_KEYS.NOTIFICATIONS)
 	return (
 		<div className='flex h-14 items-center justify-between bg-sidebar px-3 text-sidebar-foreground'>
 			<div className='flex min-w-0 items-center gap-2'>
-				<div className='hidden md:block'>
+				<div className={wideNavigation ? 'hidden xl:block' : 'hidden md:block'}>
 					<SidebarToggle />
 				</div>
 
-				<MobileSidebarTrigger />
+				<MobileSidebarTrigger wideNavigation={wideNavigation} />
 			</div>
 
 			<div className='flex items-center gap-2'>

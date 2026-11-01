@@ -14,7 +14,11 @@ import { SidebarOpen } from '@repo/ui/icons'
 
 import { Sidebar } from '../sidebar'
 
-const MobileSidebarTrigger = () => {
+const MobileSidebarTrigger = ({
+	wideNavigation = false,
+}: {
+	wideNavigation?: boolean
+}) => {
 	const [isOpen, setIsOpen] = React.useState(false)
 
 	return (
@@ -24,7 +28,7 @@ const MobileSidebarTrigger = () => {
 					size='icon-sm'
 					variant='ghost'
 					type='button'
-					className='md:hidden'
+					className={wideNavigation ? 'xl:hidden' : 'md:hidden'}
 					aria-label='Открыть sidebar'
 					aria-expanded={isOpen}
 				>
