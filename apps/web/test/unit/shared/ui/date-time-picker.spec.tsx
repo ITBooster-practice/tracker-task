@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { useState } from 'react'
+import { createRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -36,6 +36,61 @@ afterEach(() => {
 	vi.restoreAllMocks()
 })
 describe('Shared date and time picker', () => {
+	it.each([false, true])(
+		'clears the date and restores input focus (with time: %s)',
+		(withTime) => {
+			render(
+				<Example
+					withTime={withTime}
+					value={withTime ? '2026-10-29T14:30' : '2026-10-29'}
+				/>,
+			)
+			const date = screen.getByLabelText('Дата') as HTMLInputElement
+			const clear = screen.getByRole('button', { name: 'Очистить дату' })
+			clear.focus()
+			fireEvent.click(clear)
+			expect(screen.getByTestId('value').textContent).toBe('')
+			expect(date.value).toBe('')
+			expect(date.checkValidity()).toBe(true)
+			expect(document.activeElement).toBe(date)
+			expect(screen.queryByLabelText('Время')).toBeNull()
+		},
+	)
+
+	it('supports form focus, blur and external validation alongside calendar errors', () => {
+		const ref = createRef<HTMLInputElement>()
+		const onBlur = vi.fn()
+		render(
+			<>
+				<Example
+					id='deadline'
+					description='Выберите срок'
+					inputProps={{
+						ref,
+						onBlur,
+						'aria-invalid': true,
+						'aria-describedby': 'form-date-error',
+					}}
+				/>
+				<p id='form-date-error'>Ошибка формы</p>
+			</>,
+		)
+		const input = screen.getByLabelText('Дата') as HTMLInputElement
+		ref.current!.focus()
+		expect(document.activeElement).toBe(input)
+		fireEvent.blur(input)
+		expect(onBlur).toHaveBeenCalledOnce()
+		fireEvent.change(input, { target: { value: '31.02.2028' } })
+		expect(input.checkValidity()).toBe(false)
+		expect(input.getAttribute('aria-describedby')).toBe(
+			'form-date-error deadline-hint deadline-error',
+		)
+		fireEvent.change(input, { target: { value: '' } })
+		expect(input.checkValidity()).toBe(true)
+		expect(input.getAttribute('aria-invalid')).toBe('true')
+		expect(input.getAttribute('aria-describedby')).toBe('form-date-error deadline-hint')
+	})
+
 	it('supports keyboard input without time and rejects impossible dates', () => {
 		render(<Example />)
 		const input = screen.getByLabelText('Дата') as HTMLInputElement

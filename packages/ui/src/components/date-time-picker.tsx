@@ -1,10 +1,18 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import {
+	useEffect,
+	useId,
+	useImperativeHandle,
+	useRef,
+	useState,
+	type ComponentProps,
+} from 'react'
 import { CalendarIcon } from 'lucide-react'
 import { Button } from './button'
 import { Calendar } from './calendar'
 import { CalendarMonthYear } from './calendar-month-year'
+import { Collapsible, CollapsibleContent } from './collapsible'
 import { Input } from './input'
 import { Label } from './label'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
@@ -36,6 +44,10 @@ export interface DateTimePickerProps {
 	startYear?: number
 	endYear?: number
 	description?: string
+	inputProps?: Pick<
+		ComponentProps<typeof Input>,
+		'ref' | 'onBlur' | 'aria-invalid' | 'aria-describedby'
+	>
 }
 
 export function DateTimePicker({
@@ -53,10 +65,12 @@ export function DateTimePicker({
 	startYear,
 	endYear,
 	description,
+	inputProps,
 }: DateTimePickerProps) {
 	const generatedId = useId()
 	const inputId = id ?? generatedId
 	const input = useRef<HTMLInputElement>(null)
+	useImperativeHandle(inputProps?.ref, () => input.current!, [])
 	const today = referenceDate ?? new Date()
 	const selected = parseLocalDateTime(value)
 	const lower = minValue ? (withTime ? minuteCeiling(minValue) : minValue) : undefined
@@ -142,14 +156,18 @@ export function DateTimePicker({
 		selected && upper && localDay(selected) === localDay(upper)
 			? localTime(upper)
 			: undefined
-	const clearButton = value && (
+	const clearButton = (
 		<Button
 			type='button'
 			variant='ghost'
-			size='sm'
-			className='w-fit shrink-0'
-			disabled={disabled}
-			onClick={() => onChange('')}
+			size='default'
+			className='w-max shrink-0'
+			disabled={disabled || !value}
+			onClick={() => {
+				onChange('')
+				setOpen(false)
+				input.current?.focus()
+			}}
 		>
 			Очистить дату
 		</Button>
@@ -157,124 +175,151 @@ export function DateTimePicker({
 	return (
 		<div className='grid gap-2'>
 			<Label htmlFor={inputId}>{label}</Label>
-			<div className='relative'>
-				<Input
-					ref={input}
-					id={inputId}
-					type='text'
-					inputMode='numeric'
-					placeholder='ДД.ММ.ГГГГ'
-					value={draft}
-					required={required}
-					disabled={disabled}
-					className='pr-11'
-					aria-invalid={Boolean(error)}
-					aria-describedby={
-						[description && inputId + '-hint', error && inputId + '-error']
-							.filter(Boolean)
-							.join(' ') || undefined
-					}
-					onChange={(event) => {
-						const field = event.currentTarget
-						const raw = field.value
-						const position = field.selectionStart ?? raw.length
-						const formatted = formatDayInput(raw)
-						const digitsBeforeCursor = raw.slice(0, position).replace(/\D/g, '').length
-						let cursor = formatted.length
-						if (position !== raw.length) {
-							cursor = 0
-							let digits = 0
-							while (cursor < formatted.length && digits < digitsBeforeCursor) {
-								if (/\d/.test(formatted[cursor]!)) digits++
-								cursor++
-							}
-						}
-						edit(formatted)
-						// Восстанавливаем курсор после вставки точек, чтобы можно было редактировать середину даты.
-						queueMicrotask(() => {
-							if (field.isConnected && document.activeElement === field)
-								field.setSelectionRange(cursor, cursor)
-						})
-					}}
-					onBlur={() => {
-						if (dirty) edit(draft, true)
-					}}
-					onKeyDown={(event) => {
-						if (event.key === 'Enter') {
-							event.preventDefault()
-							edit(draft, true)
-						}
-					}}
-				/>
-				<Popover
-					open={open}
-					onOpenChange={(next) => {
-						if (next) setMonth(initialMonth())
-						setOpen(next)
-					}}
-				>
-					<PopoverTrigger asChild>
-						<Button
-							type='button'
-							variant='ghost'
-							size='icon'
+			<Collapsible open={Boolean(value)} asChild>
+				<div data-slot='date-picker-row' className='flex min-w-0 items-center'>
+					<div data-slot='date-picker-field' className='relative min-w-0 flex-1'>
+						<Input
+							ref={input}
+							id={inputId}
+							type='text'
+							inputMode='numeric'
+							placeholder='ДД.ММ.ГГГГ'
+							value={draft}
+							required={required}
 							disabled={disabled}
-							className='absolute top-0 right-0 cursor-pointer'
-							aria-label='Выбрать дату'
-						>
-							<CalendarIcon aria-hidden='true' />
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent align='end' className='w-auto p-0'>
-						<Calendar
-							mode='single'
-							selected={selected ?? undefined}
-							month={month}
-							onMonthChange={setMonth}
-							today={today}
-							startMonth={start}
-							endMonth={end}
-							className='[--cell-size:2.5rem]'
-							components={{ MonthCaption: CalendarMonthYear }}
-							disabled={[
-								...(lower
-									? [
-											{
-												before: new Date(
-													lower.getFullYear(),
-													lower.getMonth(),
-													lower.getDate(),
-												),
-											},
-										]
-									: []),
-								...(upper
-									? [
-											{
-												after: new Date(
-													upper.getFullYear(),
-													upper.getMonth(),
-													upper.getDate(),
-												),
-											},
-										]
-									: []),
-							]}
-							onSelect={(day) => {
-								const result = day ? choose(localDay(day)) : { value: '', error: '' }
-								if (!result.error) {
-									onChange(result.value)
-									setError('')
-									input.current?.setCustomValidity('')
-									setOpen(false)
+							className='pr-11'
+							aria-invalid={error ? true : inputProps?.['aria-invalid']}
+							aria-describedby={
+								[
+									inputProps?.['aria-describedby'],
+									description && inputId + '-hint',
+									error && inputId + '-error',
+								]
+									.filter(Boolean)
+									.join(' ') || undefined
+							}
+							onChange={(event) => {
+								const field = event.currentTarget
+								const raw = field.value
+								const position = field.selectionStart ?? raw.length
+								const formatted = formatDayInput(raw)
+								const digitsBeforeCursor = raw
+									.slice(0, position)
+									.replace(/\D/g, '').length
+								let cursor = formatted.length
+								if (position !== raw.length) {
+									cursor = 0
+									let digits = 0
+									while (cursor < formatted.length && digits < digitsBeforeCursor) {
+										if (/\d/.test(formatted[cursor]!)) digits++
+										cursor++
+									}
+								}
+								edit(formatted)
+								// Восстанавливаем курсор после вставки точек, чтобы можно было редактировать середину даты.
+								queueMicrotask(() => {
+									if (field.isConnected && document.activeElement === field)
+										field.setSelectionRange(cursor, cursor)
+								})
+							}}
+							onBlur={(event) => {
+								if (dirty) edit(draft, true)
+								inputProps?.onBlur?.(event)
+							}}
+							onKeyDown={(event) => {
+								if (event.key === 'Enter') {
+									event.preventDefault()
+									edit(draft, true)
 								}
 							}}
 						/>
-					</PopoverContent>
-				</Popover>
-			</div>
+						<Popover
+							open={open}
+							onOpenChange={(next) => {
+								if (next) setMonth(initialMonth())
+								setOpen(next)
+							}}
+						>
+							<PopoverTrigger asChild>
+								<Button
+									type='button'
+									variant='ghost'
+									size='icon'
+									disabled={disabled}
+									className='absolute top-0 right-0 cursor-pointer'
+									aria-label='Выбрать дату'
+								>
+									<CalendarIcon aria-hidden='true' />
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent
+								align='end'
+								className='w-auto p-0 duration-200 ease-out motion-reduce:animate-none!'
+							>
+								<Calendar
+									mode='single'
+									selected={selected ?? undefined}
+									month={month}
+									onMonthChange={setMonth}
+									today={today}
+									startMonth={start}
+									endMonth={end}
+									className='[--cell-size:2.5rem]'
+									components={{ MonthCaption: CalendarMonthYear }}
+									disabled={[
+										...(lower
+											? [
+													{
+														before: new Date(
+															lower.getFullYear(),
+															lower.getMonth(),
+															lower.getDate(),
+														),
+													},
+												]
+											: []),
+										...(upper
+											? [
+													{
+														after: new Date(
+															upper.getFullYear(),
+															upper.getMonth(),
+															upper.getDate(),
+														),
+													},
+												]
+											: []),
+									]}
+									onSelect={(day) => {
+										const result = day ? choose(localDay(day)) : { value: '', error: '' }
+										if (!result.error) {
+											onChange(result.value)
+											setError('')
+											input.current?.setCustomValidity('')
+											setOpen(false)
+										}
+									}}
+								/>
+							</PopoverContent>
+						</Popover>
+					</div>
+					<CollapsibleContent
+						orientation='horizontal'
+						data-slot='date-picker-clear'
+						className='shrink-0'
+						aria-hidden={!value}
+						inert={!value}
+					>
+						<div className='pl-2'>{clearButton}</div>
+					</CollapsibleContent>
+				</div>
+			</Collapsible>
 			{error && (
-				<p id={inputId + '-error'} role='alert' className='text-sm text-destructive'>
+				<p
+					id={inputId + '-error'}
+					role='alert'
+					className='animate-in fade-in slide-in-from-top-1 text-sm text-destructive duration-200 motion-reduce:animate-none!'
+				>
 					{error}
 				</p>
 			)}
@@ -282,7 +327,6 @@ export function DateTimePicker({
 				<TimePicker
 					id={inputId + '-time'}
 					label={timeLabel}
-					action={clearButton}
 					value={value.split('T')[1] ?? '00:00'}
 					min={timeMin}
 					max={timeMax}
@@ -295,7 +339,6 @@ export function DateTimePicker({
 					onChange={(time) => onChange(localDay(selected) + 'T' + time)}
 				/>
 			)}
-			{!(selected && withTime) && clearButton}
 			{description && (
 				<p id={inputId + '-hint'} className='text-sm text-muted-foreground'>
 					{description}
