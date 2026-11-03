@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { isClientSide, setCookieHeader } from '@/shared/lib/api/auth-cookies'
 import { client } from '@/shared/lib/api/client'
 import { refreshAuthSession } from '@/shared/lib/api/refresh-auth-session'
+import { getServerNow } from '@/shared/lib/server-clock'
 
 type RetryableConfig = InternalAxiosRequestConfig & { _retry?: boolean }
 
@@ -101,6 +102,17 @@ describe('client', () => {
 	})
 
 	describe('response interceptor', () => {
+		it('синхронизирует браузерные часы по Date и не меняет их при SSR', () => {
+			const interceptor = getResponseInterceptor()
+			mockIsClientSide.mockReturnValue(true)
+			interceptor.fulfilled({ headers: { date: 'Mon, 02 Nov 2026 12:00:00 GMT' } })
+			const syncedTime = getServerNow()
+			expect(syncedTime).toBeGreaterThanOrEqual(Date.parse('2026-11-02T12:00:00Z'))
+			expect(syncedTime).toBeLessThan(Date.parse('2026-11-02T12:00:01Z'))
+			mockIsClientSide.mockReturnValue(false)
+			interceptor.fulfilled({ headers: { date: 'Mon, 02 Nov 2026 13:00:00 GMT' } })
+			expect(getServerNow()).toBe(syncedTime)
+		})
 		it('сохраняет структурированный конфликт переноса через настоящий HTTP-клиент', async () => {
 			const conflict = {
 				statusCode: 409,
