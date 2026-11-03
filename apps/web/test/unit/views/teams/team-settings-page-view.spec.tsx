@@ -15,11 +15,31 @@ import {
 	setupTeamSettingsPage,
 } from '@/test/mocks/views/teams/team-settings-page-view.mock'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TEAM_ROLES } from '@repo/types'
 
 import { TeamSettingsPageView } from '@/views/teams/ui/team-settings-page-view'
+
+function holdDialogExit() {
+	const getStyles = window.getComputedStyle.bind(window)
+	vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+	vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string | null) => {
+		const styles = getStyles(element, pseudo)
+		if (element.matches('[data-slot="dialog-content"]'))
+			Object.defineProperty(styles, 'animationName', {
+				get: () =>
+					element.getAttribute('data-state') === 'closed' ? 'team-exit' : 'team-enter',
+			})
+		return styles
+	})
+}
+
+function completeDialogExit(content: HTMLElement) {
+	const event = new Event('animationend', { bubbles: true })
+	Object.defineProperty(event, 'animationName', { value: 'team-exit' })
+	fireEvent(content, event)
+}
 
 describe('TeamSettingsPageView', () => {
 	beforeEach(() => {
@@ -27,7 +47,10 @@ describe('TeamSettingsPageView', () => {
 		setupTeamSettingsPage()
 	})
 
-	afterEach(cleanup)
+	afterEach(() => {
+		cleanup()
+		vi.unstubAllGlobals()
+	})
 
 	it('loading — показывает "Загрузка участников..."', () => {
 		setupTeamSettingsPage({ teamPending: true })
@@ -234,29 +257,37 @@ describe('TeamSettingsPageView', () => {
 		})
 	})
 
-	it('закрытие confirm dialog очищает выбранного участника', () => {
+	it('закрытие confirm dialog очищает выбранного участника', async () => {
 		render(<TeamSettingsPageView />)
 
 		fireEvent.click(screen.getByRole('button', { name: 'Удалить MadMan1988@yandex.ru' }))
-		expect(screen.getByTestId('confirm-dialog')).toBeDefined()
+		expect(
+			screen.getByRole('dialog', { name: 'Удалить участника из команды?' }),
+		).toBeDefined()
 
-		fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
 
-		expect(screen.queryByTestId('confirm-dialog')).toBeNull()
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 	})
 
-	it('удаляет команду после подтверждения', async () => {
+	it('удаляет команду после подтверждения и переходит к списку после завершения закрытия', async () => {
+		holdDialogExit()
 		mockDeleteTeamMutateAsync.mockResolvedValue({
 			message: 'Команда удалена',
 		})
 		render(<TeamSettingsPageView />)
 
 		fireEvent.click(screen.getByRole('button', { name: 'Удалить команду' }))
-		fireEvent.click(screen.getAllByRole('button', { name: 'Удалить команду' })[1]!)
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить команду' }))
 
+		const content = screen.getByRole('dialog')
+		await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+		expect(mockDeleteTeamMutateAsync).toHaveBeenCalledExactlyOnceWith('team-1')
+		expect(mockRouterReplace).not.toHaveBeenCalled()
+		expect(content.isConnected).toBe(true)
+		completeDialogExit(content)
 		await waitFor(() => {
-			expect(mockDeleteTeamMutateAsync).toHaveBeenCalledWith('team-1')
-			expect(mockRouterReplace).toHaveBeenCalledWith('/teams')
+			expect(mockRouterReplace).toHaveBeenCalledExactlyOnceWith('/teams')
 		})
 	})
 })

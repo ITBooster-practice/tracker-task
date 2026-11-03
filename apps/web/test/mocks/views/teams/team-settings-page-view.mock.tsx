@@ -102,6 +102,7 @@ type SetupTeamSettingsPageOptions = {
 
 export function resetTeamSettingsPageMocks() {
 	vi.clearAllMocks()
+	mockDeleteTeamMutateAsync.mockReset()
 }
 
 export function setupTeamSettingsPage({
@@ -154,8 +155,12 @@ vi.mock('@/shared/api/use-auth', () => ({
 
 vi.mock('@/shared/api/use-teams', () => ({
 	useTeamDetail: () => mockUseTeamDetail(),
-	useDeleteTeam: () => ({
-		mutateAsync: mockDeleteTeamMutateAsync,
+	useDeleteTeam: (options?: { onDeleted?: () => void | Promise<void> }) => ({
+		mutateAsync: async (...args: unknown[]) => {
+			const result = await mockDeleteTeamMutateAsync(...args)
+			await options?.onDeleted?.()
+			return result
+		},
 		isPending: false,
 	}),
 }))
@@ -188,7 +193,8 @@ vi.mock('@/shared/api/use-team-invitations', () => ({
 	}),
 }))
 
-vi.mock('@repo/ui', async () => ({
+vi.mock('@repo/ui', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@repo/ui')>()),
 	cn: (await import('@repo/ui/lib/utils')).cn,
 	usePagination: () => ({
 		page: 1,
@@ -202,29 +208,6 @@ vi.mock('@repo/ui', async () => ({
 	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
 		<button {...props}>{children}</button>
 	),
-	ConfirmDialog: ({
-		confirmLabel,
-		description,
-		onConfirm,
-		onOpenChange,
-		open,
-		title,
-	}: {
-		confirmLabel?: string
-		description?: React.ReactNode
-		onConfirm: () => void
-		onOpenChange: (open: boolean) => void
-		open: boolean
-		title: React.ReactNode
-	}) =>
-		open ? (
-			<div data-testid='confirm-dialog'>
-				<div>{title}</div>
-				<div>{description}</div>
-				<button onClick={() => void onConfirm()}>{confirmLabel ?? 'Подтвердить'}</button>
-				<button onClick={() => onOpenChange(false)}>Закрыть</button>
-			</div>
-		) : null,
 	EmptyState: ({
 		action,
 		description,

@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
 import type { BoardListItem } from '@repo/types'
-import { ConfirmDialog } from '@repo/ui'
+import { ConfirmDialog, useOverlayClose } from '@repo/ui'
 
 import { boardsKeys, useDeleteBoard } from '@/shared/api/use-boards'
 import { isApiError } from '@/shared/lib/api/utils'
@@ -27,6 +27,7 @@ export function DeleteBoardDialog({
 	const [error, setError] = useState<string | null>(null)
 	const submitting = useRef(false)
 	const mounted = useRef(true)
+	const { open, close, completeClose } = useOverlayClose(() => onOpenChange(false))
 	useEffect(() => {
 		mounted.current = true
 		return () => {
@@ -35,12 +36,12 @@ export function DeleteBoardDialog({
 	}, [])
 	const blocked = board.isDefault || board.taskCount > 0
 	const handleConfirm = async () => {
-		if (blocked || submitting.current) return
+		if (blocked || submitting.current || !open) return
 		submitting.current = true
 		setError(null)
 		try {
 			await remove.mutateAsync({ teamId, projectId, boardId: board.id })
-			if (mounted.current) onOpenChange(false)
+			if (mounted.current) await close()
 		} catch (cause) {
 			if (!mounted.current) return
 			setError(
@@ -63,7 +64,8 @@ export function DeleteBoardDialog({
 	}
 	return (
 		<ConfirmDialog
-			open
+			open={open}
+			onCloseAutoFocus={completeClose}
 			title='Удалить доску?'
 			description={
 				board.isDefault
@@ -75,10 +77,10 @@ export function DeleteBoardDialog({
 			confirmLabel='Удалить'
 			pendingLabel='Удаляем…'
 			confirmDisabled={blocked}
-			isPending={remove.isPending}
+			isPending={remove.isPending || !open}
 			onConfirm={handleConfirm}
-			onOpenChange={(open) => {
-				if (!submitting.current) onOpenChange(open)
+			onOpenChange={(nextOpen) => {
+				if (!nextOpen && !submitting.current) void close()
 			}}
 		>
 			{error && (

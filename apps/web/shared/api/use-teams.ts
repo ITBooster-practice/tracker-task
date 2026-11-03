@@ -108,13 +108,14 @@ export const useUpdateTeam = () => {
 	})
 }
 
-export const useDeleteTeam = () => {
+export const useDeleteTeam = (options?: { onDeleted?: () => void | Promise<void> }) => {
 	const queryClient = useQueryClient()
 
 	return useMutation<DeleteTeamResponse, ApiError, string>({
 		mutationKey: teamsKeys.delete('mutation'),
 		mutationFn: teamsService.delete,
-		onSuccess: (_, id) => {
+		onSuccess: async (_, id) => {
+			await options?.onDeleted?.()
 			useWorkspaceStore.getState().clearTeam(id)
 			queryClient.invalidateQueries({ queryKey: teamsKeys.lists() })
 			queryClient.removeQueries({ queryKey: teamsKeys.detail(id) })

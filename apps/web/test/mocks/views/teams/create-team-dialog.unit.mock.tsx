@@ -50,42 +50,7 @@ vi.mock('@/shared/lib/api/utils', () => ({
 	toApiError: vi.fn(),
 }))
 
-vi.mock('@repo/ui', () => ({
-	Button: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
-		<button {...props}>{children}</button>
-	),
-	DialogDrawer: ({
-		children,
-		onOpenChange,
-	}: React.PropsWithChildren<{
-		open: boolean
-		onOpenChange: (value: boolean) => void
-	}>) => (
-		<div data-testid='dialog'>
-			<button
-				type='button'
-				data-testid='drawer-close'
-				onClick={() => onOpenChange(false)}
-			>
-				close-drawer
-			</button>
-			{children}
-		</div>
-	),
-	DialogDrawerContent: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	DialogDrawerHeader: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	DialogDrawerTitle: ({ children }: React.PropsWithChildren) => <h2>{children}</h2>,
-	DialogDrawerDescription: ({ children }: React.PropsWithChildren) => <p>{children}</p>,
-	DialogDrawerFooter: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-	Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
-	Label: ({
-		children,
-		...props
-	}: React.PropsWithChildren<React.LabelHTMLAttributes<HTMLLabelElement>>) => (
-		<label {...props}>{children}</label>
-	),
+vi.mock('@repo/ui', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@repo/ui')>()),
 	toast: { error: mockToastError, success: vi.fn() },
 }))

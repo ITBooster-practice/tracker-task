@@ -1,4 +1,8 @@
 import {
+	installDesktopMatchMediaMock,
+	restoreMatchMediaMock,
+} from '@/test/mocks/browser/match-media.mock'
+import {
 	mockCreateTeamMutateAsync,
 	mockIsApiError,
 	mockRouterReplace,
@@ -7,16 +11,41 @@ import {
 	resetCreateTeamDialogUnitMocks,
 } from '@/test/mocks/views/teams/create-team-dialog.unit.mock'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CreateTeamDialog } from '@/views/teams/ui/create-team-dialog'
+
+function holdDialogExit() {
+	const getStyles = window.getComputedStyle.bind(window)
+	vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+	vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string | null) => {
+		const styles = getStyles(element, pseudo)
+		if (element.matches('[data-slot="dialog-content"]'))
+			Object.defineProperty(styles, 'animationName', {
+				get: () =>
+					element.getAttribute('data-state') === 'closed' ? 'team-exit' : 'team-enter',
+			})
+		return styles
+	})
+}
+
+function completeDialogExit(content: HTMLElement) {
+	const event = new Event('animationend', { bubbles: true })
+	Object.defineProperty(event, 'animationName', { value: 'team-exit' })
+	fireEvent(content, event)
+}
 
 describe('CreateTeamDialog', () => {
 	beforeEach(() => {
 		resetCreateTeamDialogUnitMocks()
+		installDesktopMatchMediaMock()
 	})
 
-	afterEach(cleanup)
+	afterEach(() => {
+		cleanup()
+		restoreMatchMediaMock()
+		vi.unstubAllGlobals()
+	})
 
 	it('отображает заголовок диалога', () => {
 		render(<CreateTeamDialog />)
@@ -77,7 +106,8 @@ describe('CreateTeamDialog', () => {
 		expect(mockCreateTeamMutateAsync).not.toHaveBeenCalled()
 	})
 
-	it('успешный submit — редирект на /teams', async () => {
+	it('успешный submit — редирект на /teams после завершения закрытия', async () => {
+		holdDialogExit()
 		mockCreateTeamMutateAsync.mockResolvedValue({ id: 'new-team', name: 'Design Team' })
 		render(<CreateTeamDialog />)
 
@@ -88,9 +118,14 @@ describe('CreateTeamDialog', () => {
 			screen.getByPlaceholderText('Например: Product Team').closest('form')!,
 		)
 
-		await waitFor(() => {
-			expect(mockRouterReplace).toHaveBeenCalledWith('/teams')
-		})
+		const content = screen.getByRole('dialog')
+		await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+		expect(mockRouterReplace).not.toHaveBeenCalled()
+		expect(content.isConnected).toBe(true)
+		completeDialogExit(content)
+		await waitFor(() =>
+			expect(mockRouterReplace).toHaveBeenCalledExactlyOnceWith('/teams'),
+		)
 	})
 
 	it('API ошибка — показывает toast.error', async () => {
@@ -112,12 +147,12 @@ describe('CreateTeamDialog', () => {
 		})
 	})
 
-	it('закрытие drawer через onOpenChange ведет на /teams', () => {
+	it('закрытие диалога через onOpenChange ведет на /teams', async () => {
 		render(<CreateTeamDialog />)
 
-		fireEvent.click(screen.getByTestId('drawer-close'))
+		fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
-		expect(mockRouterReplace).toHaveBeenCalledWith('/teams')
+		await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith('/teams'))
 	})
 
 	it('pending состояние меняет текст кнопки на "Создание..."', () => {
@@ -126,13 +161,17 @@ describe('CreateTeamDialog', () => {
 		render(<CreateTeamDialog />)
 
 		expect(screen.getByRole('button', { name: 'Создание...' })).toBeDefined()
+		fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+		fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+		expect(screen.getByRole('dialog').getAttribute('data-state')).toBe('open')
+		expect(mockRouterReplace).not.toHaveBeenCalled()
 	})
 
-	it('кнопка "Отмена" — редирект на /teams', () => {
+	it('кнопка "Отмена" — редирект на /teams', async () => {
 		render(<CreateTeamDialog />)
 
 		fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
 
-		expect(mockRouterReplace).toHaveBeenCalledWith('/teams')
+		await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith('/teams'))
 	})
 })
