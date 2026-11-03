@@ -44,6 +44,20 @@ export const tasksKeys = {
 		[...tasksKeys.projectBoards(teamId, projectId), boardId] as const,
 } as const
 
+export const taskMutationKeys = {
+	create: ['tasks', 'create'] as const,
+}
+
+export interface CreateTaskVariables {
+	teamId: string
+	projectId: string
+	data: CreateTask
+}
+
+export interface CreateTaskContext {
+	createdTaskId: string | null
+}
+
 const refreshProjectTasks = async (
 	queryClient: QueryClient,
 	teamId: string,
@@ -159,15 +173,17 @@ export const useTaskDetail = (teamId: string, projectId: string, taskId: string)
 export const useCreateTask = () => {
 	const queryClient = useQueryClient()
 
-	return useMutation<
-		Task,
-		ApiError,
-		{ teamId: string; projectId: string; data: CreateTask }
-	>({
+	return useMutation<Task, ApiError, CreateTaskVariables, CreateTaskContext>({
+		mutationKey: taskMutationKeys.create,
 		mutationFn: ({ teamId, projectId, data }) =>
 			tasksService.create(teamId, projectId, data),
-		onSuccess: (_, { teamId, projectId }) =>
-			refreshProjectTasks(queryClient, teamId, projectId),
+		onMutate: () => ({ createdTaskId: null }),
+		onSuccess: (task, { teamId, projectId }, context) => {
+			// Сохраняем ID ответа до refetch: UI уберёт локальную карточку,
+			// как только увидит эту реальную задачу в снимке доски.
+			if (context) context.createdTaskId = task.id
+			return refreshProjectTasks(queryClient, teamId, projectId)
+		},
 	})
 }
 
