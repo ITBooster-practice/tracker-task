@@ -89,7 +89,9 @@ const details = (props: Partial<ComponentProps<typeof TaskDetailsDialog>> = {}) 
 		{ wrapper: Wrapper },
 	)
 async function select(label: string, option: string) {
-	fireEvent.keyDown(await screen.findByRole('combobox', { name: label }), {
+	const trigger = await screen.findByRole('combobox', { name: label })
+	await waitFor(() => expect(trigger).toHaveProperty('disabled', false))
+	fireEvent.keyDown(trigger, {
 		key: 'ArrowDown',
 	})
 	fireEvent.click(await screen.findByRole('option', { name: option }))
@@ -205,7 +207,14 @@ describe('shared task details and editing', () => {
 			edit,
 		)
 		expect(Boolean(screen.queryByRole('button', { name: 'Удалить задачу' }))).toBe(remove)
-		expect(screen.queryAllByRole('combobox')).toHaveLength(edit ? 2 : 0)
+		expect(screen.queryAllByRole('combobox')).toHaveLength(edit ? 3 : 0)
+		if (!edit) {
+			const properties = within(
+				screen.getByRole('complementary', { name: 'Свойства задачи' }),
+			)
+			expect(properties.getByText('Баг')).toBeDefined()
+			expect(await properties.findByText('На проверке')).toBeDefined()
+		}
 	})
 	it('shows the board context, description and sidebar metadata and closes from the footer', async () => {
 		current.status = 'BACKLOG'
@@ -216,8 +225,13 @@ describe('shared task details and editing', () => {
 		expect(
 			within(screen.getByRole('region', { name: 'Описание' })).getByText('Контекст'),
 		).toBeDefined()
-		expect(screen.getByRole('combobox', { name: 'Статус' }).textContent).toContain(
-			'Бэклог',
+		expect(screen.getByRole('combobox', { name: 'Тип задачи' }).textContent).toContain(
+			'Баг',
+		)
+		await waitFor(() =>
+			expect(screen.getByRole('combobox', { name: 'Колонка' }).textContent).toContain(
+				'Бэклог',
+			),
 		)
 		expect(
 			screen.getByRole('button', { name: 'Скопировать ID задачи' }).textContent,
@@ -228,18 +242,18 @@ describe('shared task details and editing', () => {
 	it('updates status and priority inline and refreshes the displayed data', async () => {
 		details()
 		await screen.findByRole('heading', { name: 'Задача' })
-		await select('Статус', 'Готово')
+		await select('Тип задачи', 'История')
 		await waitFor(() =>
 			expect(tasksServiceMock.update).toHaveBeenCalledWith(
 				'team-1',
 				'project-1',
 				'task-action',
-				{ status: 'DONE' },
+				{ type: 'STORY' },
 			),
 		)
 		await waitFor(() =>
-			expect(screen.getByRole('combobox', { name: 'Статус' }).textContent).toContain(
-				'Готово',
+			expect(screen.getByRole('combobox', { name: 'Тип задачи' }).textContent).toContain(
+				'История',
 			),
 		)
 		await select('Приоритет', 'Низкий')
@@ -255,6 +269,87 @@ describe('shared task details and editing', () => {
 			expect(screen.getByRole('combobox', { name: 'Приоритет' }).textContent).toContain(
 				'Низкий',
 			),
+		)
+	})
+	it('moves to a system column inline by ID and refreshes its displayed title', async () => {
+		details()
+		await select('Колонка', 'Готово')
+		await waitFor(() =>
+			expect(tasksServiceMock.update).toHaveBeenCalledExactlyOnceWith(
+				'team-1',
+				'project-1',
+				current.id,
+				{ boardColumnId: 'done' },
+			),
+		)
+		await waitFor(() =>
+			expect(screen.getByRole('combobox', { name: 'Колонка' }).textContent).toContain(
+				'Готово',
+			),
+		)
+		expect(current.status).toBe('DONE')
+		expect(current.type).toBe('BUG')
+	})
+	it('displays and selects custom columns independently of the task status', async () => {
+		current.boardColumnId = 'custom'
+		current.status = 'IN_REVIEW'
+		current.type = 'TECH_DEBT'
+		details()
+		await waitFor(() =>
+			expect(screen.getByRole('combobox', { name: 'Колонка' }).textContent).toContain(
+				'Ожидает релиза',
+			),
+		)
+		const board = taskBoard()
+		board.columns.push({
+			...board.columns[0]!,
+			id: 'new-column',
+			key: 'new_column',
+			title: 'Новая колонка',
+			isSystem: false,
+		})
+		boardsServiceMock.getAll.mockResolvedValue([board])
+		await act(async () => {
+			await client.invalidateQueries({ queryKey: boardsKeys.list('team-1', 'project-1') })
+		})
+		await select('Колонка', 'Новая колонка')
+		await waitFor(() =>
+			expect(tasksServiceMock.update).toHaveBeenCalledExactlyOnceWith(
+				'team-1',
+				'project-1',
+				current.id,
+				{ boardColumnId: 'new-column' },
+			),
+		)
+		await waitFor(() =>
+			expect(screen.getByRole('combobox', { name: 'Колонка' }).textContent).toContain(
+				'Новая колонка',
+			),
+		)
+		expect(current.status).toBe('IN_REVIEW')
+		expect(current.type).toBe('TECH_DEBT')
+	})
+	it('retries loading the actual column without substituting the task status', async () => {
+		current.boardColumnId = 'custom'
+		boardsServiceMock.getAll.mockRejectedValueOnce({ statusCode: 500 })
+		details()
+		expect(await screen.findByRole('alert')).toHaveProperty(
+			'textContent',
+			'Не удалось загрузить колонки доски.',
+		)
+		expect(screen.getByRole('combobox', { name: 'Колонка' })).toHaveProperty(
+			'disabled',
+			true,
+		)
+		fireEvent.click(screen.getByRole('button', { name: 'Обновить колонки' }))
+		await waitFor(() =>
+			expect(screen.getByRole('combobox', { name: 'Колонка' }).textContent).toContain(
+				'Ожидает релиза',
+			),
+		)
+		expect(screen.getByRole('combobox', { name: 'Колонка' })).toHaveProperty(
+			'disabled',
+			false,
 		)
 	})
 	it('prefills a custom column independently of the stored task status', async () => {
@@ -338,7 +433,7 @@ describe('shared task details and editing', () => {
 		)
 	})
 	it('retries loading columns and keeps the draft while saving is unavailable', async () => {
-		boardsServiceMock.getAll.mockRejectedValueOnce({
+		boardsServiceMock.getAll.mockRejectedValue({
 			statusCode: 500,
 			message: 'Unavailable',
 		})
@@ -352,6 +447,7 @@ describe('shared task details and editing', () => {
 			'disabled',
 			true,
 		)
+		boardsServiceMock.getAll.mockResolvedValue([taskBoard()])
 		fireEvent.click(retry)
 		await screen.findByRole('radio', { name: 'На проверке', checked: true })
 		expect(screen.getByLabelText('Название')).toHaveProperty(
