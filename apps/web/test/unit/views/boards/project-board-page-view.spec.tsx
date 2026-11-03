@@ -36,16 +36,17 @@ import type { TaskDetailsDialog } from '@/features/tasks'
 import { useUserStore } from '@/entities/user'
 import { boardsKeys } from '@/shared/api/use-boards'
 import { tasksKeys } from '@/shared/api/use-tasks'
+import { syncServerClock } from '@/shared/lib/server-clock'
 
-const { boardState, detailsState, toastError, toastInfo, routerPush } = vi.hoisted(
-	() => ({
+const { boardState, detailsState, toastError, toastInfo, routerPush, routerReplace } =
+	vi.hoisted(() => ({
 		boardState: { current: null as ComponentProps<typeof Board> | null },
 		detailsState: { current: null as ComponentProps<typeof TaskDetailsDialog> | null },
 		toastError: vi.fn(),
 		toastInfo: vi.fn(),
 		routerPush: vi.fn(),
-	}),
-)
+		routerReplace: vi.fn(),
+	}))
 
 vi.mock('@/features/tasks', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/features/tasks')>()),
@@ -60,7 +61,7 @@ vi.mock('@/features/tasks', async (importOriginal) => ({
 }))
 
 vi.mock('next/navigation', () => ({
-	useRouter: () => ({ push: routerPush }),
+	useRouter: () => ({ push: routerPush, replace: routerReplace }),
 	useSearchParams: () => useBoardSearchParamsMock(),
 }))
 vi.mock('@/views/boards/ui/create-board-dialog', () => ({
@@ -242,6 +243,8 @@ describe('ProjectBoardPageView', () => {
 		toastError.mockReset()
 		toastInfo.mockReset()
 		routerPush.mockReset()
+		routerReplace.mockReset()
+		boardsServiceMock.archive.mockReset().mockResolvedValue(undefined)
 		boardState.current = null
 		detailsState.current = null
 		teamMembersServiceMock.getMembers.mockReset()
@@ -276,6 +279,96 @@ describe('ProjectBoardPageView', () => {
 		vi.unstubAllGlobals()
 		cleanup()
 		client.clear()
+		vi.useRealTimers()
+	})
+
+	it('returns to the active board route after archiving the selected board', async () => {
+		resetBoardHistoryMock('/teams/team-1/projects/project-1/board?boardId=board-1')
+		render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' boardId='board-1' />,
+			{ wrapper: Wrapper },
+		)
+		await screen.findByText('Задача из API')
+		fireEvent.click(await screen.findByRole('button', { name: 'Настроить доску' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		boardsServiceMock.getAll.mockResolvedValue([])
+		fireEvent.click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		await waitFor(() =>
+			expect(routerReplace).toHaveBeenCalledWith(
+				'/teams/team-1/projects/project-1/board',
+			),
+		)
+		expect(boardsServiceMock.archive).toHaveBeenCalledWith(
+			'team-1',
+			'project-1',
+			'board-1',
+			{ expectedUpdatedAt: liveView().board.updatedAt },
+		)
+	})
+
+	it('обновляет фильтр просроченных по серверному времени без нового запроса', async () => {
+		vi.useFakeTimers({
+			toFake: [
+				'Date',
+				'performance',
+				'setTimeout',
+				'clearTimeout',
+				'setInterval',
+				'clearInterval',
+			],
+		})
+		vi.setSystemTime(new Date('2099-01-01T00:00:00Z'))
+		syncServerClock('Mon, 02 Nov 2026 12:00:00 GMT')
+		const view = liveView()
+		view.columns[0]!.tasks[0]!.dueDate = '2026-11-02T12:00:01Z'
+		view.columns[0]!.tasks[0]!.status = 'TODO'
+		tasksServiceMock.getBoard.mockResolvedValue(view)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(100)
+		})
+		fireEvent.click(screen.getByRole('button', { name: 'Просроченные' }))
+		expect(boardState.current!.columns[0]!.tasks).toHaveLength(0)
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(2000)
+		})
+		expect(boardState.current!.columns[0]!.tasks.map((task) => task.id)).toEqual([
+			view.columns[0]!.tasks[0]!.id,
+		])
+		expect(tasksServiceMock.getBoard).toHaveBeenCalledOnce()
+	})
+
+	it('показывает в фильтре задачу со сроком 26 октября из колонки Готово', async () => {
+		resetBoardHistoryMock('/teams/team-1/projects/project-1/board?overdue=true')
+		syncServerClock('Mon, 02 Nov 2026 12:00:00 GMT')
+		const view = movableView()
+		view.columns[0]!.tasks[0]!.dueDate = '2099-01-01T00:00:00Z'
+		view.columns[1]!.tasks = [
+			{
+				...view.columns[0]!.tasks[0]!,
+				id: 'expired-in-done',
+				title: 'Показать предупреждение о несохранённом описании',
+				status: 'DONE',
+				boardColumnId: view.columns[1]!.id,
+				dueDate: '2026-10-26T00:00:00Z',
+			},
+		]
+		tasksServiceMock.getBoard.mockResolvedValue(view)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByRole('button', {
+			name: 'Показать предупреждение о несохранённом описании',
+		})
+		expect(boardState.current!.columns[0]!.tasks).toHaveLength(0)
+		expect(boardState.current!.columns[1]!.tasks.map((task) => task.id)).toEqual([
+			'expired-in-done',
+		])
+		expect(
+			screen.getByRole('button', { name: 'Просроченные' }).getAttribute('aria-pressed'),
+		).toBe('true')
 	})
 
 	it('меняет группировку без записи задач и сохраняет фильтры в URL', async () => {
@@ -286,6 +379,7 @@ describe('ProjectBoardPageView', () => {
 			wrapper: Wrapper,
 		})
 		fireEvent.click(await screen.findByRole('radio', { name: 'По приоритету' }))
+		await waitFor(() => expect(boardState.current).not.toBeNull())
 		expect(boardState.current!.grouping).toBe('priority')
 		expect(boardState.current!.lanes!.map((lane) => lane.priority)).toEqual([
 			'CRITICAL',
@@ -614,6 +708,12 @@ describe('ProjectBoardPageView', () => {
 			wrapper: Wrapper,
 		})
 		expect(screen.getByRole('status', { name: 'Загрузка доски' })).toBeDefined()
+		expect(screen.getByRole('textbox', { name: 'Поиск задач' })).toBeDefined()
+		expect(screen.getByRole('button', { name: 'Создать задачу' })).toHaveProperty(
+			'disabled',
+			true,
+		)
+		expect(document.querySelectorAll('[data-slot=card-skeleton]')).toHaveLength(13)
 		expect(tasksServiceMock.getBoard).not.toHaveBeenCalled()
 		await act(async () => {
 			list.resolve([
@@ -630,6 +730,10 @@ describe('ProjectBoardPageView', () => {
 			),
 		)
 		expect(screen.getByRole('status', { name: 'Загрузка доски' })).toBeDefined()
+		expect(document.querySelectorAll('[data-slot=card-skeleton]')).toHaveLength(3)
+		expect(screen.getByRole('status', { name: 'Загрузка доски' }).textContent).toContain(
+			'To do',
+		)
 		await act(async () => {
 			board.resolve(liveView())
 		})
@@ -656,6 +760,23 @@ describe('ProjectBoardPageView', () => {
 		)
 		fireEvent.click(screen.getByText('Close details'))
 		expect(screen.queryByRole('dialog')).toBeNull()
+	})
+
+	it('shows server-hydrated custom column headings while task cards are still loading', () => {
+		const board = createBoardListItemFixture({ id: 'custom', isDefault: false })
+		board.columns[0]!.title = 'Ожидает релиза'
+		board.columns[0]!.color = 'orange'
+		client.setQueryData(boardsKeys.list('team-1', 'project-1'), [board])
+		tasksServiceMock.getBoard.mockReturnValueOnce(deferred<BoardView>().promise)
+		render(
+			<ProjectBoardPageView teamId='team-1' projectId='project-1' boardId='custom' />,
+			{ wrapper: Wrapper },
+		)
+		const heading = screen.getByRole('heading', { name: 'Ожидает релиза', level: 2 })
+		expect(heading.closest('[aria-hidden=true]')).toBeNull()
+		expect(heading.parentElement!.className).toContain('border-board-orange')
+		expect(screen.getByRole('status', { name: 'Загрузка доски' })).toBeDefined()
+		expect(document.querySelectorAll('[data-slot=card-skeleton]')).toHaveLength(3)
 	})
 
 	it('открывает доску из URL и переключает её с сохранением контекста проекта', async () => {
@@ -777,6 +898,16 @@ describe('ProjectBoardPageView', () => {
 			),
 		)
 		expect(screen.getByTestId('board').getAttribute('data-disabled')).toBe('true')
+		await waitFor(() =>
+			expect(boardState.current!.pendingTasks).toEqual([
+				expect.objectContaining({
+					title: 'Новая карточка',
+					type: 'BUG',
+					boardColumnId: before.columns[0]!.id,
+				}),
+			]),
+		)
+		expect(screen.getByText('Сохраняем новую задачу…')).toBeDefined()
 		await act(async () => post.resolve(createTaskFixture({ id: 'created' })))
 		await waitFor(() => expect(tasksServiceMock.getBoard).toHaveBeenCalledTimes(2))
 		expect(screen.getByRole('dialog', { name: 'Создать задачу' })).toBeDefined()
@@ -789,7 +920,57 @@ describe('ProjectBoardPageView', () => {
 		await waitFor(() =>
 			expect(screen.queryByRole('dialog', { name: 'Создать задачу' })).toBeNull(),
 		)
+		expect(boardState.current!.pendingTasks).toHaveLength(0)
 	})
+
+	it('оставляет карточки при обновлении и при ошибке повторного запроса', async () => {
+		const refresh = deferred<BoardView>()
+		tasksServiceMock.getBoard
+			.mockResolvedValueOnce(liveView())
+			.mockReturnValueOnce(refresh.promise)
+		render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+			wrapper: Wrapper,
+		})
+		await screen.findByText('Задача из API')
+		let refreshing: Promise<void>
+		act(() => {
+			refreshing = client.invalidateQueries({
+				queryKey: tasksKeys.board('team-1', 'project-1', 'board-1'),
+			})
+		})
+		await screen.findByText('Обновляем · пока показаны предыдущие данные')
+		expect(screen.getByText('Задача из API')).toBeDefined()
+		await act(async () => {
+			refresh.reject({ statusCode: 500, message: 'Unavailable' })
+			await refreshing!
+		})
+		expect(screen.getByText('Задача из API')).toBeDefined()
+		expect((await screen.findByRole('alert')).textContent).toContain(
+			'Не удалось обновить доску',
+		)
+		expect(screen.getByRole('button', { name: 'Повторить' })).toBeDefined()
+	})
+
+	it.each([403, 404])(
+		'показывает ошибку доступа %s при повторном запросе',
+		async (statusCode) => {
+			tasksServiceMock.getBoard
+				.mockResolvedValueOnce(liveView())
+				.mockRejectedValueOnce({ statusCode, message: 'Unavailable' })
+			render(<ProjectBoardPageView teamId='team-1' projectId='project-1' />, {
+				wrapper: Wrapper,
+			})
+			await screen.findByText('Задача из API')
+			await act(async () => {
+				await client.invalidateQueries({
+					queryKey: tasksKeys.board('team-1', 'project-1', 'board-1'),
+				})
+			})
+			await screen.findByRole('heading', { name: 'Не удалось загрузить доску' })
+			expect(screen.getByRole('button', { name: 'Повторить' })).toBeDefined()
+			expect(screen.queryByTestId('board')).toBeNull()
+		},
+	)
 
 	it('запоздавший ответ создания не закрывает форму другого проекта и не меняет его кэш', async () => {
 		const post = deferred<ReturnType<typeof createTaskFixture>>()
@@ -807,12 +988,24 @@ describe('ProjectBoardPageView', () => {
 			<ProjectBoardPageView teamId='team-1' projectId='project-1' />,
 			{ wrapper: Wrapper },
 		)
-		fireEvent.click(await screen.findByRole('button', { name: 'Создать задачу' }))
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Создать задачу' })).toHaveProperty(
+				'disabled',
+				false,
+			),
+		)
+		fireEvent.click(screen.getByRole('button', { name: 'Создать задачу' }))
 		fireEvent.change(screen.getByLabelText('Название'), { target: { value: 'Первая' } })
 		fireEvent.submit(screen.getByLabelText('Название').closest('form')!)
 		await waitFor(() => expect(tasksServiceMock.create).toHaveBeenCalledTimes(1))
 		rerender(<ProjectBoardPageView teamId='team-1' projectId='project-2' />)
 		await screen.findByRole('heading', { name: 'Вторая доска' })
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Создать задачу' })).toHaveProperty(
+				'disabled',
+				false,
+			),
+		)
 		fireEvent.click(screen.getByRole('button', { name: 'Создать задачу' }))
 		await act(async () => post.resolve(createTaskFixture({ title: 'Первая' })))
 		await waitFor(() =>
@@ -945,7 +1138,8 @@ describe('ProjectBoardPageView', () => {
 						: 'Не удалось переместить задачу. Попробуйте ещё раз.',
 				),
 			)
-			await screen.findByText('Не удалось загрузить доску')
+			await screen.findByText('Не удалось обновить доску. Показаны предыдущие данные.')
+			expect(screen.getByText('Задача из API')).toBeDefined()
 			expect(
 				client.getQueryData(tasksKeys.board('team-1', 'project-1', 'board-1')),
 			).toEqual(before)

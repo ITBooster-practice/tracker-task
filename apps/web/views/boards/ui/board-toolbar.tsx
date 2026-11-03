@@ -49,6 +49,7 @@ interface BoardToolbarProps {
 	currentUserId?: string
 	totalTasks?: number
 	visibleTasks?: number
+	resultText?: string
 }
 
 export function BoardToolbar({
@@ -65,6 +66,7 @@ export function BoardToolbar({
 	currentUserId,
 	totalTasks = 0,
 	visibleTasks = 0,
+	resultText,
 }: BoardToolbarProps) {
 	const id = useId()
 	const [expanded, setExpanded] = useState(false)
@@ -279,13 +281,14 @@ export function BoardToolbar({
 			)}
 			<div className='flex flex-wrap items-center justify-between gap-3'>
 				<p role='status' aria-live='polite' className='text-sm text-muted-foreground'>
-					{totalTasks === 0
-						? 'На доске нет задач'
-						: hasProjectBoardFilters(filters)
-							? `Показано ${visibleTasks} из ${formatBoardTaskCount(totalTasks, 'genitive')}`
-							: totalTasks === 1
-								? 'Показана 1 задача'
-								: `Показаны все ${formatBoardTaskCount(totalTasks)}`}
+					{resultText ??
+						(totalTasks === 0
+							? 'На доске нет задач'
+							: hasProjectBoardFilters(filters)
+								? `Показано ${visibleTasks} из ${formatBoardTaskCount(totalTasks, 'genitive')}`
+								: totalTasks === 1
+									? 'Показана 1 задача'
+									: `Показаны все ${formatBoardTaskCount(totalTasks)}`)}
 				</p>
 				<div className='flex flex-wrap items-center gap-2'>
 					<span className='text-sm text-muted-foreground'>Группировка:</span>
