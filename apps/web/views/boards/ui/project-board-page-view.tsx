@@ -13,7 +13,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	EmptyState,
-	Skeleton,
 	toast,
 } from '@repo/ui'
 import { ChevronDown, ChevronLeft, ChevronRight, Plus, Settings2 } from '@repo/ui/icons'
@@ -25,6 +24,7 @@ import { useProjectDetail } from '@/shared/api/use-projects'
 import { useBoardQuery, useMoveTask } from '@/shared/api/use-tasks'
 import { useTeamMemberOptions } from '@/shared/api/use-team-members'
 import { ROUTES, teamRoutes } from '@/shared/config'
+import { useServerNow } from '@/shared/hooks/use-server-now'
 import { PageHeader } from '@/shared/ui/page-header'
 
 import { toBoardColumnsViewModel } from '../model/adapters'
@@ -33,15 +33,18 @@ import {
 	filterProjectBoardColumns,
 	fullBoardMovePosition,
 	hasProjectBoardFilters,
+	matchesProjectBoardFilters,
 	projectBoardAssigneeOptions,
 } from '../model/project-board-filters'
-import { formatBoardTaskCount } from '../model/task-count'
+import { formatBoardTaskCount, formatPendingBoardTaskCount } from '../model/task-count'
 import type { BoardTaskMoveInput } from '../model/types'
+import { usePendingBoardTasks } from '../model/use-pending-board-tasks'
 import { useProjectBoardFilters } from '../model/use-project-board-filters'
 import { findBoardTask } from '../model/utils'
 import { Board } from './board'
 import { BoardEditorDialog } from './board-editor-dialog'
 import { BoardEmptyState } from './board-empty-state'
+import { BoardLoading } from './board-loading'
 import { BoardToolbar } from './board-toolbar'
 import { CreateBoardDialog } from './create-board-dialog'
 
@@ -57,12 +60,20 @@ function ProjectBoardContent({
 	projectName,
 	renderHeader,
 	canManage,
+	refreshing,
+	refreshFailed,
+	onRetry,
+	onArchived,
 }: {
 	view: BoardView
 	teamId: string
 	projectName?: string
 	renderHeader: (actions?: ReactNode, taskCount?: string) => ReactNode
 	canManage: boolean
+	refreshing: boolean
+	refreshFailed: boolean
+	onRetry: () => void
+	onArchived: () => void
 }) {
 	const taskDialog = useTaskDialogRoute()
 	const [createColumnId, setCreateColumnId] = useState<string | null>(null)
@@ -71,6 +82,7 @@ function ProjectBoardContent({
 		columnId?: string
 	} | null>(null)
 	const currentUserId = useUserStore((state) => state.user?.id)
+	const now = useServerNow()
 	const membersQuery = useTeamMemberOptions(teamId, true)
 	const {
 		filters,
@@ -132,13 +144,22 @@ function ProjectBoardContent({
 		() => toBoardColumnsViewModel(view, assignees),
 		[view, assignees],
 	)
+	const pendingTasks = usePendingBoardTasks(teamId, view.board.projectId, view, assignees)
+	const filterTime = effectiveFilters.overdue ? now : 0
+	const visiblePendingTasks = useMemo(
+		() =>
+			pendingTasks.filter((task) =>
+				matchesProjectBoardFilters(task, effectiveFilters, filterTime),
+			),
+		[pendingTasks, effectiveFilters, filterTime],
+	)
 	const visibleColumns = useMemo(
-		() => filterProjectBoardColumns(columns, effectiveFilters),
-		[columns, effectiveFilters],
+		() => filterProjectBoardColumns(columns, effectiveFilters, filterTime),
+		[columns, effectiveFilters, filterTime],
 	)
 	const lanes = useMemo(
-		() => buildBoardLanes(grouping, columns, assignees),
-		[grouping, columns, assignees],
+		() => buildBoardLanes(grouping, columns, assignees, pendingTasks),
+		[grouping, columns, assignees, pendingTasks],
 	)
 	const dragScope = JSON.stringify([grouping, filters])
 	const latestDragScope = useRef(dragScope)
@@ -147,10 +168,14 @@ function ProjectBoardContent({
 		() => projectBoardAssigneeOptions(columns, assignees, filters.assignee),
 		[columns, assignees, filters.assignee],
 	)
-	const totalTasks = columns.reduce((count, column) => count + column.tasks.length, 0)
-	const visibleTasks = visibleColumns.reduce(
+	const serverTaskCount = columns.reduce(
 		(count, column) => count + column.tasks.length,
 		0,
+	)
+	const totalTasks = serverTaskCount + pendingTasks.length
+	const visibleTasks = visibleColumns.reduce(
+		(count, column) => count + column.tasks.length,
+		visiblePendingTasks.length,
 	)
 	const createColumns = columns
 	const isMutating = taskBusy || editor !== null
@@ -264,9 +289,16 @@ function ProjectBoardContent({
 				</>,
 				hasProjectBoardFilters(effectiveFilters)
 					? `${visibleTasks} из ${formatBoardTaskCount(totalTasks, 'genitive')}`
-					: formatBoardTaskCount(totalTasks),
+					: `${formatBoardTaskCount(serverTaskCount)}${pendingTasks.length ? ` + ${formatPendingBoardTaskCount(pendingTasks.length)}` : ''}`,
 			)}
 			<BoardToolbar
+				resultText={
+					pendingTasks.length
+						? 'Сохраняем новую задачу…'
+						: refreshing
+							? 'Обновляем · пока показаны предыдущие данные'
+							: undefined
+				}
 				currentUserId={currentUserId}
 				totalTasks={totalTasks}
 				visibleTasks={visibleTasks}
@@ -283,6 +315,17 @@ function ProjectBoardContent({
 					void membersQuery.refetch()
 				}}
 			/>
+			{refreshFailed && (
+				<div
+					role='alert'
+					className='flex flex-wrap items-center gap-2 text-sm text-destructive'
+				>
+					<p>Не удалось обновить доску. Показаны предыдущие данные.</p>
+					<Button variant='outline' size='sm' onClick={onRetry}>
+						Повторить
+					</Button>
+				</div>
+			)}
 			{columns.length === 0 && (
 				<EmptyState
 					headingLevel='h2'
@@ -298,6 +341,7 @@ function ProjectBoardContent({
 			)}
 			{columns.length > 0 && (
 				<Board
+					pendingTasks={visiblePendingTasks}
 					emptyState={
 						visibleTasks === 0 ? (
 							<BoardEmptyState
@@ -339,6 +383,7 @@ function ProjectBoardContent({
 					view={view}
 					selectedColumnId={editor.columnId}
 					onClose={() => setEditor(null)}
+					onArchived={onArchived}
 				/>
 			)}
 			{taskDialog.taskId && (
@@ -399,7 +444,15 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 	const boardQuery = useBoardQuery(teamId, projectId, selectedBoard?.id ?? '')
 	const isLoading =
 		boardsQuery.isPending || (Boolean(selectedBoard) && boardQuery.isPending)
-	const hasError = boardsQuery.isError || (Boolean(selectedBoard) && boardQuery.isError)
+	const hasError =
+		(boardsQuery.isError &&
+			(!boardsQuery.data || [401, 403, 404].includes(boardsQuery.error.statusCode))) ||
+		(Boolean(selectedBoard) &&
+			boardQuery.isError &&
+			(!boardQuery.data || [401, 403, 404].includes(boardQuery.error.statusCode)))
+	const refreshing =
+		(boardsQuery.isFetching && !boardsQuery.isPending) ||
+		(boardQuery.isFetching && !boardQuery.isPending)
 
 	const retry = () => {
 		if (boardsQuery.isError || !selectedBoard) void boardsQuery.refetch()
@@ -459,15 +512,18 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 							aria-hidden
 							className='text-sm font-normal tracking-normal text-muted-foreground'
 						>
-							{taskCount ??
-								formatBoardTaskCount(
-									boardQuery.data?.columns.reduce(
-										(total, column) => total + column.tasks.length,
-										0,
-									) ??
-										selectedBoard?.taskCount ??
-										0,
-								)}
+							{isLoading
+								? 'Загрузка…'
+								: (taskCount ??
+									formatBoardTaskCount(
+										boardQuery.data?.columns.reduce(
+											(total, column) => total + column.tasks.length,
+											0,
+										) ??
+											selectedBoard?.taskCount ??
+											0,
+									))}
+							{!isLoading && refreshing && ' · обновление'}
 						</span>
 					</span>
 				}
@@ -514,7 +570,23 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 	return (
 		<div className='flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground'>
 			<div className='flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 sm:gap-6 sm:px-6'>
-				{(!selectedBoard || !boardQuery.data || hasError || isLoading) && renderHeader()}
+				{(!selectedBoard || !boardQuery.data || hasError || isLoading) &&
+					renderHeader(
+						isLoading ? (
+							<>
+								{canManage && (
+									<Button variant='outline' disabled>
+										<Settings2 aria-hidden />
+										Настроить доску
+									</Button>
+								)}
+								<Button disabled>
+									<Plus aria-hidden />
+									Создать задачу
+								</Button>
+							</>
+						) : undefined,
+					)}
 				{hasError ? (
 					<EmptyState
 						headingLevel='h2'
@@ -524,15 +596,19 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 						action={<Button onClick={retry}>Повторить</Button>}
 					/>
 				) : isLoading ? (
-					<div
-						role='status'
-						aria-label='Загрузка доски'
-						className='flex gap-4 overflow-hidden'
-					>
-						{Array.from({ length: 3 }, (_, index) => (
-							<Skeleton key={index} className='h-80 w-[330px] shrink-0 rounded-xl' />
-						))}
-					</div>
+					<BoardLoading
+						columns={selectedBoard?.columns}
+						currentUserId={userId}
+						assignees={(memberQuery.data ?? []).map((member) => ({
+							id: member.userId,
+							name: member.name || member.email,
+						}))}
+						assigneesPending={memberQuery.isPending}
+						assigneesError={memberQuery.isError}
+						onRetryAssignees={() => {
+							void memberQuery.refetch()
+						}}
+					/>
 				) : !selectedBoard ? (
 					<EmptyState
 						headingLevel='h2'
@@ -567,6 +643,10 @@ function ProjectBoardPage({ teamId, projectId, boardId }: ProjectBoardPageViewPr
 						key={JSON.stringify([teamId, projectId, selectedBoard.id])}
 						canManage={canManage}
 						view={boardQuery.data}
+						refreshing={refreshing}
+						refreshFailed={boardsQuery.isError || boardQuery.isError}
+						onRetry={retry}
+						onArchived={() => router.replace(teamRoutes.projectBoard(teamId, projectId))}
 						renderHeader={renderHeader}
 						teamId={teamId}
 					/>
