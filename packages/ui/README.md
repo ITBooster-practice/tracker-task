@@ -137,6 +137,19 @@ return (
 )
 ```
 
+`CardSkeleton` без `children` показывает стандартную композицию загрузки карточки. Для доменной композиции передайте собственные `Skeleton` через `children`, а размеры контейнера задайте через `className`:
+
+```tsx
+import { CardSkeleton, Skeleton } from '@repo/ui'
+;<CardSkeleton className='h-[150px] justify-start gap-2.5 p-3.5'>
+	<Skeleton className='h-3 w-16' />
+	<Skeleton className='h-3 w-full' />
+	<Skeleton className='mt-auto h-3 w-1/2' />
+</CardSkeleton>
+```
+
+Примеры стандартного и собственного содержимого — [CardSkeleton в Storybook](./src/components/card/card-skeleton.stories.tsx), stories `Default` и `CustomContent`.
+
 ### Avatar
 
 Аватар пользователя с поддержкой изображений и fallback.
@@ -211,12 +224,7 @@ export function UserBlock() {
 			roleLabel='Участник'
 			roleDescription='Участник команды «Разработка»'
 			renderProfileLink={(children, className) => (
-				<a
-					href='/profile'
-					className={className}
-					aria-label='Личный кабинет'
-					title='Ирина Иванова'
-				>
+				<a href='/profile' className={className} aria-label='Личный кабинет'>
 					{children}
 				</a>
 			)}
@@ -225,21 +233,21 @@ export function UserBlock() {
 }
 ```
 
-| Параметр                                 | Назначение                                                                               |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `name`, `initials`, `roleLabel`          | Обязательные готовые имя, инициалы и подпись роли                                        |
-| `avatarSrc`                              | Необязательный URL фото; при отсутствии или ошибке загрузки видны инициалы               |
-| `roleDescription`                        | Полное описание роли для `title` в раскрытом виде; по умолчанию используется `roleLabel` |
-| `roleTone`                               | Общий тон роли `owner`, `admin` или `member`; по умолчанию `member`                      |
-| `neutral`                                | Отменяет `roleTone`, показывает outline с muted-текстом; по умолчанию `false`            |
-| `pending`                                | Устанавливает `aria-busy`; подпись и нейтральное состояние задаёт вызывающий код         |
-| `collapsed`                              | Оставляет видимый аватар и имя/роль для скринридера; нативные `title` не выводятся       |
-| `className`                              | Классы внешнего контейнера                                                               |
-| `renderProfileLink(children, className)` | Необязательный callback, который оборачивает содержимое ссылкой с переданными классами   |
+| Параметр                                 | Назначение                                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| `name`, `initials`, `roleLabel`          | Обязательные готовые имя, инициалы и подпись роли                                       |
+| `avatarSrc`                              | Необязательный URL фото; при отсутствии или ошибке загрузки видны инициалы              |
+| `roleDescription`                        | Полное описание роли в Tooltip раскрытого бейджа; по умолчанию используется `roleLabel` |
+| `roleTone`                               | Общий тон роли `owner`, `admin` или `member`; по умолчанию `member`                     |
+| `neutral`                                | Отменяет `roleTone`, показывает outline с muted-текстом; по умолчанию `false`           |
+| `pending`                                | Устанавливает `aria-busy`; подпись и нейтральное состояние задаёт вызывающий код        |
+| `collapsed`                              | Оставляет видимый аватар и имя/роль для скринридера; нативные `title` не выводятся      |
+| `className`                              | Классы внешнего контейнера                                                              |
+| `renderProfileLink(children, className)` | Необязательный callback, который оборачивает содержимое ссылкой с переданными классами  |
 
-`pending` и `collapsed` по умолчанию равны `false`. Длинное имя сокращается, в раскрытом виде полное доступно в `title`. Sidebar передаёт инициалы: текущий контракт профиля содержит `id`, `name`, `email` без URL фото. Поддержку `avatarSrc` можно использовать там, где источник изображения уже есть.
+`pending` и `collapsed` по умолчанию равны `false`. Длинное имя сокращается; подсказку полного имени подключает вызывающий код. В раскрытом виде бейдж роли имеет общий Tooltip справа с `sideOffset={8}`, доступный при наведении и фокусе на обёртке `span tabIndex={0}`; в свёрнутом бейдж остаётся в `sr-only`. Sidebar передаёт инициалы: текущий контракт профиля содержит `id`, `name`, `email` без URL фото. Поддержку `avatarSrc` можно использовать там, где источник изображения уже есть.
 
-При `renderProfileLink` раскрытый компонент вызывает callback отдельно для аватара и имени; свёрнутый — только для аватара. Бейдж роли остаётся вне ссылок. Сохраняйте `children` и переданный `className`, задавайте ссылке доступное имя. В раскрытом виде передавайте полное имя в `title`; в свёрнутом используйте Tooltip без нативного `title`. Приложение определяет маршрут и обработчик перехода: в web это `NextLink`, `ROUTES.profile` и `onNavigate` для закрытия мобильного sidebar. Без callback компонент показывает обычные аватар и имя.
+При `renderProfileLink` раскрытый компонент вызывает callback отдельно для аватара и имени; свёрнутый — только для аватара. Бейдж роли остаётся вне ссылок. Сохраняйте `children` и переданный `className`, задавайте ссылке доступное имя. Web-контейнер `SidebarUser` оборачивает раскрытое имя и свёрнутую ссылку профиля в общий Tooltip справа с `sideOffset={8}`, сохраняя имя, роль и проект без нативного `title`. Приложение определяет маршрут и обработчик перехода: в web это `NextLink`, `ROUTES.profile` и `onNavigate` для закрытия мобильного sidebar. Без callback компонент показывает обычные аватар и имя.
 
 [Stories UserSummary](src/components/user-summary.stories.tsx), раздел `Shared/UI/UserSummary`, показывают фото, инициалы, длинное имя, роли, нейтральное состояние, загрузку, свёрнутый вид и обе темы. `ProfileActions` и `CollapsedActions` показывают ссылки и отдельное действие выхода.
 
@@ -393,15 +401,17 @@ return (
 
 ### Label
 
-Метка для полей ввода.
+Метка для полей ввода. Необязательный `required: boolean` (по умолчанию `false`) добавляет визуальную звёздочку `text-destructive` с `aria-hidden` вплотную к тексту, без пробела или gap. `FormLabel` передаёт этот prop в общий `Label`; обязательность самого контрола задавайте отдельно через `required` или `aria-required`.
 
 ```tsx
 import { Label, Input } from '@repo/ui'
 
 return (
 	<>
-		<Label htmlFor='email'>Email</Label>
-		<Input id='email' type='email' />
+		<Label htmlFor='email' required>
+			Email
+		</Label>
+		<Input id='email' type='email' required />
 	</>
 )
 ```
