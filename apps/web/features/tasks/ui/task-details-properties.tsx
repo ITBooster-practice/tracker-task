@@ -2,6 +2,7 @@ import type { Task, TeamMember, UpdateTask } from '@repo/types'
 import {
 	Avatar,
 	AvatarFallback,
+	Button,
 	cn,
 	Select,
 	SelectContent,
@@ -11,13 +12,18 @@ import {
 } from '@repo/ui'
 import { CalendarDays } from '@repo/ui/icons'
 
-import { TASK_PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from '../model/form'
-import { taskChoiceToneClasses, taskPriorityChoices } from './task-choice-options'
+import { TASK_PRIORITY_OPTIONS, TASK_TYPE_OPTIONS } from '../model/form'
+import { useTaskBoardColumns } from '../model/use-task-board-columns'
+import {
+	taskChoiceToneClasses,
+	taskPriorityChoices,
+	taskTypeChoices,
+} from './task-choice-options'
 import { TaskLabels } from './task-labels'
 
-const statusOptions = [{ value: 'BACKLOG', label: 'Бэклог' }, ...TASK_STATUS_OPTIONS]
-const inlineSelectClassName =
-	'-ml-2 h-9 w-[calc(100%+1rem)] min-w-0 border-transparent bg-transparent px-2 shadow-none hover:bg-muted/50 dark:border-transparent dark:bg-transparent'
+const inlineSelectClassName = 'min-w-0 px-2.5 shadow-none data-[size=default]:h-9'
+const coloredSelectClassName =
+	'border-current bg-current/5 hover:bg-current/10 dark:border-current dark:bg-current/5 dark:hover:bg-current/10'
 
 function TaskDate({ value }: { value: string | null }) {
 	if (!value) return <>Не указан</>
@@ -31,18 +37,26 @@ function TaskDate({ value }: { value: string | null }) {
 }
 
 export function TaskDetailsProperties({
+	teamId,
+	projectId,
 	task,
 	members,
 	canEdit,
 	busy,
 	onUpdate,
 }: {
+	teamId: string
+	projectId: string
 	task: Task
 	members: readonly Pick<TeamMember, 'userId' | 'name' | 'email'>[]
 	canEdit: boolean
 	busy: boolean
 	onUpdate: (data: UpdateTask) => void
 }) {
+	const columns = useTaskBoardColumns(teamId, projectId, task.boardColumnId)
+	const column = columns.columns.find((item) => item.id === task.boardColumnId)
+	const type = taskTypeChoices[task.type]
+	const TypeIcon = type.Icon
 	const assignee = members.find((member) => member.userId === task.assigneeId)
 	const assigneeName = task.assigneeId
 		? assignee?.name || assignee?.email || 'Назначенный участник'
@@ -62,27 +76,39 @@ export function TaskDetailsProperties({
 			aria-label='Свойства задачи'
 			className='min-w-0 space-y-5 border-t border-border pt-6 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-6'
 		>
+			{canEdit && (
+				<p className='text-xs leading-4 text-muted-foreground'>
+					Тип, приоритет и колонка сохраняются сразу.
+				</p>
+			)}
 			<div className='space-y-2'>
 				<p
-					id='task-detail-status-label'
+					id='task-detail-type-label'
 					className='text-xs leading-4 text-muted-foreground'
 				>
-					Статус
+					Тип задачи
 				</p>
 				{canEdit ? (
 					<Select
-						value={task.status}
+						value={task.type}
 						disabled={busy}
-						onValueChange={(status) => onUpdate({ status: status as Task['status'] })}
+						onValueChange={(value) => onUpdate({ type: value as Task['type'] })}
 					>
 						<SelectTrigger
-							aria-labelledby='task-detail-status-label'
-							className={inlineSelectClassName}
+							aria-labelledby='task-detail-type-label'
+							className={cn(
+								inlineSelectClassName,
+								coloredSelectClassName,
+								taskChoiceToneClasses[type.tone],
+							)}
 						>
-							<SelectValue />
+							<span className='inline-flex min-w-0 items-center gap-1.5'>
+								<TypeIcon aria-hidden className='size-4 shrink-0 text-current' />
+								<SelectValue />
+							</span>
 						</SelectTrigger>
 						<SelectContent>
-							{statusOptions.map((option) => (
+							{TASK_TYPE_OPTIONS.map((option) => (
 								<SelectItem key={option.value} value={option.value}>
 									{option.label}
 								</SelectItem>
@@ -90,8 +116,14 @@ export function TaskDetailsProperties({
 						</SelectContent>
 					</Select>
 				) : (
-					<p className='text-sm leading-5'>
-						{statusOptions.find((option) => option.value === task.status)?.label}
+					<p
+						className={cn(
+							'flex items-center gap-1.5 text-sm leading-5',
+							taskChoiceToneClasses[type.tone],
+						)}
+					>
+						<TypeIcon aria-hidden className='size-4 shrink-0' />
+						{TASK_TYPE_OPTIONS.find((option) => option.value === task.type)?.label}
 					</p>
 				)}
 			</div>
@@ -110,10 +142,14 @@ export function TaskDetailsProperties({
 					>
 						<SelectTrigger
 							aria-labelledby='task-detail-priority-label'
-							className={cn(inlineSelectClassName, taskChoiceToneClasses[priority.tone])}
+							className={cn(
+								inlineSelectClassName,
+								coloredSelectClassName,
+								taskChoiceToneClasses[priority.tone],
+							)}
 						>
 							<span className='inline-flex min-w-0 items-center gap-1.5'>
-								<PriorityIcon aria-hidden className='size-4 shrink-0' />
+								<PriorityIcon aria-hidden className='size-4 shrink-0 text-current' />
 								<SelectValue />
 							</span>
 						</SelectTrigger>
@@ -157,6 +193,68 @@ export function TaskDetailsProperties({
 					<CalendarDays aria-hidden className='size-4 shrink-0' />
 					<TaskDate value={task.dueDate} />
 				</p>
+			</div>
+			<div className='space-y-2'>
+				<p
+					id='task-detail-column-label'
+					className='text-xs leading-4 text-muted-foreground'
+				>
+					Колонка
+				</p>
+				{canEdit ? (
+					<Select
+						value={task.boardColumnId}
+						disabled={busy || columns.isPending || Boolean(columns.error)}
+						onValueChange={(boardColumnId) => onUpdate({ boardColumnId })}
+					>
+						<SelectTrigger
+							aria-labelledby='task-detail-column-label'
+							aria-describedby={columns.error ? 'task-detail-column-error' : undefined}
+							className={cn(
+								inlineSelectClassName,
+								'border-board-gray bg-board-gray/5 hover:bg-board-gray/10 dark:border-board-gray dark:bg-board-gray/5 dark:hover:bg-board-gray/10',
+							)}
+						>
+							<SelectValue>
+								{column?.title ??
+									(columns.isPending ? 'Загрузка…' : 'Колонка недоступна')}
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							{columns.columns.map((item) => (
+								<SelectItem key={item.id} value={item.id}>
+									{item.title}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				) : (
+					<p className='text-sm leading-5'>
+						{column?.title ?? (columns.isPending ? 'Загрузка…' : 'Колонка недоступна')}
+					</p>
+				)}
+				{columns.error && (
+					<div className='space-y-2'>
+						<p
+							id='task-detail-column-error'
+							role='alert'
+							className='text-xs text-destructive'
+						>
+							{columns.error}
+						</p>
+						<Button
+							type='button'
+							variant='outline'
+							size='sm'
+							disabled={busy}
+							onClick={() => {
+								void columns.refetch()
+							}}
+						>
+							Обновить колонки
+						</Button>
+					</div>
+				)}
 			</div>
 			<div className='space-y-2'>
 				<p className='text-xs leading-4 text-muted-foreground'>Метки</p>

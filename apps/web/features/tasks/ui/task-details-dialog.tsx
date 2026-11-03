@@ -269,6 +269,8 @@ export function TaskDetailsDialog({
 							)}
 						</div>
 						<TaskDetailsProperties
+							teamId={teamId}
+							projectId={projectId}
 							task={task}
 							members={members.data ?? []}
 							canEdit={canEdit}
