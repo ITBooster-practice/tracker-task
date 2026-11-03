@@ -177,7 +177,7 @@ export function DateTimePicker({
 			<Label htmlFor={inputId}>{label}</Label>
 			<Collapsible open={Boolean(value)} asChild>
 				<div data-slot='date-picker-row' className='flex min-w-0 items-center'>
-					<div data-slot='date-picker-field' className='relative min-w-0 flex-1'>
+					<div data-slot='date-picker-field' className='relative flex min-w-0 flex-1'>
 						<Input
 							ref={input}
 							id={inputId}
@@ -246,7 +246,7 @@ export function DateTimePicker({
 									variant='ghost'
 									size='icon'
 									disabled={disabled}
-									className='absolute top-0 right-0 cursor-pointer'
+									className='absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer'
 									aria-label='Выбрать дату'
 								>
 									<CalendarIcon aria-hidden='true' />

@@ -321,7 +321,7 @@ export function TaskForm({
 						control={control}
 						name='dueDate'
 						render={({ field }) => (
-							<div className='space-y-2 [&_[data-slot=input]]:h-11 [&_[data-slot=input]]:bg-card [&_[data-slot=input]]:text-base [&_[data-slot=input]]:leading-6 [&_[data-slot=label]]:text-sm [&_[data-slot=label]]:leading-5'>
+							<div className='space-y-2 [&_[data-slot=input]]:bg-card [&_[data-slot=input]]:text-base [&_[data-slot=input]]:leading-6 [&_[data-slot=label]]:text-sm [&_[data-slot=label]]:leading-5'>
 								<DateTimePicker
 									id='task-dueDate'
 									label='Срок'

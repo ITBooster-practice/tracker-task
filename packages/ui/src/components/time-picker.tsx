@@ -79,7 +79,7 @@ export function TimePicker({
 	return (
 		<div className='grid gap-2'>
 			<Label htmlFor={inputId}>{label}</Label>
-			<div className='relative min-w-0'>
+			<div className='relative flex min-w-0'>
 				<Input
 					ref={input}
 					id={inputId}
@@ -110,7 +110,7 @@ export function TimePicker({
 							variant='ghost'
 							size='icon'
 							disabled={disabled}
-							className='absolute top-0 right-0 cursor-pointer'
+							className='absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer'
 							aria-label='Выбрать время'
 						>
 							<ClockIcon aria-hidden='true' />
