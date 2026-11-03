@@ -86,7 +86,7 @@ function ProjectBoardsContent({
 								>
 									<Link
 										href={teamRoutes.projectBoard(teamId, projectId, board.id)}
-										className='min-w-0 flex-1 space-y-3 rounded-[var(--radius-surface)] p-4 transition-colors hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-ring'
+										className='flex min-w-0 flex-1 flex-col gap-3 self-stretch rounded-[var(--radius-surface)] p-4 transition-colors hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-ring'
 										aria-label={`Открыть доску «${board.name}»`}
 									>
 										<div className='flex flex-wrap items-center gap-2'>
@@ -97,16 +97,22 @@ function ProjectBoardsContent({
 											<h3 className='min-w-0 text-lg leading-7 font-semibold break-words'>
 												{board.name}
 											</h3>
-											{board.isDefault && <Badge variant='secondary'>Основная</Badge>}
 										</div>
-										<div className='space-y-1 text-sm text-muted-foreground'>
-											<p>Задач: {board.taskCount}</p>
-											<p>
-												Создана{' '}
-												<time dateTime={board.createdAt}>
-													{createdAtFormatter.format(new Date(board.createdAt))}
-												</time>
-											</p>
+										<div className='mt-auto flex flex-wrap items-end justify-between gap-3'>
+											<div className='space-y-1 text-sm text-muted-foreground'>
+												<p>Задач: {board.taskCount}</p>
+												<p>
+													Создана{' '}
+													<time dateTime={board.createdAt}>
+														{createdAtFormatter.format(new Date(board.createdAt))}
+													</time>
+												</p>
+											</div>
+											{board.isDefault && (
+												<Badge variant='secondary' className='ml-auto shrink-0'>
+													Основная
+												</Badge>
+											)}
 										</div>
 									</Link>
 									{!board.isDefault && (

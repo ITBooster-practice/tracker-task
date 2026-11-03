@@ -74,6 +74,7 @@ export function ColumnDraftRow({
 	const errorId = `${fieldId}-error`
 	const isNew = column.isNew === true
 	const title = column.title.trim() || 'Новая колонка'
+	const color = columnColors[column.color]
 	const invalidTitle = !column.title.trim()
 	const deleteReason = column.isSystem
 		? 'Системная колонка используется статусами задач'
@@ -166,8 +167,8 @@ export function ColumnDraftRow({
 					</div>
 					<div className='flex min-w-0 flex-wrap items-end gap-3'>
 						<div className='min-w-0 flex-1 basis-48 space-y-1.5'>
-							<Label htmlFor={fieldId} className='gap-1 leading-5'>
-								Название <span aria-hidden>*</span>
+							<Label htmlFor={fieldId} required className='leading-5'>
+								Название
 							</Label>
 							<Input
 								ref={input}
@@ -212,19 +213,31 @@ export function ColumnDraftRow({
 			) : (
 				<>
 					{grip}
-					<span
-						aria-hidden
-						className={cn(
-							'size-2 shrink-0 rounded-full',
-							columnColors[column.color].className,
-						)}
-					/>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span
+									role='img'
+									aria-label={`Цвет колонки: ${color.label}`}
+									tabIndex={0}
+									className={cn(
+										'size-2 shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring',
+										color.className,
+									)}
+								/>
+							</TooltipTrigger>
+							<TooltipContent side='top' sideOffset={8}>
+								{color.label}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 					<div className='min-w-0 flex-1 basis-24'>
 						{editing ? (
 							<div className='space-y-1'>
 								<Input
 									ref={input}
 									aria-label='Название колонки'
+									data-board-column-rename
 									aria-invalid={invalidTitle || undefined}
 									aria-describedby={invalidTitle ? errorId : undefined}
 									value={column.title}
@@ -294,7 +307,6 @@ export function ColumnDraftRow({
 									<span
 										className='inline-flex'
 										tabIndex={deleteReason && !disabled ? 0 : undefined}
-										title={deleteReason}
 										aria-label={deleteReason}
 									>
 										<Button
@@ -304,9 +316,8 @@ export function ColumnDraftRow({
 											disabled={disabled || !!deleteReason}
 											onClick={onDelete}
 											aria-label={`Удалить колонку «${title}»`}
-											title={deleteReason}
 											className={cn(
-												'border border-transparent',
+												'border border-transparent text-destructive hover:bg-destructive/10 hover:text-destructive',
 												deleting &&
 													'border-destructive bg-destructive/10 text-destructive',
 											)}
@@ -361,7 +372,9 @@ export function ColumnDraftPreview({
 					</div>
 					<div className='flex min-w-0 flex-wrap items-end gap-3'>
 						<div className='min-w-0 flex-1 basis-48 space-y-1.5'>
-							<p className='text-sm leading-5 font-medium'>Название *</p>
+							<Label required className='leading-5'>
+								Название
+							</Label>
 							<p className='h-10 truncate rounded-[var(--radius-control)] border border-input px-3 py-2 text-sm leading-6'>
 								{column.title || 'Название колонки'}
 							</p>
@@ -399,7 +412,7 @@ export function ColumnDraftPreview({
 							<Pencil className='size-4' />
 						</span>
 						<span className='flex size-8 shrink-0 items-center justify-center'>
-							<Trash2 className='size-4' />
+							<Trash2 className='size-4 text-destructive' />
 						</span>
 					</div>
 				</>
