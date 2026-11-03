@@ -67,7 +67,7 @@ export const teamSettingsRowActionsClassName =
 export const teamSettingsRoleSelectClassName = 'h-8 w-full sm:w-[180px] text-[13px]'
 
 export const teamSettingsRemoveButtonClassName =
-	'shrink-0 text-muted-foreground hover:text-destructive'
+	'shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive'
 
 export const teamSettingsDangerButtonClassName =
 	'h-10 rounded-[var(--radius-control)] px-5 text-[14px] font-medium'

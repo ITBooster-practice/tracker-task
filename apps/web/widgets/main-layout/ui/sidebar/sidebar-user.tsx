@@ -106,29 +106,36 @@ function SidebarUser({ teamId, projectId, isOpen, onNavigate }: SidebarUserProps
 								href={ROUTES.profile}
 								className={className}
 								aria-label='Личный кабинет'
-								title={isOpen ? name : undefined}
 								onClick={onNavigate}
 							>
 								{children}
 							</Link>
 						)
-						return isOpen ? (
-							link
-						) : (
+						return (
 							<TooltipProvider>
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<Button asChild variant='ghost' size='icon'>
-											{link}
-										</Button>
+										{isOpen ? (
+											link
+										) : (
+											<Button asChild variant='ghost' size='icon'>
+												{link}
+											</Button>
+										)}
 									</TooltipTrigger>
 									<TooltipContent side='right' sideOffset={8}>
 										<div>Личный кабинет: {name}.</div>
-										<div>
-											{roleSummary}
-											{roleLabel && project ? ':' : ''}
-										</div>
-										{roleLabel && project && <div>доступ к проекту «{project.name}»</div>}
+										{!isOpen && (
+											<>
+												<div>
+													{roleSummary}
+													{roleLabel && project ? ':' : ''}
+												</div>
+												{roleLabel && project && (
+													<div>доступ к проекту «{project.name}»</div>
+												)}
+											</>
+										)}
 									</TooltipContent>
 								</Tooltip>
 							</TooltipProvider>
