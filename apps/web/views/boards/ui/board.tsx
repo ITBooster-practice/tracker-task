@@ -33,7 +33,12 @@ import {
 	type BoardLane,
 } from '../model/board-swimlanes'
 import { BOARD_COLUMN_CONTAINER_PREFIX } from '../model/constants'
-import type { BoardColumn, BoardTask, BoardTaskMoveInput } from '../model/types'
+import type {
+	BoardColumn,
+	BoardTask,
+	BoardTaskMoveInput,
+	PendingBoardTask,
+} from '../model/types'
 import { findBoardTask, moveTaskInColumns } from '../model/utils'
 import { BoardCard } from './board-card'
 import { BoardColumn as BoardColumnView } from './board-column'
@@ -41,6 +46,7 @@ import { BoardColumnTasks } from './board-column-tasks'
 
 interface BoardProps {
 	columns: BoardColumn[]
+	pendingTasks?: PendingBoardTask[]
 	onOpenTask: (taskId: string) => void
 	onMoveTask?: (input: BoardTaskMoveInput) => void | Promise<void>
 	onCreateTask?: (columnId: string) => void
@@ -194,6 +200,7 @@ const getDragPlacement = (
 
 function Board({
 	columns,
+	pendingTasks = [],
 	onOpenTask,
 	onMoveTask,
 	onCreateTask,
@@ -521,6 +528,9 @@ function Board({
 										headerOnly={grouped || Boolean(emptyState)}
 										stretch={Boolean(emptyState)}
 										column={column}
+										pendingTasks={pendingTasks.filter(
+											(task) => task.boardColumnId === column.id,
+										)}
 										totalTasks={columnTaskCounts?.[column.id]}
 										onOpenTask={onOpenTask}
 										onCreateTask={
@@ -539,6 +549,9 @@ function Board({
 								!emptyState &&
 								lanes.map((lane) => {
 									const projected = laneColumns(renderedColumns, lane)
+									const pendingInLane = pendingTasks.filter((task) =>
+										taskInLane(task, lane),
+									)
 									const labelId = `${boardId}-${encodeURIComponent(lane.key)}`
 									return (
 										<section
@@ -556,7 +569,7 @@ function Board({
 												<span className='text-sm text-muted-foreground'>
 													{projected.reduce(
 														(count, column) => count + column.tasks.length,
-														0,
+														pendingInLane.length,
 													)}
 												</span>
 											</div>
@@ -573,6 +586,9 @@ function Board({
 													>
 														<BoardColumnTasks
 															column={column}
+															pendingTasks={pendingInLane.filter(
+																(task) => task.boardColumnId === column.id,
+															)}
 															lane={lane}
 															onOpenTask={onOpenTask}
 															activeDragTaskId={activeTaskId}

@@ -17,7 +17,7 @@ import { MoreHorizontal, Plus, Settings2 } from '@repo/ui/icons'
 
 import { columnColors } from '../model/column-colors'
 import { formatBoardTaskCount } from '../model/task-count'
-import type { BoardColumn } from '../model/types'
+import type { BoardColumn, PendingBoardTask } from '../model/types'
 import { BoardColumnTasks } from './board-column-tasks'
 
 interface BoardColumnProps {
@@ -31,6 +31,7 @@ interface BoardColumnProps {
 	onConfigure?: () => void
 	actionsDisabled?: boolean
 	totalTasks?: number
+	pendingTasks?: PendingBoardTask[]
 }
 
 function BoardColumn({
@@ -44,6 +45,7 @@ function BoardColumn({
 	headerOnly = false,
 	stretch = false,
 	totalTasks = column.tasks.length,
+	pendingTasks = [],
 }: BoardColumnProps) {
 	const openingEditor = useRef(false)
 	const configure = () => {
@@ -89,6 +91,9 @@ function BoardColumn({
 				</TooltipProvider>
 				<span className='shrink-0 text-xs text-muted-foreground'>
 					{column.tasks.length}
+					{pendingTasks.length > 0 && (
+						<span className='text-primary'> + {pendingTasks.length}</span>
+					)}
 				</span>
 				<div className='ml-auto flex shrink-0 items-center gap-1'>
 					{onCreateTask && (
@@ -143,6 +148,7 @@ function BoardColumn({
 			{!headerOnly && (
 				<BoardColumnTasks
 					column={column}
+					pendingTasks={pendingTasks}
 					onOpenTask={onOpenTask}
 					activeDragTaskId={activeDragTaskId}
 					disabled={disabled}

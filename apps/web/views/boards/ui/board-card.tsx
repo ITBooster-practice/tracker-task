@@ -1,18 +1,31 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useState } from 'react'
 
-import { Avatar, AvatarFallback, Card, CardContent, cn } from '@repo/ui'
+import {
+	Avatar,
+	AvatarFallback,
+	Card,
+	CardContent,
+	cn,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@repo/ui'
 import { CalendarDays } from '@repo/ui/icons'
 
+import { isTaskOverdue } from '@/features/tasks/model/is-task-overdue'
 import {
 	taskChoiceToneClasses,
 	taskPriorityChoices,
 	taskTypeChoices,
 } from '@/features/tasks/ui/task-choice-options'
 import { TaskLabels } from '@/features/tasks/ui/task-labels'
+import { useServerNow } from '@/shared/hooks/use-server-now'
 
 import { BOARD_PRIORITY_LABELS, BOARD_TYPE_OPTIONS } from '../model/constants'
-import type { BoardColumnId, BoardTask } from '../model/types'
+import type { BoardColumnId, BoardTask, PendingBoardTask } from '../model/types'
 
 interface BoardCardProps {
 	task: BoardTask
@@ -25,21 +38,31 @@ interface BoardCardProps {
 }
 
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+
+interface BoardCardBodyProps {
+	task: Pick<
+		BoardTask,
+		'key' | 'title' | 'type' | 'priority' | 'labels' | 'dueDate' | 'assignee'
+	>
+	isDragOverlay?: boolean
+	pending?: boolean
+}
+
 function BoardCardBody({
 	task,
 	isDragOverlay = false,
-}: Pick<BoardCardProps, 'task' | 'isDragOverlay'>) {
+	pending = false,
+}: BoardCardBodyProps) {
 	const TypeIcon = taskTypeChoices[task.type].Icon
 	const PriorityIcon = taskPriorityChoices[task.priority].Icon
-	const overdue = Boolean(
-		task.dueDate &&
-		new Date(task.dueDate).getTime() < Date.now() &&
-		task.status !== 'DONE',
-	)
+	const overdue = isTaskOverdue(task, useServerNow())
 	return (
 		<Card
 			className={cn(
-				'gap-0 border-border bg-card py-0 shadow-[var(--shadow-1)] transition-[box-shadow,border-color] duration-200 hover:border-primary/40',
+				'gap-0 py-0 shadow-[var(--shadow-1)] transition-[box-shadow,border-color] duration-200',
+				pending
+					? 'border-dashed border-primary bg-primary/5'
+					: 'border-border bg-card hover:border-primary/40',
 				isDragOverlay && 'border-primary/50 shadow-[var(--shadow-3)]',
 			)}
 		>
@@ -56,9 +79,7 @@ function BoardCardBody({
 						<span className='sr-only'>
 							{BOARD_TYPE_OPTIONS.find((option) => option.value === task.type)?.label}
 						</span>
-						<span className='truncate' title={task.key}>
-							{task.key}
-						</span>
+						<span className='truncate'>{task.key}</span>
 					</div>
 					<span
 						className={cn(
@@ -74,11 +95,24 @@ function BoardCardBody({
 					{task.title}
 				</p>
 				<TaskLabels labels={task.labels} />
+				{pending && (
+					<p
+						role='status'
+						className='flex items-center gap-2 text-sm font-medium text-primary'
+					>
+						<span
+							aria-hidden
+							className='size-3 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none'
+						/>
+						Сохраняется…
+					</p>
+				)}
 				<div className='flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground'>
 					<span
 						className={cn(
 							'inline-flex items-center gap-1',
-							overdue && 'text-destructive',
+							overdue &&
+								'rounded-md bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive',
 						)}
 					>
 						<CalendarDays aria-hidden className='size-3 shrink-0' />
@@ -97,13 +131,21 @@ function BoardCardBody({
 								{task.assignee?.initials ?? '—'}
 							</AvatarFallback>
 						</Avatar>
-						<span className='max-w-28 truncate' title={task.assignee?.name}>
+						<span className='max-w-28 truncate'>
 							{task.assignee?.name ?? 'Без исполнителя'}
 						</span>
 					</div>
 				</div>
 			</CardContent>
 		</Card>
+	)
+}
+
+function PendingBoardCard({ task }: { task: PendingBoardTask }) {
+	return (
+		<div data-testid={`board-pending-task-${task.localId}`}>
+			<BoardCardBody task={task} pending />
+		</div>
 	)
 }
 
@@ -138,6 +180,7 @@ function SortableBoardCard({
 	laneKey,
 }: Omit<BoardCardProps, 'isDragOverlay'>) {
 	const instructionsId = `board-task-instructions-${task.id}`
+	const [tooltipOpen, setTooltipOpen] = useState(false)
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
 		useSortable({
 			id: task.id,
@@ -161,53 +204,63 @@ function SortableBoardCard({
 	}
 
 	return (
-		<div
-			ref={setNodeRef}
-			id={`board-task-${task.id}`}
-			style={style}
-			data-testid={`board-task-${task.id}`}
-			{...attributes}
-			role='button'
-			tabIndex={0}
-			aria-label={task.title}
-			aria-disabled={undefined}
-			aria-describedby={disabled ? undefined : instructionsId}
-			onPointerDown={(event) => {
-				if (event.pointerType !== 'touch') listeners?.onPointerDown?.(event)
-			}}
-			onTouchStart={(event) => listeners?.onTouchStart?.(event)}
-			onClick={() => onOpenTask(task.id)}
-			onKeyDown={(event) => {
-				if (isDragging) return
-				if (event.key === 'Enter' || (disabled && event.key === ' ')) {
-					event.preventDefault()
-					onOpenTask(task.id)
-				} else {
-					listeners?.onKeyDown?.(event)
-				}
-			}}
-			title={
-				disabled
-					? 'Открыть задачу'
-					: 'Клик открывает задачу. Зажмите и потяните, чтобы перенести её.'
-			}
-			className={cn(
-				'relative select-none rounded-[var(--radius-surface)] outline-none focus-visible:ring-2 focus-visible:ring-ring',
-				{
-					'cursor-grab active:cursor-grabbing': !disabled,
-					'cursor-default': disabled,
-					'opacity-85': isDragging,
-				},
-			)}
-		>
-			<span id={instructionsId} className='sr-only'>
-				Enter открывает задачу. Нажмите Пробел, чтобы взять задачу. Стрелки перемещают её
-				между карточками, группами и колонками. Пробел или Enter сохраняет перенос, Escape
-				отменяет.
-			</span>
-			<BoardCardBody task={task} />
-		</div>
+		<TooltipProvider delayDuration={500}>
+			<Tooltip open={tooltipOpen && !isDragging} onOpenChange={setTooltipOpen}>
+				<TooltipTrigger asChild>
+					<div
+						ref={setNodeRef}
+						id={`board-task-${task.id}`}
+						style={style}
+						data-testid={`board-task-${task.id}`}
+						{...attributes}
+						role='button'
+						tabIndex={0}
+						aria-label={task.title}
+						aria-disabled={undefined}
+						aria-describedby={disabled ? undefined : instructionsId}
+						onPointerDown={(event) => {
+							if (event.pointerType !== 'touch') listeners?.onPointerDown?.(event)
+						}}
+						onTouchStart={(event) => listeners?.onTouchStart?.(event)}
+						onClick={() => onOpenTask(task.id)}
+						onKeyDown={(event) => {
+							if (isDragging) return
+							if (event.key === 'Enter' || (disabled && event.key === ' ')) {
+								event.preventDefault()
+								onOpenTask(task.id)
+							} else {
+								setTooltipOpen(false)
+								listeners?.onKeyDown?.(event)
+							}
+						}}
+						className={cn(
+							'relative select-none rounded-[var(--radius-surface)] outline-none focus-visible:ring-2 focus-visible:ring-ring',
+							{
+								'cursor-grab active:cursor-grabbing': !disabled,
+								'cursor-default': disabled,
+								'opacity-85': isDragging,
+							},
+						)}
+					>
+						<span id={instructionsId} className='sr-only'>
+							Enter открывает задачу. Нажмите Пробел, чтобы взять задачу. Стрелки
+							перемещают её между карточками, группами и колонками. Пробел или Enter
+							сохраняет перенос, Escape отменяет.
+						</span>
+						<BoardCardBody task={task} />
+					</div>
+				</TooltipTrigger>
+				<TooltipContent side='top' sideOffset={8}>
+					<p>
+						{disabled
+							? 'Открыть задачу'
+							: 'Клик открывает задачу. Зажмите и потяните, чтобы перенести её.'}
+					</p>
+					<p>{task.assignee?.name ?? 'Без исполнителя'}</p>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
 	)
 }
 
-export { BoardCard }
+export { BoardCard, PendingBoardCard }
