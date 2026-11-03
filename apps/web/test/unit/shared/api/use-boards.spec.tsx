@@ -7,15 +7,17 @@ import {
 } from '@/test/mocks/api/boards.fixtures'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import {
 	boardsKeys,
+	useArchiveBoard,
 	useBoardsList,
 	useCreateBoard,
 	useDeleteBoard,
 	useUpdateBoard,
 } from '@/shared/api/use-boards'
+import { taskLabelsKeys } from '@/shared/api/use-task-labels'
 import { tasksKeys } from '@/shared/api/use-tasks'
 
 beforeEach(() => {
@@ -23,6 +25,116 @@ beforeEach(() => {
 	boardsServiceMock.create.mockReset()
 	boardsServiceMock.delete.mockReset()
 	boardsServiceMock.update.mockReset()
+	boardsServiceMock.archive.mockReset()
+})
+
+it('архивирует доску, очищает данные её проекта и уведомляет до изменения кэша', async () => {
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+	})
+	const listKey = boardsKeys.list('team-1', 'project-1')
+	const boardKey = tasksKeys.board('team-1', 'project-1', 'board-1')
+	const otherBoardKey = tasksKeys.board('team-1', 'project-1', 'other')
+	const listTasksKey = tasksKeys.list('team-1', 'project-1')
+	const detailKey = tasksKeys.detail('team-1', 'project-1', 'task-1')
+	const labelsKey = taskLabelsKeys.list('team-1', 'project-1', '')
+	const foreign = tasksKeys.detail('team-2', 'project-1', 'task-1')
+	const board = createBoardListItemFixture({ isDefault: true })
+	const other = createBoardListItemFixture({ id: 'other' })
+	client.setQueryData(listKey, [board, other])
+	for (const key of [
+		boardKey,
+		otherBoardKey,
+		listTasksKey,
+		detailKey,
+		labelsKey,
+		foreign,
+	])
+		client.setQueryData(key, { present: true })
+	const archived = vi.fn(() => {
+		expect(client.getQueryData(listKey)).toEqual([board, other])
+		expect(client.getQueryData(boardKey)).toEqual({ present: true })
+	})
+	boardsServiceMock.archive.mockResolvedValue(undefined)
+	const { result, unmount } = renderHook(
+		() => useArchiveBoard({ onArchived: archived }),
+		{
+			wrapper: ({ children }) => (
+				<QueryClientProvider client={client}>{children}</QueryClientProvider>
+			),
+		},
+	)
+	await act(async () => {
+		await result.current.mutateAsync({
+			teamId: 'team-1',
+			projectId: 'project-1',
+			boardId: board.id,
+			data: { expectedUpdatedAt: board.updatedAt },
+		})
+	})
+	expect(boardsServiceMock.archive).toHaveBeenCalledExactlyOnceWith(
+		'team-1',
+		'project-1',
+		board.id,
+		{ expectedUpdatedAt: board.updatedAt },
+	)
+	expect(archived).toHaveBeenCalledOnce()
+	expect(client.getQueryData(listKey)).toEqual([other])
+	expect(client.getQueryData(boardKey)).toBeUndefined()
+	expect(client.getQueryData(detailKey)).toBeUndefined()
+	for (const key of [listKey, otherBoardKey, listTasksKey, labelsKey])
+		expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+	expect(client.getQueryData(foreign)).toEqual({ present: true })
+	expect(client.getQueryState(foreign)?.isInvalidated).toBe(false)
+	unmount()
+	client.clear()
+})
+
+it('отменяет запоздалые ответы доски и деталей задач при архивации', async () => {
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+	})
+	const keys = [
+		tasksKeys.board('team-1', 'project-1', 'board-1'),
+		tasksKeys.detail('team-1', 'project-1', 'task-1'),
+	]
+	const signals: AbortSignal[] = []
+	let resolve!: (value: object) => void
+	const slow = new Promise<object>((done) => {
+		resolve = done
+	})
+	const fetches = keys.map((queryKey) =>
+		client
+			.fetchQuery({
+				queryKey,
+				queryFn: ({ signal }) => {
+					signals.push(signal)
+					return slow
+				},
+			})
+			.catch(() => undefined),
+	)
+	boardsServiceMock.archive.mockResolvedValue(undefined)
+	const { result, unmount } = renderHook(() => useArchiveBoard(), {
+		wrapper: ({ children }) => (
+			<QueryClientProvider client={client}>{children}</QueryClientProvider>
+		),
+	})
+	await act(async () => {
+		await result.current.mutateAsync({
+			teamId: 'team-1',
+			projectId: 'project-1',
+			boardId: 'board-1',
+			data: { expectedUpdatedAt: '2026-01-01T00:00:00.000Z' },
+		})
+	})
+	expect(signals).toHaveLength(2)
+	expect(signals.every((signal) => signal.aborted)).toBe(true)
+	resolve({ stale: true })
+	await Promise.all(fetches)
+	for (const queryKey of keys) expect(client.getQueryData(queryKey)).toBeUndefined()
+	unmount()
+	client.clear()
 })
 
 it('обновляет настройки и задачи только выбранного проекта', async () => {
