@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 import { useUserStore } from '@/entities/user'
 import { ROUTE_QUERY_PARAMS, ROUTES } from '@/shared/config'
+import { syncServerClock } from '@/shared/lib/server-clock'
 
 import { isClientSide, setCookieHeader } from './auth-cookies'
 import { axiosConfig } from './axios-config'
@@ -27,7 +28,10 @@ client.interceptors.request.use(
 )
 
 client.interceptors.response.use(
-	(response) => response,
+	(response) => {
+		if (isClientSide()) syncServerClock(response.headers?.date)
+		return response
+	},
 	async (error: AxiosError<ApiError>) => {
 		const originalRequest = error.config as RetryableConfig | undefined
 
