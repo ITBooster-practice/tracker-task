@@ -111,30 +111,37 @@ describe('SidebarUser', () => {
 		['OWNER', 'Владелец', 'owner'],
 		['ADMIN', 'Администратор', 'admin'],
 		['MEMBER', 'Участник', 'member'],
-	] as const)('показывает роль %s из команды выбранного проекта', (role, label, tone) => {
-		queries.team.mockReturnValue({ data: makeTeam('team-1', role) })
-		render(<SidebarUser {...props} />)
+	] as const)(
+		'показывает роль %s из команды выбранного проекта',
+		async (role, label, tone) => {
+			queries.team.mockReturnValue({ data: makeTeam('team-1', role) })
+			render(<SidebarUser {...props} />)
 
-		expect(screen.getByText(user.name!)).toBeDefined()
-		expect(
-			screen.getByText(label).closest('[data-slot="badge"]')?.getAttribute('data-tone'),
-		).toBe(tone)
-		expect(screen.getByText(label).closest('[title]')?.getAttribute('title')).toContain(
-			'доступ к проекту «Проект project-1»',
-		)
-		expect(queries.team).toHaveBeenCalledWith('team-1', {
-			accountId: 'user-1',
-			enabled: true,
-		})
-		expect(queries.project).toHaveBeenCalledWith('team-1', 'project-1', {
-			accountId: 'user-1',
-			enabled: true,
-		})
-	})
+			expect(screen.getByText(user.name!)).toBeDefined()
+			expect(
+				screen.getByText(label).closest('[data-slot="badge"]')?.getAttribute('data-tone'),
+			).toBe(tone)
+			fireEvent.focus(screen.getByText(label).closest('[data-slot="tooltip-trigger"]')!)
+			expect((await screen.findByRole('tooltip')).textContent).toContain(
+				'доступ к проекту «Проект project-1»',
+			)
+			expect(queries.team).toHaveBeenCalledWith('team-1', {
+				accountId: 'user-1',
+				enabled: true,
+			})
+			expect(queries.project).toHaveBeenCalledWith('team-1', 'project-1', {
+				accountId: 'user-1',
+				enabled: true,
+			})
+		},
+	)
 
-	it('явно называет командную роль вне проекта', () => {
+	it('явно называет командную роль вне проекта', async () => {
 		render(<SidebarUser {...props} projectId={null} />)
-		expect(screen.getByText('Владелец').closest('[title]')?.getAttribute('title')).toBe(
+		fireEvent.focus(
+			screen.getByText('Владелец').closest('[data-slot="tooltip-trigger"]')!,
+		)
+		expect((await screen.findByRole('tooltip')).textContent).toBe(
 			'Владелец команды «Команда team-1»',
 		)
 		expect(queries.project).toHaveBeenCalledWith('team-1', '', {

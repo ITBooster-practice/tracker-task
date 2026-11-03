@@ -6,6 +6,7 @@ import { cn } from '@repo/ui/lib/utils'
 
 import { Avatar, AvatarFallback, AvatarImage } from './avatar'
 import { Badge, type BadgeTone } from './badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
 
 export interface UserSummaryProps {
 	name: string
@@ -44,6 +45,15 @@ function UserSummary({
 		'w-full truncate ps-[calc(var(--badge-padding-x)+1px)] text-sm font-medium leading-5'
 	const linkClassName =
 		'rounded-[var(--radius-control)] outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]'
+	const roleBadge = (
+		<Badge
+			variant='outline'
+			tone={neutral ? undefined : roleTone}
+			className={cn('max-w-full', neutral && 'text-muted-foreground')}
+		>
+			<span className='truncate'>{roleLabel}</span>
+		</Badge>
+	)
 	return (
 		<div
 			data-slot='user-summary'
@@ -64,19 +74,41 @@ function UserSummary({
 			>
 				{renderProfileLink && !collapsed ? (
 					renderProfileLink(name, cn(nameClassName, linkClassName))
+				) : collapsed ? (
+					<div className={nameClassName}>{name}</div>
 				) : (
-					<div className={nameClassName} title={collapsed ? undefined : name}>
-						{name}
-					</div>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<div tabIndex={0} className={cn(nameClassName, linkClassName)}>
+									{name}
+								</div>
+							</TooltipTrigger>
+							<TooltipContent side='right' sideOffset={8}>
+								{name}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				)}
-				<Badge
-					variant='outline'
-					tone={neutral ? undefined : roleTone}
-					title={collapsed ? undefined : (roleDescription ?? roleLabel)}
-					className={cn('max-w-full', neutral && 'text-muted-foreground')}
-				>
-					<span className='truncate'>{roleLabel}</span>
-				</Badge>
+				{collapsed ? (
+					roleBadge
+				) : (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span
+									tabIndex={0}
+									className='max-w-full rounded-full outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]'
+								>
+									{roleBadge}
+								</span>
+							</TooltipTrigger>
+							<TooltipContent side='right' sideOffset={8}>
+								{roleDescription ?? roleLabel}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				)}
 			</div>
 		</div>
 	)
