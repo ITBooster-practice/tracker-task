@@ -37,9 +37,6 @@ export const boardsService = {
 		)
 		return response.data
 	},
-	delete: async (teamId: string, projectId: string, boardId: string): Promise<void> => {
-		await client.delete(`/teams/${teamId}/projects/${projectId}/boards/${boardId}`)
-	},
 	getAll: async (
 		teamId: string,
 		projectId: string,

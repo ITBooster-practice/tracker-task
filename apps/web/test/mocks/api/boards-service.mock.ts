@@ -7,7 +7,6 @@ export const boardsServiceMock = {
 	getAll: vi.fn<BoardsService['getAll']>(),
 	create: vi.fn<BoardsService['create']>(),
 	update: vi.fn<BoardsService['update']>(),
-	delete: vi.fn<BoardsService['delete']>(),
 }
 
 vi.mock('@/shared/lib/api/boards-service', () => ({ boardsService: boardsServiceMock }))

@@ -1,4 +1,3 @@
-import type { BoardView } from '@repo/types'
 import {
 	Button,
 	DialogDescription,
@@ -13,7 +12,11 @@ import { Archive, X } from '@repo/ui/icons'
 import { formatBoardTaskCount } from '../model/task-count'
 
 interface ArchiveBoardDialogProps {
-	view: BoardView
+	boardName: string
+	columnCount: number
+	taskCount: number
+	closeLabel?: string
+	note?: string
 	desktop: boolean
 	pending: boolean
 	error: string | null
@@ -30,7 +33,11 @@ const columnForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
 }
 
 export function ArchiveBoardDialog({
-	view,
+	boardName,
+	columnCount,
+	taskCount,
+	closeLabel = 'Закрыть подтверждение архивации',
+	note,
 	desktop,
 	pending,
 	error,
@@ -41,15 +48,14 @@ export function ArchiveBoardDialog({
 	const Header = desktop ? DialogHeader : SheetHeader
 	const Title = desktop ? DialogTitle : SheetTitle
 	const Description = desktop ? DialogDescription : SheetDescription
-	const taskCount = view.columns.reduce((total, column) => total + column.tasks.length, 0)
-	const columns = `${view.columns.length} ${columnForms[russianPlural.select(view.columns.length)] ?? 'колонок'}`
+	const columns = `${columnCount} ${columnForms[russianPlural.select(columnCount)] ?? 'колонок'}`
 	const tasks = formatBoardTaskCount(taskCount)
 	return (
 		<>
 			<Header className='shrink-0 px-4 pt-7 pb-5 text-left sm:px-7'>
 				<Title className='pr-8 text-2xl leading-8'>Архивировать доску</Title>
 				<Description className='sr-only'>
-					Подтвердите архивацию доски «{view.board.name}». Данные не удаляются.
+					Подтвердите архивацию доски «{boardName}». Данные не удаляются.
 				</Description>
 			</Header>
 			<Button
@@ -57,7 +63,7 @@ export function ArchiveBoardDialog({
 				variant='ghost'
 				size='icon-lg'
 				className='absolute top-4 right-4'
-				aria-label='Вернуться к настройкам'
+				aria-label={closeLabel}
 				disabled={pending}
 				onClick={onCancel}
 			>
@@ -65,7 +71,7 @@ export function ArchiveBoardDialog({
 			</Button>
 			<div className='min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-7 sm:px-7'>
 				<div className='space-y-1'>
-					<p className='text-lg leading-7 font-semibold break-words'>{view.board.name}</p>
+					<p className='text-lg leading-7 font-semibold break-words'>{boardName}</p>
 					<p className='text-sm leading-5 text-muted-foreground'>
 						{columns} · {tasks}
 					</p>
@@ -78,13 +84,11 @@ export function ArchiveBoardDialog({
 					</p>
 					<p className='text-sm leading-5 text-muted-foreground'>
 						{taskCount === 0
-							? `Доска «${view.board.name}» и её ${columns} будут архивированы и исчезнут из активного списка. Данные не удаляются.`
-							: `Доска «${view.board.name}», её ${columns} и ${russianPlural.select(taskCount) === 'one' ? '' : 'все '}${tasks} будут архивированы. Они исчезнут из активных списков проекта, но данные не удаляются.`}
+							? `Доска «${boardName}» и её ${columns} будут архивированы и исчезнут из активного списка. Данные не удаляются.`
+							: `Доска «${boardName}», её ${columns} и ${russianPlural.select(taskCount) === 'one' ? '' : 'все '}${tasks} будут архивированы. Они исчезнут из активных списков проекта, но данные не удаляются.`}
 					</p>
 				</div>
-				<p className='text-xs leading-4 text-muted-foreground'>
-					Несохранённые изменения настроек не будут применены.
-				</p>
+				{note && <p className='text-xs leading-4 text-muted-foreground'>{note}</p>}
 				{error && (
 					<p role='alert' className='text-sm leading-5 text-destructive'>
 						{error}

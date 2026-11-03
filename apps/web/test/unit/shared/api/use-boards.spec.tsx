@@ -1,10 +1,7 @@
 import '@/test/mocks/api/boards-service.mock'
 
 import { boardsServiceMock } from '@/test/mocks/api/boards-service.mock'
-import {
-	createBoardListItemFixture,
-	createBoardViewFixture,
-} from '@/test/mocks/api/boards.fixtures'
+import { createBoardListItemFixture } from '@/test/mocks/api/boards.fixtures'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -14,7 +11,6 @@ import {
 	useArchiveBoard,
 	useBoardsList,
 	useCreateBoard,
-	useDeleteBoard,
 	useUpdateBoard,
 } from '@/shared/api/use-boards'
 import { taskLabelsKeys } from '@/shared/api/use-task-labels'
@@ -23,7 +19,6 @@ import { tasksKeys } from '@/shared/api/use-tasks'
 beforeEach(() => {
 	boardsServiceMock.getAll.mockReset()
 	boardsServiceMock.create.mockReset()
-	boardsServiceMock.delete.mockReset()
 	boardsServiceMock.update.mockReset()
 	boardsServiceMock.archive.mockReset()
 })
@@ -203,53 +198,6 @@ it('добавляет созданную доску только в списо�
 	client.clear()
 })
 
-it('отменяет загрузку удалённой доски и не возвращает её в кэш запоздавшим ответом', async () => {
-	const client = new QueryClient({
-		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-	})
-	const key = boardsKeys.list('team-1', 'project-1')
-	const boardKey = tasksKeys.board('team-1', 'project-1', 'deleted')
-	const otherKey = tasksKeys.board('team-1', 'project-1', 'other')
-	const board = createBoardListItemFixture({ id: 'deleted', taskCount: 0 })
-	const other = createBoardViewFixture('other')
-	let resolve!: (value: ReturnType<typeof createBoardViewFixture>) => void
-	const slow = new Promise<ReturnType<typeof createBoardViewFixture>>((done) => {
-		resolve = done
-	})
-	let signal!: AbortSignal
-	const fetch = client
-		.fetchQuery({
-			queryKey: boardKey,
-			queryFn: (context) => {
-				signal = context.signal
-				return slow
-			},
-		})
-		.catch(() => undefined)
-	client.setQueryData(key, [board])
-	client.setQueryData(otherKey, other)
-	boardsServiceMock.delete.mockResolvedValue(undefined)
-	const { result, unmount } = renderHook(() => useDeleteBoard(), {
-		wrapper: ({ children }) => (
-			<QueryClientProvider client={client}>{children}</QueryClientProvider>
-		),
-	})
-	await act(async () => {
-		await result.current.mutateAsync({
-			teamId: 'team-1',
-			projectId: 'project-1',
-			boardId: 'deleted',
-		})
-	})
-	expect(signal.aborted).toBe(true)
-	resolve(createBoardViewFixture('deleted'))
-	await fetch
-	expect(client.getQueryData(key)).toEqual([])
-	expect(client.getQueryData(boardKey)).toBeUndefined()
-	expect(client.getQueryData(otherKey)).toEqual(other)
-	unmount()
-	client.clear()
-})
 afterEach(cleanup)
 
 it.each([
