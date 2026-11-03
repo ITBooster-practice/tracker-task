@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { BoardListItem, CreateBoard, UpdateBoard } from '@repo/types'
+import type { ArchiveBoard, BoardListItem, CreateBoard, UpdateBoard } from '@repo/types'
 
 import { boardsService } from '@/shared/lib/api/boards-service'
 import type { ApiError } from '@/shared/lib/api/types'
 
 import { boardsKeys } from './boards-keys'
+import { taskLabelsKeys } from './use-task-labels'
 import { tasksKeys } from './use-tasks'
 
 export { boardsKeys } from './boards-keys'
@@ -89,6 +90,44 @@ export const useDeleteBoard = () => {
 			)
 			client.removeQueries({ queryKey: boardKey, exact: true })
 			await client.invalidateQueries({ queryKey, exact: true })
+		},
+	})
+}
+
+export const useArchiveBoard = (options?: {
+	onArchived?: () => void | Promise<void>
+}) => {
+	const client = useQueryClient()
+	return useMutation<
+		void,
+		ApiError,
+		{ teamId: string; projectId: string; boardId: string; data: ArchiveBoard }
+	>({
+		mutationFn: ({ teamId, projectId, boardId, data }) =>
+			boardsService.archive(teamId, projectId, boardId, data),
+		onSuccess: async (_, { teamId, projectId, boardId }) => {
+			// Удаление активной доски из кэша может размонтировать вызывающий компонент.
+			await options?.onArchived?.()
+			const listKey = boardsKeys.list(teamId, projectId)
+			const boardKey = tasksKeys.board(teamId, projectId, boardId)
+			const detailKey = tasksKeys.projectDetails(teamId, projectId)
+			const refreshKeys = [
+				listKey,
+				tasksKeys.projectLists(teamId, projectId),
+				tasksKeys.projectBoards(teamId, projectId),
+				taskLabelsKeys.project(teamId, projectId),
+			]
+			await Promise.all(
+				[...refreshKeys, detailKey].map((queryKey) => client.cancelQueries({ queryKey })),
+			)
+			client.setQueryData<BoardListItem[]>(listKey, (boards) =>
+				boards?.filter((board) => board.id !== boardId),
+			)
+			client.removeQueries({ queryKey: boardKey, exact: true })
+			client.removeQueries({ queryKey: detailKey })
+			await Promise.all(
+				refreshKeys.map((queryKey) => client.invalidateQueries({ queryKey })),
+			)
 		},
 	})
 }
