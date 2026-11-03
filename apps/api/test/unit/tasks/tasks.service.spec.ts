@@ -237,7 +237,7 @@ describe('TasksService', () => {
 			expect(prisma.$transaction).not.toHaveBeenCalled()
 		})
 	})
-	it('searches by the stable task key within the current project', async () => {
+	it('searches by the full task UUID within the current project', async () => {
 		prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
 		prisma.task.findMany.mockResolvedValue([])
 		prisma.task.count.mockResolvedValue(0)
@@ -267,6 +267,32 @@ describe('TasksService', () => {
 			}),
 		)
 	})
+	it.each(['TT-20064af7', 'tt-20064AF7', ' TT-20064 '])(
+		'searches by the displayed code or its prefix within the current project: %s',
+		async (code) => {
+			prisma.teamMember.findUnique.mockResolvedValue(MEMBER_OWNER)
+			prisma.task.findMany.mockResolvedValue([])
+			prisma.task.count.mockResolvedValue(0)
+			await service.findAll(
+				TEAM_ID,
+				PROJECT_ID,
+				USER_ID,
+				{ search: code },
+				{ page: 1, limit: 20 },
+			)
+			const where = {
+				projectId: PROJECT_ID,
+				boardColumn: { board: { archivedAt: null } },
+				OR: expect.arrayContaining([
+					{ id: { startsWith: code.trim().slice(3).toLowerCase(), mode: 'insensitive' } },
+				]),
+			}
+			expect(prisma.task.findMany).toHaveBeenCalledWith(
+				expect.objectContaining({ where }),
+			)
+			expect(prisma.task.count).toHaveBeenCalledWith({ where })
+		},
+	)
 
 	// ── create ────────────────────────────────────────────────────────────────
 	describe('create', () => {

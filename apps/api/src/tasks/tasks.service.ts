@@ -9,6 +9,7 @@ import { Prisma, TaskStatus, TeamRole, type TeamMember } from 'generated/prisma/
 import {
 	DEFAULT_TASK_SORT_BY,
 	DEFAULT_TASK_SORT_ORDER,
+	parseTaskCode,
 	type TaskFilterQuery,
 	type TaskLabelsQuery,
 } from '@repo/types'
@@ -148,6 +149,7 @@ export class TasksService {
 		await this.findProjectOrThrow(teamId, projectId)
 
 		const search = filters.search?.trim()
+		const codePrefix = search ? parseTaskCode(search) : null
 		const titleSearch = {
 			title: {
 				contains: search ? escapeTaskSearch(search) : undefined,
@@ -168,16 +170,18 @@ export class TasksService {
 		}
 		const where: Prisma.TaskWhereInput = {
 			projectId,
+			boardColumn: { board: { archivedAt: null } },
 			...(filters.status && { status: filters.status as TaskStatus }),
 			...(filters.priority && { priority: filters.priority }),
-			boardColumn: { board: { archivedAt: null } },
 			...(filters.assigneeId && { assigneeId: filters.assigneeId }),
 			...(filters.type && { type: filters.type }),
-			// Task keys are the stable UUIDs exposed by the board and task details.
 			...(search && {
 				OR: [
 					titleSearch,
 					...(taskKeyPattern.test(search) ? [{ id: search }] : []),
+					...(codePrefix
+						? [{ id: { startsWith: codePrefix, mode: 'insensitive' as const } }]
+						: []),
 					labelSearch,
 				],
 			}),
