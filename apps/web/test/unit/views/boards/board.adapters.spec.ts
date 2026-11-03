@@ -16,7 +16,7 @@ describe('board API adapters', () => {
 	it('сохраняет доменные поля и добавляет только представление карточки', () => {
 		const task = Object.freeze(
 			createBoardTaskFixture({
-				id: 'task-api',
+				id: '20064af7-8cc2-4e98-83d3-d793f0491234',
 				type: 'BUG',
 				boardColumnId: 'column:custom',
 				version: 7,
@@ -30,7 +30,7 @@ describe('board API adapters', () => {
 		const card = toBoardCardViewModel(task, [assignee])
 
 		expect(card).toMatchObject(task)
-		expect(card.key).toBe(task.id)
+		expect(card.key).toBe('TT-20064af7')
 		expect(card.assignee).toEqual(assignee)
 	})
 

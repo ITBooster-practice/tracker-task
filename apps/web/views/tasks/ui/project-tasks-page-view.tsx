@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useRef } from 'react'
 
-import type { TaskFilterParams } from '@repo/types'
+import { formatTaskCode, type TaskFilterParams } from '@repo/types'
 import {
 	Button,
 	EmptyState,
@@ -16,6 +16,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 	Skeleton,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from '@repo/ui'
 import { ClipboardList, Plus } from '@repo/ui/icons'
 
@@ -283,12 +287,19 @@ export function ProjectTasksPageView() {
 											className='border-b border-border last:border-b-0 hover:bg-muted/40'
 										>
 											<td className='px-4 py-3'>
-												<span
-													className='block max-w-32 truncate font-mono text-xs text-muted-foreground'
-													title={task.id}
-												>
-													{task.id}
-												</span>
+												<TooltipProvider>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<span
+																className='block max-w-32 truncate rounded-sm font-mono text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring'
+																tabIndex={0}
+															>
+																{formatTaskCode(task.id)}
+															</span>
+														</TooltipTrigger>
+														<TooltipContent sideOffset={8}>ID: {task.id}</TooltipContent>
+													</Tooltip>
+												</TooltipProvider>
 											</td>
 											<td className='px-4 py-3'>
 												<TaskTypeBadge type={task.type} />
