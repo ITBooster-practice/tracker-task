@@ -65,6 +65,26 @@ async function select(label: string, option: string) {
 	fireEvent.click(within(group).getByRole('radio', { name: option }))
 }
 
+function holdOverlayExit() {
+	const getStyles = window.getComputedStyle.bind(window)
+	vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+	vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string | null) => {
+		const styles = getStyles(element, pseudo)
+		if (element.matches('[data-slot="dialog-content"], [data-slot="sheet-content"]'))
+			Object.defineProperty(styles, 'animationName', {
+				get: () =>
+					element.getAttribute('data-state') === 'closed' ? 'task-exit' : 'task-enter',
+			})
+		return styles
+	})
+}
+
+function completeOverlayExit(content: HTMLElement) {
+	const event = new Event('animationend', { bubbles: true })
+	Object.defineProperty(event, 'animationName', { value: 'task-exit' })
+	fireEvent(content, event)
+}
+
 describe('task creation', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -287,23 +307,56 @@ describe('task creation', () => {
 			}),
 		)
 	})
-	it('does not create a task on cancel and returns to the intercepted context', () => {
+	it('does not create a task on cancel and returns to the intercepted context after exit', async () => {
+		holdOverlayExit()
 		render(<CreateTaskDialog intercepted />)
+		const content = screen.getByRole('dialog')
 		fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
-		expect(back).toHaveBeenCalledOnce()
+		expect(content.getAttribute('data-state')).toBe('closed')
+		expect(back).not.toHaveBeenCalled()
+		expect(content.isConnected).toBe(true)
+		completeOverlayExit(content)
+		await waitFor(() => expect(back).toHaveBeenCalledOnce())
 		expect(create).not.toHaveBeenCalled()
 	})
 	it('closes on Escape and restores focus to the opener', async () => {
 		const opener = document.createElement('button')
 		document.body.append(opener)
 		opener.focus()
-		const { unmount } = render(<CreateTaskDialog />)
+		render(<CreateTaskDialog />)
 		fireEvent.keyDown(document, { key: 'Escape' })
-		expect(replace).toHaveBeenCalledWith('/teams/team-1/projects/project-1/tasks')
-		unmount()
+		await waitFor(() =>
+			expect(replace).toHaveBeenCalledWith('/teams/team-1/projects/project-1/tasks'),
+		)
 		await waitFor(() => expect(document.activeElement).toBe(opener))
 		opener.remove()
 	})
+	it.each([375, 1280])(
+		'keeps the created task shell mounted until exit before closing at %i px',
+		async (viewport) => {
+			width = viewport
+			holdOverlayExit()
+			create.mockResolvedValue({})
+			render(<CreateTaskDialog />)
+			title('Новая задача с анимацией')
+			const content = screen.getByRole('dialog')
+			const form = screen.getByLabelText('Название').closest('form')!
+			fireEvent.submit(form)
+			await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+			expect(replace).not.toHaveBeenCalled()
+			expect(content.isConnected).toBe(true)
+			await act(async () => fireEvent.submit(form))
+			expect(create).toHaveBeenCalledOnce()
+			completeOverlayExit(content)
+			await waitFor(() =>
+				expect(replace).toHaveBeenCalledExactlyOnceWith(
+					'/teams/team-1/projects/project-1/tasks',
+				),
+			)
+			completeOverlayExit(content)
+			expect(replace).toHaveBeenCalledOnce()
+		},
+	)
 	it('rejects whitespace-only titles using the shared schema', async () => {
 		render(<CreateTaskDialog />)
 		title('   ')

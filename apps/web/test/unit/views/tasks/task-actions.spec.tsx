@@ -107,6 +107,26 @@ async function saveEdit() {
 	fireEvent.click(save)
 }
 
+function holdOverlayExit() {
+	const getStyles = window.getComputedStyle.bind(window)
+	vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+	vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string | null) => {
+		const styles = getStyles(element, pseudo)
+		if (element.matches('[data-slot="dialog-content"], [data-slot="sheet-content"]'))
+			Object.defineProperty(styles, 'animationName', {
+				get: () =>
+					element.getAttribute('data-state') === 'closed' ? 'task-exit' : 'task-enter',
+			})
+		return styles
+	})
+}
+
+function completeOverlayExit(content: HTMLElement) {
+	const event = new Event('animationend', { bubbles: true })
+	Object.defineProperty(event, 'animationName', { value: 'task-exit' })
+	fireEvent(content, event)
+}
+
 describe('shared task details and editing', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -217,6 +237,7 @@ describe('shared task details and editing', () => {
 		}
 	})
 	it('shows the board context, description and sidebar metadata and closes from the footer', async () => {
+		holdOverlayExit()
 		current.status = 'BACKLOG'
 		current.boardColumnId = 'backlog'
 		details({ projectName: 'Проект', boardName: 'Основная доска' })
@@ -234,12 +255,32 @@ describe('shared task details and editing', () => {
 			),
 		)
 		expect(
-			screen.getByRole('button', { name: 'Скопировать ID задачи' }).textContent,
-		).toBe(current.id)
+			screen.getByRole('button', { name: 'Скопировать код задачи' }).textContent,
+		).toBe('TT-task-act')
+		const content = screen.getByRole('dialog')
 		fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }))
+		expect(content.getAttribute('data-state')).toBe('closed')
+		expect(onClose).not.toHaveBeenCalled()
+		expect(content.isConnected).toBe(true)
+		completeOverlayExit(content)
+		await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+		completeOverlayExit(content)
 		expect(onClose).toHaveBeenCalledOnce()
 	})
-	it('updates status and priority inline and refreshes the displayed data', async () => {
+	it('copies the displayed short code for task search and keeps the full ID in the tooltip', async () => {
+		current.id = '20064af7-8cc2-4e98-83d3-d793f0491234'
+		const writeText = vi.fn().mockResolvedValue(undefined)
+		vi.stubGlobal('navigator', { clipboard: { writeText } })
+		details()
+		const copy = await screen.findByRole('button', { name: 'Скопировать код задачи' })
+		expect(copy.textContent).toBe('TT-20064af7')
+		fireEvent.focus(copy)
+		expect((await screen.findByRole('tooltip')).textContent).toContain(current.id)
+		fireEvent.click(copy)
+		await waitFor(() => expect(writeText).toHaveBeenCalledWith('TT-20064af7'))
+		expect(success).toHaveBeenCalledWith('Код задачи скопирован')
+	})
+	it('updates type and priority inline and refreshes the displayed data', async () => {
 		details()
 		await screen.findByRole('heading', { name: 'Задача' })
 		await select('Тип задачи', 'История')
@@ -682,6 +723,7 @@ describe('shared task details and editing', () => {
 		expect(tasksServiceMock.update).not.toHaveBeenCalled()
 	})
 	it('confirms deletion, preserves the confirmation on error and retries', async () => {
+		holdOverlayExit()
 		tasksServiceMock.delete.mockRejectedValueOnce({
 			statusCode: 500,
 			message: 'Не удалось удалить',
@@ -690,19 +732,166 @@ describe('shared task details and editing', () => {
 		await screen.findByRole('heading', { name: 'Задача' })
 		fireEvent.click(await screen.findByRole('button', { name: 'Удалить задачу' }))
 		expect(tasksServiceMock.delete).not.toHaveBeenCalled()
-		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
+		expect(
+			screen.getByRole('group', { name: 'Удалить задачу TT-task-act?' }),
+		).toBeDefined()
+		expect(screen.getByRole('heading', { name: 'Задача' })).toBeDefined()
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить задачу' }))
 		expect(await screen.findByRole('alert')).toHaveProperty(
 			'textContent',
 			'Не удалось удалить',
 		)
 		expect(onClose).not.toHaveBeenCalled()
-		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить задачу' }))
+		const content = screen.getByRole('dialog')
+		await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+		expect(onClose).not.toHaveBeenCalled()
+		completeOverlayExit(content)
 		await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
 		expect(tasksServiceMock.delete).toHaveBeenLastCalledWith(
 			'team-1',
 			'project-1',
 			'task-action',
 		)
+	})
+	it.each([375, 1280])(
+		'closes details with Escape after exit and restores focus at %i px',
+		async (viewport) => {
+			width = viewport
+			holdOverlayExit()
+			const opener = document.createElement('button')
+			document.body.append(opener)
+			opener.focus()
+			details()
+			await screen.findByText('Контекст')
+			const content = screen.getByRole('dialog')
+			fireEvent.keyDown(content, { key: 'Escape' })
+			expect(content.getAttribute('data-state')).toBe('closed')
+			expect(onClose).not.toHaveBeenCalled()
+			expect(document.activeElement).not.toBe(opener)
+			completeOverlayExit(content)
+			await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+			expect(document.activeElement).toBe(opener)
+			opener.remove()
+		},
+	)
+	it('keeps details open during deletion and waits for exit after success', async () => {
+		holdOverlayExit()
+		let resolve!: () => void
+		tasksServiceMock.delete.mockReturnValue(
+			new Promise<void>((done) => {
+				resolve = done
+			}),
+		)
+		details()
+		await screen.findByText('Контекст')
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить задачу' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить задачу' }))
+		await waitFor(() => expect(tasksServiceMock.delete).toHaveBeenCalledOnce())
+		const content = screen.getByRole('dialog')
+		fireEvent.keyDown(content, { key: 'Escape' })
+		fireEvent.click(screen.getByRole('button', { name: 'Закрыть просмотр задачи' }))
+		expect(content.getAttribute('data-state')).toBe('open')
+		expect(onClose).not.toHaveBeenCalled()
+		await act(async () => resolve())
+		await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+		expect(onClose).not.toHaveBeenCalled()
+		completeOverlayExit(content)
+		await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+	})
+	it.each(['Отмена', 'Escape', 'Сохранить изменения'])(
+		'completes edit closing through %s after exit',
+		async (action) => {
+			holdOverlayExit()
+			render(
+				<TaskEditDialog
+					teamId='team-1'
+					projectId='project-1'
+					task={current}
+					onClose={onClose}
+				/>,
+				{ wrapper: Wrapper },
+			)
+			await screen.findByRole('radio', { name: 'На проверке', checked: true })
+			const content = screen.getByRole('dialog')
+			if (action === 'Сохранить изменения') {
+				fireEvent.change(screen.getByLabelText('Название'), {
+					target: { value: 'Сохранённое название' },
+				})
+				await saveEdit()
+				await waitFor(() => expect(tasksServiceMock.update).toHaveBeenCalledOnce())
+			} else if (action === 'Escape') fireEvent.keyDown(content, { key: 'Escape' })
+			else fireEvent.click(screen.getByRole('button', { name: action }))
+			await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+			expect(onClose).not.toHaveBeenCalled()
+			expect(content.isConnected).toBe(true)
+			completeOverlayExit(content)
+			await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+			expect(tasksServiceMock.update).toHaveBeenCalledTimes(
+				action === 'Сохранить изменения' ? 1 : 0,
+			)
+		},
+	)
+	it('blocks editing close while saving and keeps a single update through the exit', async () => {
+		holdOverlayExit()
+		let resolve!: (task: Task) => void
+		tasksServiceMock.update.mockReturnValue(
+			new Promise<Task>((done) => {
+				resolve = done
+			}),
+		)
+		render(
+			<TaskEditDialog
+				teamId='team-1'
+				projectId='project-1'
+				task={current}
+				onClose={onClose}
+			/>,
+			{ wrapper: Wrapper },
+		)
+		await screen.findByRole('radio', { name: 'На проверке', checked: true })
+		fireEvent.change(screen.getByLabelText('Название'), {
+			target: { value: 'Сохраняемый черновик' },
+		})
+		const content = screen.getByRole('dialog')
+		const form = screen.getByLabelText('Название').closest('form')!
+		await saveEdit()
+		await waitFor(() => expect(tasksServiceMock.update).toHaveBeenCalledOnce())
+		fireEvent.keyDown(content, { key: 'Escape' })
+		fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+		expect(screen.getByRole('button', { name: 'Отмена' })).toHaveProperty(
+			'disabled',
+			true,
+		)
+		expect(content.getAttribute('data-state')).toBe('open')
+		expect(onClose).not.toHaveBeenCalled()
+		await act(async () => resolve({ ...current, title: 'Сохраняемый черновик' }))
+		await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+		await act(async () => fireEvent.submit(form))
+		expect(tasksServiceMock.update).toHaveBeenCalledOnce()
+		expect(onClose).not.toHaveBeenCalled()
+		completeOverlayExit(content)
+		await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+	})
+	it('cancels inline deletion and returns to the same task without making a request', async () => {
+		details({ boardName: 'Основная доска' })
+		await screen.findByText('Контекст')
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить задачу' }))
+		const confirmation = screen.getByRole('group', {
+			name: 'Удалить задачу TT-task-act?',
+		})
+		expect(confirmation.textContent).toContain('с доски «Основная доска»')
+		expect(document.activeElement).toBe(
+			within(confirmation).getByRole('button', { name: 'Отмена' }),
+		)
+		expect(screen.getByRole('combobox', { name: 'Приоритет' })).toHaveProperty(
+			'disabled',
+			true,
+		)
+		fireEvent.click(within(confirmation).getByRole('button', { name: 'Отмена' }))
+		expect(screen.getByRole('button', { name: 'Редактировать задачу' })).toBeDefined()
+		expect(screen.getByText('Контекст')).toBeDefined()
+		expect(tasksServiceMock.delete).not.toHaveBeenCalled()
 	})
 	it('handles an unavailable direct task link with a retry and close', async () => {
 		tasksServiceMock.getById.mockRejectedValueOnce({

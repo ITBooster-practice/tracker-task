@@ -31,7 +31,9 @@ interface TaskDialogProps {
 	footer?: ReactNode
 	variant?: 'form' | 'details'
 	pending?: boolean
+	open?: boolean
 	onClose: () => void
+	onClosed?: () => void
 	returnFocus?: HTMLElement | null
 }
 
@@ -43,7 +45,9 @@ export function TaskDialog({
 	footer,
 	variant = 'details',
 	pending = false,
+	open = true,
 	onClose,
+	onClosed,
 	returnFocus,
 }: TaskDialogProps) {
 	const desktop = useMediaQuery('(min-width: 1280px)')
@@ -61,7 +65,7 @@ export function TaskDialog({
 	const Description = desktop ? DialogDescription : SheetDescription
 	return (
 		<Root
-			open
+			open={open}
 			onOpenChange={(open) => {
 				if (!open && !pending) onClose()
 			}}
@@ -81,6 +85,7 @@ export function TaskDialog({
 					event.preventDefault()
 					const target = returnFocus ?? opener
 					if (target?.isConnected) target.focus()
+					onClosed?.()
 				}}
 			>
 				<Header
