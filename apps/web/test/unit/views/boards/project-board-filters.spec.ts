@@ -77,6 +77,7 @@ it('ищет по видимому ключу, названию и меткам 
 	const columns = createBoardColumnsFixture()
 	columns[0]!.tasks = [
 		createBoardTaskFixture({
+			id: '20064af7-8cc2-4e98-83d3-d793f0491234',
 			key: 'TT-ABC',
 			title: 'Прототип',
 			labels: ['Frontend', 'Refactor'],
@@ -90,7 +91,12 @@ it('ищет по видимому ключу, названию и меткам 
 			query: 'tt-abc',
 		})[0]!.tasks,
 	).toHaveLength(1)
-	for (const query of ['прототип', ' FRONT ', 'refactor']) {
+	for (const query of [
+		'прототип',
+		' FRONT ',
+		'refactor',
+		'20064af7-8cc2-4e98-83d3-d793f0491234',
+	]) {
 		expect(
 			filterProjectBoardColumns(columns, {
 				...emptyProjectBoardFilters,
@@ -174,7 +180,7 @@ it('строит стабильный полный список исполнит
 	const columns = createBoardColumnsFixture()
 	const options = projectBoardAssigneeOptions(
 		columns,
-		[{ id: 'anna', name: 'Анна', initials: 'А' }],
+		[{ id: 'anna', name: 'Анна' }],
 		'removed',
 	)
 	expect(options).toContainEqual({ value: 'anna', label: 'Анна' })
@@ -219,7 +225,7 @@ it('перенос внутри колонки исключает исходну
 	expect(fullBoardMovePosition(columns, visible, 'a', 'missing', 0)).toBeNull()
 })
 
-it('отбирает просроченные незавершённые задачи и сохраняет условие в ссылке', () => {
+it('отбирает задачи с прошедшим сроком независимо от статуса и сохраняет условие в ссылке', () => {
 	const columns = createBoardColumnsFixture()
 	columns[0]!.tasks = [
 		createBoardTaskFixture({
@@ -238,7 +244,7 @@ it('отбирает просроченные незавершённые зад�
 	const filters = { ...emptyProjectBoardFilters, overdue: true }
 	expect(
 		filterProjectBoardColumns(columns, filters)[0]!.tasks.map((task) => task.id),
-	).toEqual(['overdue'])
+	).toEqual(['overdue', 'completed'])
 	const params = projectBoardFilterParams(
 		new URLSearchParams('boardId=board&extra=keep'),
 		filters,
@@ -246,4 +252,29 @@ it('отбирает просроченные незавершённые зад�
 	expect(parseProjectBoardFilters(params).overdue).toBe(true)
 	const cleared = projectBoardFilterParams(params, { ...filters, overdue: false })
 	expect(cleared.toString()).toBe('boardId=board&extra=keep')
+})
+
+it('использует переданное время и сравнивает точный срок, включая часовой пояс', () => {
+	const columns = createBoardColumnsFixture()
+	columns[0]!.tasks = [
+		createBoardTaskFixture({ id: 'past', dueDate: '2026-11-02T14:59:59+03:00' }),
+		createBoardTaskFixture({ id: 'equal', dueDate: '2026-11-02T15:00:00+03:00' }),
+		createBoardTaskFixture({ id: 'future', dueDate: '2026-11-02T12:00:01Z' }),
+		createBoardTaskFixture({
+			id: 'done',
+			dueDate: '2020-01-01T00:00:00Z',
+			status: 'DONE',
+		}),
+		createBoardTaskFixture({ id: 'undated', dueDate: null }),
+	]
+	const filters = { ...emptyProjectBoardFilters, overdue: true }
+	const now = Date.parse('2026-11-02T12:00:00Z')
+	expect(
+		filterProjectBoardColumns(columns, filters, now)[0]!.tasks.map((task) => task.id),
+	).toEqual(['past', 'done'])
+	expect(
+		filterProjectBoardColumns(columns, filters, now + 2000)[0]!.tasks.map(
+			(task) => task.id,
+		),
+	).toEqual(['past', 'equal', 'future', 'done'])
 })
