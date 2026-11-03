@@ -89,9 +89,8 @@ export function TaskForm({
 				className='min-h-0 space-y-5 overflow-y-auto px-6 pb-6 sm:px-8'
 			>
 				<div className='space-y-2'>
-					<Label htmlFor='task-title' className='text-sm leading-5'>
+					<Label htmlFor='task-title' required className='text-sm leading-5'>
 						Название
-						<span aria-hidden>*</span>
 					</Label>
 					<Input
 						id='task-title'
