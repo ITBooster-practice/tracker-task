@@ -2,9 +2,21 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import type { Task, UpdateTask } from '@repo/types'
-import { Button, cn, ConfirmDialog, Skeleton, toast } from '@repo/ui'
-import { Copy, Trash2 } from '@repo/ui/icons'
+import { formatTaskCode, type Task, type UpdateTask } from '@repo/types'
+import {
+	Button,
+	cn,
+	Collapsible,
+	CollapsibleContent,
+	Skeleton,
+	toast,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+	useOverlayClose,
+} from '@repo/ui'
+import { Copy, Trash2, TriangleAlert } from '@repo/ui/icons'
 
 import { useMe } from '@/shared/api/use-auth'
 import { useDeleteTask, useTaskDetail, useUpdateTask } from '@/shared/api/use-tasks'
@@ -30,27 +42,37 @@ interface TaskDetailsDialogProps {
 function TaskIdentity({ task }: { task: Task }) {
 	const type = taskTypeChoices[task.type]
 	const TypeIcon = type.Icon
+	const code = formatTaskCode(task.id)
 	return (
 		<>
-			<Button
-				type='button'
-				variant='outline'
-				size='sm'
-				className='max-w-full gap-2 bg-muted/50 px-2 text-muted-foreground'
-				aria-label='Скопировать ID задачи'
-				title={task.id}
-				onClick={async () => {
-					try {
-						await navigator.clipboard.writeText(task.id)
-						toast.success('ID задачи скопирован')
-					} catch {
-						toast.error('Не удалось скопировать ID задачи')
-					}
-				}}
-			>
-				<span className='truncate font-mono font-normal'>{task.id}</span>
-				<Copy aria-hidden className='size-4 shrink-0' />
-			</Button>
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							type='button'
+							variant='outline'
+							size='sm'
+							className='max-w-full gap-2 bg-muted/50 px-2 text-muted-foreground'
+							aria-label='Скопировать код задачи'
+							onClick={async () => {
+								try {
+									await navigator.clipboard.writeText(code)
+									toast.success('Код задачи скопирован')
+								} catch {
+									toast.error('Не удалось скопировать код задачи')
+								}
+							}}
+						>
+							<span className='truncate font-mono font-normal'>{code}</span>
+							<Copy aria-hidden className='size-4 shrink-0' />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent sideOffset={8}>
+						<p>Скопировать {code}</p>
+						<p>ID: {task.id}</p>
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
 			<span
 				className={cn(
 					'inline-flex items-center gap-1.5 text-xs leading-4',
@@ -73,6 +95,7 @@ export function TaskDetailsDialog({
 	onClose,
 	onPendingChange,
 }: TaskDetailsDialogProps) {
+	const { open, close: closeOverlay, completeClose } = useOverlayClose(onClose)
 	const query = useTaskDetail(teamId, projectId, taskId)
 	const profile = useMe()
 	const members = useTeamMemberOptions(teamId, true)
@@ -88,7 +111,12 @@ export function TaskDetailsDialog({
 			: null,
 	)
 	const inFlight = useRef(false)
-	const busy = updating.isPending || deleting.isPending || editBusy
+	const deleteTrigger = useRef<HTMLButtonElement>(null)
+	const deleteCancel = useRef<HTMLButtonElement>(null)
+	const busy = !open || updating.isPending || deleting.isPending || editBusy
+	useEffect(() => {
+		if (confirming) deleteCancel.current?.focus({ preventScroll: true })
+	}, [confirming])
 	useEffect(() => {
 		onPendingChange?.(busy)
 		return () => onPendingChange?.(false)
@@ -96,11 +124,12 @@ export function TaskDetailsDialog({
 	const task = query.data
 	const role = members.data?.find((member) => member.userId === profile.data?.id)?.role
 	const canDelete = role === 'ADMIN' || role === 'OWNER'
+	const confirmingDeletion = confirming && canDelete && Boolean(task)
 	const canEdit = Boolean(
 		task && profile.data && (task.createdById === profile.data.id || canDelete),
 	)
 	const close = () => {
-		if (!busy && !inFlight.current) onClose()
+		if (!busy && !inFlight.current) void closeOverlay()
 	}
 	const report = (reason: unknown, fallback: string) => {
 		const message = isApiError(reason) ? reason.message : fallback
@@ -126,7 +155,7 @@ export function TaskDetailsDialog({
 		try {
 			await deleting.mutateAsync({ teamId, projectId, taskId })
 			toast.success('Задача удалена')
-			onClose()
+			await closeOverlay()
 		} catch (reason) {
 			report(reason, 'Не удалось удалить задачу. Повторите попытку.')
 		} finally {
@@ -145,34 +174,10 @@ export function TaskDetailsDialog({
 				onClose={() => setEditing(false)}
 			/>
 		)
-	if (confirming && task && canDelete)
-		return (
-			<ConfirmDialog
-				open
-				title='Удалить задачу?'
-				description={`Задача «${task.title}» будет удалена из проекта. Это действие нельзя отменить.`}
-				confirmLabel='Удалить'
-				pendingLabel='Удаляем…'
-				isPending={deleting.isPending}
-				onConfirm={() => {
-					void remove()
-				}}
-				onOpenChange={(open) => {
-					if (!open && !inFlight.current) {
-						setConfirming(false)
-						setError(null)
-					}
-				}}
-			>
-				{error && (
-					<p role='alert' className='text-sm text-destructive'>
-						{error}
-					</p>
-				)}
-			</ConfirmDialog>
-		)
 	return (
 		<TaskDialog
+			open={open}
+			onClosed={completeClose}
 			title={task?.title ?? 'Задача'}
 			description={
 				[projectName, boardName].filter(Boolean).join(' / ') || 'Задача проекта'
@@ -182,47 +187,128 @@ export function TaskDetailsDialog({
 			onClose={close}
 			returnFocus={returnFocus}
 			footer={
-				<footer className='flex min-w-0 flex-wrap items-center gap-3 border-t border-border px-6 py-5 sm:px-7'>
-					{task && !query.isError && canDelete && (
-						<Button
-							type='button'
-							variant='ghost'
-							size='lg'
-							disabled={busy}
-							className='text-destructive hover:bg-destructive/10 hover:text-destructive'
-							onClick={() => {
-								setError(null)
-								setConfirming(true)
-							}}
-						>
-							<Trash2 aria-hidden className='size-4' />
-							Удалить задачу
-						</Button>
+				<footer
+					className={cn(
+						'min-w-0 border-t transition-colors duration-200 motion-reduce:transition-none',
+						confirmingDeletion
+							? 'border-destructive/30 bg-destructive/5'
+							: 'border-border',
 					)}
-					<div className='ml-auto flex min-w-0 max-w-full flex-wrap justify-end gap-2.5'>
-						<Button
-							type='button'
-							variant='outline'
-							size='lg'
-							disabled={busy}
-							onClick={close}
+				>
+					<Collapsible open={confirmingDeletion}>
+						<CollapsibleContent
+							aria-hidden={!confirmingDeletion}
+							inert={!confirmingDeletion}
 						>
-							Закрыть
-						</Button>
-						{task && !query.isError && canEdit && (
-							<Button
-								type='button'
-								size='lg'
-								disabled={busy}
-								onClick={() => {
-									setError(null)
-									setEditing(true)
-								}}
-							>
-								Редактировать задачу
-							</Button>
-						)}
-					</div>
+							{task && canDelete && (
+								<div
+									role='group'
+									aria-labelledby='task-delete-title'
+									className='space-y-3 px-6 py-5 sm:px-7'
+								>
+									<h2
+										id='task-delete-title'
+										className='flex items-center gap-2 text-lg leading-7 font-semibold'
+									>
+										<TriangleAlert
+											aria-hidden
+											className='size-4 shrink-0 text-destructive'
+										/>
+										Удалить задачу {formatTaskCode(task.id)}?
+									</h2>
+									<p className='text-sm leading-5 text-muted-foreground'>
+										«{task.title}» будет удалена
+										{boardName ? ` с доски «${boardName}»` : ' из проекта'}. Подтвердите
+										действие.
+									</p>
+									{error && (
+										<p role='alert' className='text-sm text-destructive'>
+											{error}
+										</p>
+									)}
+									<div className='flex flex-wrap justify-end gap-2.5'>
+										<Button
+											ref={deleteCancel}
+											type='button'
+											variant='outline'
+											size='lg'
+											disabled={busy || !confirmingDeletion}
+											onClick={() => {
+												setConfirming(false)
+												setError(null)
+												requestAnimationFrame(() =>
+													deleteTrigger.current?.focus({ preventScroll: true }),
+												)
+											}}
+										>
+											Отмена
+										</Button>
+										<Button
+											type='button'
+											variant='destructive'
+											size='lg'
+											disabled={busy || !confirmingDeletion}
+											onClick={() => {
+												void remove()
+											}}
+										>
+											{deleting.isPending ? 'Удаляем…' : 'Удалить задачу'}
+										</Button>
+									</div>
+								</div>
+							)}
+						</CollapsibleContent>
+					</Collapsible>
+					<Collapsible open={!confirmingDeletion}>
+						<CollapsibleContent
+							aria-hidden={confirmingDeletion}
+							inert={confirmingDeletion}
+						>
+							<div className='flex min-w-0 flex-wrap items-center gap-3 px-6 py-5 sm:px-7'>
+								{task && !query.isError && canDelete && (
+									<Button
+										ref={deleteTrigger}
+										type='button'
+										variant='ghost'
+										size='lg'
+										disabled={busy || confirmingDeletion}
+										className='text-destructive hover:bg-destructive/10 hover:text-destructive'
+										onClick={() => {
+											setError(null)
+											setConfirming(true)
+										}}
+									>
+										<Trash2 aria-hidden className='size-4' />
+										Удалить задачу
+									</Button>
+								)}
+								<div className='ml-auto flex min-w-0 max-w-full flex-wrap justify-end gap-2.5'>
+									<Button
+										type='button'
+										variant='outline'
+										size='lg'
+										disabled={busy || confirmingDeletion}
+										onClick={close}
+									>
+										Закрыть
+									</Button>
+									{task && !query.isError && canEdit && (
+										<Button
+											type='button'
+											size='lg'
+											disabled={busy || confirmingDeletion}
+											onClick={() => {
+												setError(null)
+												setEditing(true)
+											}}
+										>
+											Редактировать задачу
+										</Button>
+									)}
+								</div>
+							</div>
+						</CollapsibleContent>
+					</Collapsible>
 				</footer>
 			}
 		>
@@ -262,7 +348,7 @@ export function TaskDetailsDialog({
 									{task.description || 'Описание не добавлено.'}
 								</p>
 							</section>
-							{error && (
+							{error && !confirmingDeletion && (
 								<p role='alert' className='text-sm text-destructive'>
 									{error}
 								</p>
@@ -274,7 +360,7 @@ export function TaskDetailsDialog({
 							task={task}
 							members={members.data ?? []}
 							canEdit={canEdit}
-							busy={busy}
+							busy={busy || confirmingDeletion}
 							onUpdate={(data) => {
 								void update(data)
 							}}

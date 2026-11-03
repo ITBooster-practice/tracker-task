@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { createTaskSchema, TaskStatusSchema } from '@repo/types'
-import { toast } from '@repo/ui'
+import { toast, useOverlayClose } from '@repo/ui'
 
 import { useCreateTask } from '@/shared/api/use-tasks'
 import { useTeamMemberOptions } from '@/shared/api/use-team-members'
@@ -41,6 +41,7 @@ export function TaskCreateDialog({
 	onPendingChange,
 	onClose,
 }: TaskCreateDialogProps) {
+	const { open, close: closeOverlay, completeClose } = useOverlayClose(onClose)
 	const inFlight = useRef(false)
 	const [serverError, setServerError] = useState<string | null>(null)
 	const initialColumn =
@@ -65,10 +66,10 @@ export function TaskCreateDialog({
 	}, [creation.isPending, onPendingChange])
 	const close = () => {
 		if (!inFlight.current && !creation.isPending && !form.formState.isSubmitting)
-			onClose()
+			void closeOverlay()
 	}
 	const submit = async (values: TaskFormValues) => {
-		if (inFlight.current) return
+		if (!open || inFlight.current) return
 		inFlight.current = true
 		setServerError(null)
 		try {
@@ -80,7 +81,7 @@ export function TaskCreateDialog({
 			})
 			await creation.mutateAsync({ teamId, projectId, data })
 			toast.success('Задача создана')
-			onClose()
+			await closeOverlay()
 		} catch (error) {
 			const message = isApiError(error)
 				? error.message
@@ -93,6 +94,8 @@ export function TaskCreateDialog({
 	}
 	return (
 		<TaskDialog
+			open={open}
+			onClosed={completeClose}
 			variant='form'
 			title='Создать задачу'
 			description={
@@ -100,7 +103,7 @@ export function TaskCreateDialog({
 					? `Новая задача на доске «${boardName}».`
 					: 'Заполните поля для создания новой задачи.'
 			}
-			pending={creation.isPending || form.formState.isSubmitting}
+			pending={!open || creation.isPending || form.formState.isSubmitting}
 			onClose={close}
 		>
 			<TaskForm
@@ -115,7 +118,7 @@ export function TaskCreateDialog({
 				onRetryMembers={() => {
 					void members.refetch()
 				}}
-				pending={creation.isPending}
+				pending={!open || creation.isPending}
 				serverError={serverError}
 				onSubmit={submit}
 				onCancel={close}

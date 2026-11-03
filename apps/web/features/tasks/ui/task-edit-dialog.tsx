@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { updateTaskSchema, type Task } from '@repo/types'
-import { toast } from '@repo/ui'
+import { toast, useOverlayClose } from '@repo/ui'
 
 import { useUpdateTask } from '@/shared/api/use-tasks'
 import { useTeamMemberOptions } from '@/shared/api/use-team-members'
@@ -38,6 +38,7 @@ export function TaskEditDialog({
 	onPendingChange,
 	returnFocus,
 }: TaskEditDialogProps) {
+	const { open, close: closeOverlay, completeClose } = useOverlayClose(onClose)
 	const [initialTask] = useState(task)
 	const form = useForm<TaskFormValues>({
 		resolver: zodResolver(taskFormSchema),
@@ -55,10 +56,10 @@ export function TaskEditDialog({
 	}, [mutation.isPending, onPendingChange])
 	const close = () => {
 		if (!inFlight.current && !mutation.isPending && !form.formState.isSubmitting)
-			onClose()
+			void closeOverlay()
 	}
 	const submit = async (values: TaskFormValues) => {
-		if (inFlight.current) return
+		if (!open || inFlight.current) return
 		if (columns.isPending || columns.error) return
 		if (!columns.columns.some((column) => column.id === values.boardColumnId)) {
 			setServerError('Выбранная колонка недоступна. Выберите другую колонку.')
@@ -72,7 +73,7 @@ export function TaskEditDialog({
 				await mutation.mutateAsync({ teamId, projectId, taskId: task.id, data })
 				toast.success('Задача обновлена')
 			}
-			onClose()
+			await closeOverlay()
 		} catch (error) {
 			const message = isApiError(error)
 				? error.message
@@ -87,10 +88,12 @@ export function TaskEditDialog({
 	}
 	return (
 		<TaskDialog
+			open={open}
+			onClosed={completeClose}
 			variant='form'
 			title='Редактировать задачу'
 			description={initialTask.title}
-			pending={mutation.isPending || form.formState.isSubmitting}
+			pending={!open || mutation.isPending || form.formState.isSubmitting}
 			onClose={close}
 			returnFocus={returnFocus}
 		>
@@ -111,7 +114,7 @@ export function TaskEditDialog({
 				onRetryMembers={() => {
 					void members.refetch()
 				}}
-				pending={mutation.isPending}
+				pending={!open || mutation.isPending}
 				serverError={serverError}
 				onSubmit={submit}
 				onCancel={close}
