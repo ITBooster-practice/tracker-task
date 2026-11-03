@@ -5,8 +5,8 @@ import { cn } from '@repo/ui'
 
 import { boardCellId, type BoardLane } from '../model/board-swimlanes'
 import { getBoardColumnContainerId } from '../model/constants'
-import type { BoardColumn } from '../model/types'
-import { BoardCard } from './board-card'
+import type { BoardColumn, PendingBoardTask } from '../model/types'
+import { BoardCard, PendingBoardCard } from './board-card'
 
 // Board already projects the insertion slot into the rendered task order.
 const projectedTaskSortingStrategy: SortingStrategy = () => null
@@ -18,6 +18,7 @@ interface BoardColumnTasksProps {
 	disabled?: boolean
 	lane?: BoardLane
 	dropDisabled?: boolean
+	pendingTasks?: PendingBoardTask[]
 }
 
 export function BoardColumnTasks({
@@ -27,6 +28,7 @@ export function BoardColumnTasks({
 	disabled = false,
 	lane,
 	dropDisabled = false,
+	pendingTasks = [],
 }: BoardColumnTasksProps) {
 	const { isOver, setNodeRef } = useDroppable({
 		id: lane ? boardCellId(lane, column.id) : getBoardColumnContainerId(column.id),
@@ -49,23 +51,26 @@ export function BoardColumnTasks({
 				strategy={projectedTaskSortingStrategy}
 			>
 				<div className='flex min-h-full flex-col gap-3'>
-					{column.tasks.length ? (
-						column.tasks.map((task) => (
-							<BoardCard
-								key={task.id}
-								task={task}
-								boardColumnId={column.id}
-								laneKey={lane?.key}
-								onOpenTask={onOpenTask}
-								disabled={disabled}
-								isActiveDragItem={activeDragTaskId === task.id}
-							/>
-						))
-					) : (
-						<div className='flex min-h-[100px] flex-1 items-center justify-center rounded-[var(--radius-surface)] border border-dashed border-border bg-background/40 px-4 text-center text-sm leading-5 text-muted-foreground'>
-							{disabled || dropDisabled ? 'Нет задач' : 'Перетащите карточку сюда'}
-						</div>
-					)}
+					{pendingTasks.map((task) => (
+						<PendingBoardCard key={task.localId} task={task} />
+					))}
+					{column.tasks.length
+						? column.tasks.map((task) => (
+								<BoardCard
+									key={task.id}
+									task={task}
+									boardColumnId={column.id}
+									laneKey={lane?.key}
+									onOpenTask={onOpenTask}
+									disabled={disabled}
+									isActiveDragItem={activeDragTaskId === task.id}
+								/>
+							))
+						: !pendingTasks.length && (
+								<div className='flex min-h-[100px] flex-1 items-center justify-center rounded-[var(--radius-surface)] border border-dashed border-border bg-background/40 px-4 text-center text-sm leading-5 text-muted-foreground'>
+									{disabled || dropDisabled ? 'Нет задач' : 'Перетащите карточку сюда'}
+								</div>
+							)}
 				</div>
 			</SortableContext>
 		</div>

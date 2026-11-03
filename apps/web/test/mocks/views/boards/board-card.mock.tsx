@@ -11,22 +11,6 @@ interface UseSortableInput {
 }
 
 const boardCardMockState = vi.hoisted(() => ({
-	buildClassName: (args: unknown[]) =>
-		args
-			.flatMap((arg) => {
-				if (typeof arg === 'string') {
-					return [arg]
-				}
-
-				if (arg && typeof arg === 'object' && !Array.isArray(arg)) {
-					return Object.entries(arg)
-						.filter(([, value]) => Boolean(value))
-						.map(([key]) => key)
-				}
-
-				return []
-			})
-			.join(' '),
 	isDragging: false,
 	dragListeners: {
 		onKeyDown: vi.fn(),
@@ -83,29 +67,4 @@ vi.mock('@dnd-kit/utilities', () => ({
 				transform ? 'translate3d(8px, 12px, 0)' : undefined,
 		},
 	},
-}))
-
-vi.mock('@repo/ui', () => ({
-	Badge: ({ children, className }: React.PropsWithChildren<{ className?: string }>) => (
-		<span className={className}>{children}</span>
-	),
-	Avatar: ({ children, className }: React.PropsWithChildren<{ className?: string }>) => (
-		<div className={className}>{children}</div>
-	),
-	AvatarFallback: ({
-		children,
-		className,
-	}: React.PropsWithChildren<{ className?: string }>) => (
-		<span className={className}>{children}</span>
-	),
-	Card: ({ children, className }: React.PropsWithChildren<{ className?: string }>) => (
-		<article className={className}>{children}</article>
-	),
-	CardContent: ({
-		children,
-		className,
-	}: React.PropsWithChildren<{ className?: string }>) => (
-		<div className={className}>{children}</div>
-	),
-	cn: (...args: unknown[]) => boardCardMockState.buildClassName(args),
 }))
