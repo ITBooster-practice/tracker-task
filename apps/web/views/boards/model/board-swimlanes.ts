@@ -25,6 +25,7 @@ export function buildBoardLanes(
 	mode: BoardGrouping,
 	columns: BoardColumn[],
 	assignees: BoardAssignee[],
+	pending: readonly Pick<BoardTask, 'assigneeId'>[] = [],
 ): BoardLane[] {
 	if (mode === 'none') return []
 	if (mode === 'priority')
@@ -54,8 +55,8 @@ export function buildBoardLanes(
 			assignable: true,
 		})
 	const unknown = new Set(
-		columns
-			.flatMap((column) => column.tasks.map((task) => task.assigneeId))
+		[...columns.flatMap((column) => column.tasks), ...pending]
+			.map((task) => task.assigneeId)
 			.filter((id): id is string => id !== null && !known.has(id)),
 	)
 	for (const id of [...unknown].sort())
@@ -69,7 +70,7 @@ export function buildBoardLanes(
 }
 
 export const taskInLane = (
-	task: BoardTask,
+	task: Pick<BoardTask, 'priority' | 'assigneeId'>,
 	lane: Pick<BoardLane, 'priority' | 'assigneeId'>,
 ) =>
 	(lane.priority === undefined || task.priority === lane.priority) &&

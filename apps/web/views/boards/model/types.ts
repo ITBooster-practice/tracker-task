@@ -21,6 +21,14 @@ export interface BoardTask extends ApiBoardTask {
 	assignee: BoardAssignee | null
 }
 
+export interface PendingBoardTask extends Pick<
+	BoardTask,
+	'title' | 'type' | 'priority' | 'labels' | 'dueDate' | 'assigneeId' | 'assignee' | 'key'
+> {
+	localId: string
+	boardColumnId: BoardColumnId
+}
+
 export interface BoardColumn extends Omit<BoardColumnWithTasks, 'tasks'> {
 	tasks: BoardTask[]
 }

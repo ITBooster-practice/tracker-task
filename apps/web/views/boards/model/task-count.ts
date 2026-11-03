@@ -18,3 +18,8 @@ export function formatBoardTaskCount(
 			: (taskForms[plural] ?? 'задач')
 	return `${count} ${form}`
 }
+
+export function formatPendingBoardTaskCount(count: number) {
+	const plural = taskPlural.select(count)
+	return `${count} ${plural === 'one' ? 'локальная' : plural === 'few' ? 'локальные' : 'локальных'}`
+}
