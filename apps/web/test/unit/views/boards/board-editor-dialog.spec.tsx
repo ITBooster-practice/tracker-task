@@ -20,10 +20,12 @@ import { useState } from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import type { BoardView } from '@repo/types'
+import { toast } from '@repo/ui'
 
 import { toBoardColumnsViewModel } from '@/views/boards/model/adapters'
 import { BoardColumn } from '@/views/boards/ui/board-column'
 import { BoardEditorDialog } from '@/views/boards/ui/board-editor-dialog'
+import { boardsKeys, useBoardsList } from '@/shared/api/use-boards'
 
 let client: QueryClient
 beforeEach(() => {
@@ -109,6 +111,65 @@ const renderEditor = (board: BoardView = view(), onClose = vi.fn()) => {
 	)
 	return onClose
 }
+
+function holdOverlayExit() {
+	const getStyles = window.getComputedStyle.bind(window)
+	vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+	vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string | null) => {
+		const styles = getStyles(element, pseudo)
+		if (element.matches('[data-slot="dialog-content"], [data-slot="sheet-content"]'))
+			Object.defineProperty(styles, 'animationName', {
+				get: () =>
+					element.getAttribute('data-state') === 'closed' ? 'board-exit' : 'board-enter',
+			})
+		return styles
+	})
+}
+
+function completeOverlayExit(content: HTMLElement) {
+	const event = new Event('animationend', { bubbles: true })
+	Object.defineProperty(event, 'animationName', { value: 'board-exit' })
+	fireEvent(content, event)
+}
+
+it.each([true, false])(
+	'завершает закрытие настроек только после exit-анимации (desktop=%s)',
+	async (desktop) => {
+		vi.stubGlobal('matchMedia', () => ({
+			matches: desktop,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		}))
+		holdOverlayExit()
+		const onClose = renderEditor()
+		const content = screen.getByRole('dialog')
+		await click(screen.getByRole('button', { name: 'Отмена' }))
+		expect(content.getAttribute('data-state')).toBe('closed')
+		expect(content.isConnected).toBe(true)
+		expect(onClose).not.toHaveBeenCalled()
+		completeOverlayExit(content)
+		await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+	},
+)
+
+it('сохраняет доску в кэше до закрытия подтверждения архивации', async () => {
+	holdOverlayExit()
+	const board = view()
+	const key = boardsKeys.list('team-1', 'project-1')
+	client.setQueryData(key, [board.board])
+	boardsServiceMock.archive.mockResolvedValue(undefined)
+	const onClose = renderEditor(board)
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	const content = screen.getByRole('dialog')
+	await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+	expect(client.getQueryData(key)).toEqual([board.board])
+	expect(onClose).not.toHaveBeenCalled()
+	completeOverlayExit(content)
+	await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+	await waitFor(() => expect(client.getQueryData(key)).toEqual([]))
+})
+
 const save = () => click(screen.getByRole('button', { name: 'Сохранить изменения' }))
 const markForRemoval = async (title: string, destination: string) => {
 	await click(screen.getByRole('button', { name: `Удалить колонку «${title}»` }))
@@ -147,7 +208,7 @@ it('переводит фокус из меню в настройки и воз�
 	await click(screen.getByRole('menuitem', { name: 'Настроить колонку' }))
 	await waitFor(() =>
 		expect(document.activeElement).toBe(
-			screen.getByRole('textbox', { name: 'Название доски *' }),
+			screen.getByRole('textbox', { name: 'Название доски' }),
 		),
 	)
 	await click(screen.getByRole('button', { name: 'Отмена' }))
@@ -198,7 +259,7 @@ it('сохраняет название, цвета, новую колонку �
 })
 
 it('подтверждает переименование по Enter и Check, восстанавливает исходное имя по Escape', async () => {
-	renderEditor()
+	const onClose = renderEditor()
 	await click(screen.getByRole('button', { name: 'Переименовать колонку «To do»' }))
 	await change(screen.getByRole('textbox', { name: 'Название колонки' }), 'План')
 	await keyDown(screen.getByRole('textbox', { name: 'Название колонки' }), 'Enter')
@@ -214,6 +275,7 @@ it('подтверждает переименование по Enter и Check, �
 		screen.getByRole('button', { name: 'Переименовать колонку «Спринт»' }),
 	).toBeDefined()
 	expect(screen.getByRole('dialog')).toBeDefined()
+	expect(onClose).not.toHaveBeenCalled()
 	expect(boardsServiceMock.update).not.toHaveBeenCalled()
 })
 
@@ -436,12 +498,12 @@ it('отмена окна оставляет настройки на серве�
 	const board = view(),
 		original = structuredClone(board)
 	const close = renderEditor(board)
-	await change(screen.getByLabelText('Название доски *'), 'Черновик')
+	await change(screen.getByRole('textbox', { name: 'Название доски' }), 'Черновик')
 	await click(screen.getByRole('button', { name: 'Удалить колонку «Готово»' }))
 	await click(screen.getByRole('button', { name: 'Добавить колонку' }))
 	await change(screen.getByRole('textbox', { name: 'Название новой колонки' }), 'Релиз')
 	await click(screen.getByRole('button', { name: 'Отмена' }))
-	expect(close).toHaveBeenCalledOnce()
+	await waitFor(() => expect(close).toHaveBeenCalledOnce())
 	expect(boardsServiceMock.update).not.toHaveBeenCalled()
 	expect(board).toEqual(original)
 })
@@ -480,7 +542,9 @@ it('проверяет дубли названий до записи и сохр
 		true,
 	)
 	await act(async () => {
-		fireEvent.submit(screen.getByLabelText('Название доски *').closest('form')!)
+		fireEvent.submit(
+			screen.getByRole('textbox', { name: 'Название доски' }).closest('form')!,
+		)
 	})
 	await screen.findByRole('alert')
 	expect(boardsServiceMock.update).not.toHaveBeenCalled()
@@ -509,8 +573,8 @@ it('блокирует повторную отправку и закрытие �
 	render(<BoardEditorDialog teamId='team-1' projectId='project-1' onClose={close} />, {
 		wrapper: Wrapper,
 	})
-	await change(screen.getByLabelText('Название доски *'), 'Итерация')
-	const form = screen.getByLabelText('Название доски *').closest('form')!
+	await change(screen.getByRole('textbox', { name: 'Название доски' }), 'Итерация')
+	const form = screen.getByRole('textbox', { name: 'Название доски' }).closest('form')!
 	await act(async () => {
 		fireEvent.submit(form)
 		fireEvent.submit(form)
@@ -524,4 +588,230 @@ it('блокирует повторную отправку и закрытие �
 	)
 	await act(async () => resolve(createBoardListItemFixture()))
 	await waitFor(() => expect(close).toHaveBeenCalledOnce())
+})
+
+it.each([0, 21])(
+	'показывает последствия архивации с сохранёнными счётчиками для %s задач',
+	async (count) => {
+		const board = view()
+		board.board.isDefault = true
+		board.columns[0]!.tasks = Array.from({ length: count }, (_, index) =>
+			createBoardTaskFixture({ id: `task-${index}` }),
+		)
+		renderEditor(board)
+		await change(screen.getByRole('textbox', { name: 'Название доски' }), 'Черновик')
+		await click(screen.getByRole('button', { name: 'Удалить колонку «Готово»' }))
+		await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		expect(screen.getByRole('dialog', { name: 'Архивировать доску' })).toBeDefined()
+		expect(
+			screen.getByText(`2 колонки · ${count === 21 ? '21 задача' : '0 задач'}`),
+		).toBeDefined()
+		expect(
+			screen.getByText(
+				count === 0
+					? 'В архив перейдёт пустая доска'
+					: 'В архив перейдут доска и 21 задача',
+			),
+		).toBeDefined()
+		expect(screen.getByText(/Доска «Board».*её 2 колонки/)).toBeDefined()
+		expect(
+			screen.getByText('Несохранённые изменения настроек не будут применены.'),
+		).toBeDefined()
+		expect(boardsServiceMock.archive).not.toHaveBeenCalled()
+		expect(boardsServiceMock.update).not.toHaveBeenCalled()
+	},
+)
+
+it.each(['Отмена', 'Вернуться к настройкам', 'Escape'])(
+	'возвращает черновик после %s в подтверждении архивации',
+	async (action) => {
+		const close = renderEditor()
+		await change(screen.getByRole('textbox', { name: 'Название доски' }), 'Черновик')
+		await click(screen.getByRole('button', { name: 'Удалить колонку «Готово»' }))
+		await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		if (action === 'Escape') await keyDown(screen.getByRole('dialog'), 'Escape')
+		else await click(screen.getByRole('button', { name: action }))
+		expect(screen.getByRole('textbox', { name: 'Название доски' })).toHaveProperty(
+			'value',
+			'Черновик',
+		)
+		expect(screen.getByText(/Будет удалено колонок: 1/)).toBeDefined()
+		await waitFor(() =>
+			expect(document.activeElement).toBe(
+				screen.getByRole('button', { name: 'Архивировать доску' }),
+			),
+		)
+		expect(close).not.toHaveBeenCalled()
+		expect(boardsServiceMock.archive).not.toHaveBeenCalled()
+	},
+)
+
+it('архивирует основную доску одним запросом без сохранения черновика и блокирует закрытие', async () => {
+	const board = view()
+	board.board.isDefault = true
+	let resolve!: () => void
+	boardsServiceMock.archive.mockReturnValue(
+		new Promise<void>((done) => {
+			resolve = done
+		}),
+	)
+	const archived = vi.fn()
+	const close = vi.fn()
+	render(
+		<BoardEditorDialog
+			teamId='team-1'
+			projectId='project-1'
+			view={board}
+			onClose={close}
+			onArchived={archived}
+		/>,
+		{ wrapper: Wrapper },
+	)
+	await change(
+		screen.getByRole('textbox', { name: 'Название доски' }),
+		'Несохранённое имя',
+	)
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	const confirm = screen.getByRole('button', { name: 'Архивировать доску' })
+	await act(async () => {
+		fireEvent.click(confirm)
+		fireEvent.click(confirm)
+	})
+	await waitFor(() => expect(boardsServiceMock.archive).toHaveBeenCalledOnce())
+	expect(screen.getByRole('button', { name: 'Архивируем…' })).toHaveProperty(
+		'disabled',
+		true,
+	)
+	expect(screen.getByRole('button', { name: 'Отмена' })).toHaveProperty('disabled', true)
+	expect(screen.getByRole('button', { name: 'Вернуться к настройкам' })).toHaveProperty(
+		'disabled',
+		true,
+	)
+	await keyDown(screen.getByRole('dialog'), 'Escape')
+	expect(screen.getByRole('dialog', { name: 'Архивировать доску' })).toBeDefined()
+	expect(close).not.toHaveBeenCalled()
+	await act(async () => resolve())
+	await waitFor(() => expect(archived).toHaveBeenCalledOnce())
+	expect(close).toHaveBeenCalledOnce()
+	expect(boardsServiceMock.archive).toHaveBeenCalledExactlyOnceWith(
+		'team-1',
+		'project-1',
+		board.board.id,
+		{ expectedUpdatedAt: board.board.updatedAt },
+	)
+	expect(boardsServiceMock.update).not.toHaveBeenCalled()
+	expect(boardsServiceMock.create).not.toHaveBeenCalled()
+})
+
+it.each([
+	[403, 'Архивировать доску могут владелец и администратор команды.'],
+	[404, 'Доска недоступна. Возможно, она уже архивирована или удалена.'],
+	[409, 'Доска изменилась.'],
+	[503, 'Не удалось архивировать доску.'],
+])(
+	'оставляет подтверждение при ошибке %s и позволяет повторить архивацию',
+	async (statusCode, message) => {
+		boardsServiceMock.archive
+			.mockRejectedValueOnce({ statusCode, message: 'Ошибка' })
+			.mockResolvedValueOnce(undefined)
+		const close = renderEditor()
+		await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		await waitFor(() => expect(screen.getByRole('alert').textContent).toContain(message))
+		expect(screen.getByRole('dialog', { name: 'Архивировать доску' })).toBeDefined()
+		expect(close).not.toHaveBeenCalled()
+		await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		await waitFor(() => expect(close).toHaveBeenCalledOnce())
+		expect(boardsServiceMock.archive).toHaveBeenCalledTimes(2)
+	},
+)
+
+it('уведомляет об архивации до размонтирования редактора при обновлении списка досок', async () => {
+	const board = view()
+	const key = boardsKeys.list('team-1', 'project-1')
+	client.setQueryDefaults(key, { staleTime: Infinity })
+	client.setQueryData(key, [createBoardListItemFixture()])
+	boardsServiceMock.getAll.mockResolvedValue([])
+	boardsServiceMock.archive.mockResolvedValue(undefined)
+	const archived = vi.fn()
+	function Harness() {
+		const boards = useBoardsList('team-1', 'project-1')
+		return boards.data?.length ? (
+			<BoardEditorDialog
+				teamId='team-1'
+				projectId='project-1'
+				view={board}
+				onClose={vi.fn()}
+				onArchived={archived}
+			/>
+		) : (
+			<p>Нет доски</p>
+		)
+	}
+	render(<Harness />, { wrapper: Wrapper })
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	await screen.findByText('Нет доски')
+	expect(archived).toHaveBeenCalledOnce()
+})
+
+it('не закрывает новый проект и не уведомляет о старом после смены контекста во время архивации', async () => {
+	let resolve!: () => void
+	boardsServiceMock.archive.mockReturnValue(
+		new Promise<void>((done) => {
+			resolve = done
+		}),
+	)
+	const close = vi.fn()
+	const archived = vi.fn()
+	const success = vi.spyOn(toast, 'success')
+	const { rerender } = render(
+		<BoardEditorDialog
+			teamId='team-1'
+			projectId='project-1'
+			view={view()}
+			onClose={close}
+			onArchived={archived}
+		/>,
+		{ wrapper: Wrapper },
+	)
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	rerender(
+		<BoardEditorDialog
+			teamId='team-1'
+			projectId='project-2'
+			view={createBoardViewFixture('board-2', 'project-2')}
+			onClose={close}
+			onArchived={archived}
+		/>,
+	)
+	await act(async () => resolve())
+	expect(screen.getByRole('dialog', { name: 'Настроить доску' })).toBeDefined()
+	expect(close).not.toHaveBeenCalled()
+	expect(archived).not.toHaveBeenCalled()
+	expect(success).not.toHaveBeenCalled()
+	success.mockRestore()
+})
+
+it('возвращает черновик из подтверждения в мобильном Sheet', async () => {
+	vi.stubGlobal('matchMedia', () => ({
+		matches: false,
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+	}))
+	renderEditor()
+	await change(
+		screen.getByRole('textbox', { name: 'Название доски' }),
+		'Мобильный черновик',
+	)
+	await click(screen.getByRole('button', { name: 'Архивировать доску' }))
+	expect(screen.getAllByRole('dialog')).toHaveLength(1)
+	expect(screen.getByRole('dialog', { name: 'Архивировать доску' })).toBeDefined()
+	await click(screen.getByRole('button', { name: 'Отмена' }))
+	expect(screen.getByRole('textbox', { name: 'Название доски' })).toHaveProperty(
+		'value',
+		'Мобильный черновик',
+	)
+	expect(boardsServiceMock.archive).not.toHaveBeenCalled()
 })
