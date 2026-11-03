@@ -76,14 +76,22 @@ interface SlotProps {
 	className?: ClassNameProp
 }
 
-function Content({ children, className }: SlotProps) {
+interface ContentProps extends SlotProps {
+	onCloseAutoFocus?: React.ComponentProps<typeof DialogContent>['onCloseAutoFocus']
+}
+
+function Content({ children, className, onCloseAutoFocus }: ContentProps) {
 	const isDesktop = useDialogDrawer()
 	const resolved = resolve(children, isDesktop)
 	const resolvedClassName = resolveClassName(className, isDesktop)
 
 	const ContentComponent = isDesktop ? DialogContent : DrawerContent
 
-	return <ContentComponent className={resolvedClassName}>{resolved}</ContentComponent>
+	return (
+		<ContentComponent className={resolvedClassName} onCloseAutoFocus={onCloseAutoFocus}>
+			{resolved}
+		</ContentComponent>
+	)
 }
 
 function Header({ children, className }: SlotProps) {
