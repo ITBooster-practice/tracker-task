@@ -99,12 +99,15 @@ export const useUpdateProject = () => {
 	})
 }
 
-export const useDeleteProject = () => {
+export const useDeleteProject = (options?: {
+	onDeleted?: () => void | Promise<void>
+}) => {
 	const queryClient = useQueryClient()
 
 	return useMutation<void, ApiError, { teamId: string; projectId: string }>({
 		mutationFn: ({ teamId, projectId }) => projectsService.delete(teamId, projectId),
-		onSuccess: (_, { teamId, projectId }) => {
+		onSuccess: async (_, { teamId, projectId }) => {
+			await options?.onDeleted?.()
 			useWorkspaceStore.getState().clearProject(teamId, projectId)
 			queryClient.invalidateQueries({ queryKey: projectsKeys.teamLists(teamId) })
 			queryClient.removeQueries({ queryKey: projectsKeys.detail(teamId, projectId) })

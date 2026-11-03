@@ -1,12 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectDetailPageView } from '@/views/projects/ui/project-detail-page-view'
 import { FeatureFlagsContext } from '@/shared/lib/feature-flags/context'
 
 const mockUseProjectDetail = vi.fn()
-const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }))
+const { mockPush, mockDeleteProject } = vi.hoisted(() => ({
+	mockPush: vi.fn(),
+	mockDeleteProject: vi.fn(),
+}))
 
 vi.mock('next/link', () => ({
 	default: ({
@@ -27,7 +30,14 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/shared/api/use-projects', () => ({
 	useProjectDetail: (...args: unknown[]) => mockUseProjectDetail(...args),
-	useDeleteProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
+	useDeleteProject: (options?: { onDeleted?: () => void | Promise<void> }) => ({
+		mutateAsync: async (...args: unknown[]) => {
+			const result = await mockDeleteProject(...args)
+			await options?.onDeleted?.()
+			return result
+		},
+		isPending: false,
+	}),
 }))
 
 vi.mock('@/shared/config', () => ({
@@ -39,7 +49,8 @@ vi.mock('@/shared/config', () => ({
 	},
 }))
 
-vi.mock('@repo/ui', () => ({
+vi.mock('@repo/ui', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@repo/ui')>()),
 	Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 	AvatarFallback: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
 	Button: ({
@@ -48,7 +59,6 @@ vi.mock('@repo/ui', () => ({
 	}: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
 		<button {...props}>{children}</button>
 	),
-	ConfirmDialog: () => null,
 	EmptyState: ({ title }: { title: string }) => (
 		<div data-testid='empty-state'>{title}</div>
 	),
@@ -109,9 +119,32 @@ function createWrapper() {
 	return Wrapper
 }
 
+function holdDialogExit() {
+	const getStyles = window.getComputedStyle.bind(window)
+	vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+	vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string | null) => {
+		const styles = getStyles(element, pseudo)
+		if (element.matches('[data-slot="dialog-content"]'))
+			Object.defineProperty(styles, 'animationName', {
+				get: () =>
+					element.getAttribute('data-state') === 'closed'
+						? 'project-exit'
+						: 'project-enter',
+			})
+		return styles
+	})
+}
+
+function completeDialogExit(content: HTMLElement) {
+	const event = new Event('animationend', { bubbles: true })
+	Object.defineProperty(event, 'animationName', { value: 'project-exit' })
+	fireEvent(content, event)
+}
+
 describe('ProjectDetailPageView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockDeleteProject.mockReset()
 		mockUseProjectDetail.mockReturnValue({
 			data: defaultProject,
 			isLoading: false,
@@ -120,7 +153,10 @@ describe('ProjectDetailPageView', () => {
 		})
 	})
 
-	afterEach(cleanup)
+	afterEach(() => {
+		cleanup()
+		vi.unstubAllGlobals()
+	})
 	it('hides the AI generator until enabled and keeps the project available', () => {
 		const { rerender } = render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 		expect(screen.queryByRole('button', { name: /AI Генератор/ })).toBeNull()
@@ -154,6 +190,33 @@ describe('ProjectDetailPageView', () => {
 		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
 		fireEvent.click(screen.getByRole('button', { name: /Открыть доску/ }))
 		expect(mockPush).toHaveBeenCalledWith('/teams/team-1/projects/project-uuid-1/board')
+	})
+	it('переоткрывает отменённое подтверждение и переходит к проектам после exit удаления', async () => {
+		holdDialogExit()
+		mockDeleteProject.mockResolvedValue(undefined)
+		render(<ProjectDetailPageView />, { wrapper: createWrapper() })
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить проект' }))
+		let content = screen.getByRole('dialog', { name: 'Удалить проект?' })
+		fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
+		expect(content.getAttribute('data-state')).toBe('closed')
+		expect(mockPush).not.toHaveBeenCalled()
+		completeDialogExit(content)
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+		expect(mockDeleteProject).not.toHaveBeenCalled()
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить проект' }))
+		content = screen.getByRole('dialog', { name: 'Удалить проект?' })
+		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
+		await waitFor(() => expect(content.getAttribute('data-state')).toBe('closed'))
+		expect(mockDeleteProject).toHaveBeenCalledExactlyOnceWith({
+			teamId: 'team-1',
+			projectId: 'project-uuid-1',
+		})
+		expect(mockPush).not.toHaveBeenCalled()
+		expect(content.isConnected).toBe(true)
+		completeDialogExit(content)
+		await waitFor(() =>
+			expect(mockPush).toHaveBeenCalledExactlyOnceWith('/teams/team-1/projects'),
+		)
 	})
 
 	it('breadcrumb — показывает Команды, Проекты и название проекта', () => {

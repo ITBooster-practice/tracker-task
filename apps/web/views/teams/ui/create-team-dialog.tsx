@@ -13,6 +13,7 @@ import {
 	Input,
 	Label,
 	toast,
+	useOverlayClose,
 } from '@repo/ui'
 
 import { useCreateTeam } from '@/shared/api/use-teams'
@@ -33,14 +34,18 @@ import { useCreateTeamForm } from '../model/use-create-team-form'
 function CreateTeamDialog() {
 	const router = useRouter()
 	const createTeamMutation = useCreateTeam()
-	const { name, nameError, isValid, setName, onSubmit, reset } = useCreateTeamForm()
+	const { name, nameError, isValid, setName, onSubmit } = useCreateTeamForm()
+	const { open, close, completeClose } = useOverlayClose(() => {
+		router.replace(ROUTES.teams)
+	})
 
 	const closeDialog = () => {
-		router.replace(ROUTES.teams)
+		if (!createTeamMutation.isPending) void close()
 	}
 
 	const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
+		if (!open || createTeamMutation.isPending) return
 
 		const trimmedName = onSubmit()
 
@@ -51,8 +56,7 @@ function CreateTeamDialog() {
 		try {
 			await createTeamMutation.mutateAsync({ name: trimmedName })
 			toast.success('Команда создана')
-			reset()
-			router.replace(ROUTES.teams)
+			await close()
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)
@@ -64,8 +68,11 @@ function CreateTeamDialog() {
 	}
 
 	return (
-		<DialogDrawer open onOpenChange={(open) => !open && closeDialog()}>
-			<DialogDrawerContent className={teamDialogContentClassName}>
+		<DialogDrawer open={open} onOpenChange={(nextOpen) => !nextOpen && closeDialog()}>
+			<DialogDrawerContent
+				className={teamDialogContentClassName}
+				onCloseAutoFocus={completeClose}
+			>
 				<form onSubmit={handleCreate}>
 					<DialogDrawerHeader>
 						<DialogDrawerTitle className={teamDialogTitleClassName}>
@@ -87,6 +94,7 @@ function CreateTeamDialog() {
 							onChange={(event) => setName(event.target.value)}
 							autoFocus
 							className={teamDialogInputClassName}
+							disabled={createTeamMutation.isPending || !open}
 						/>
 						{nameError && <p className='mt-1.5 text-sm text-destructive'>{nameError}</p>}
 					</div>
@@ -96,13 +104,14 @@ function CreateTeamDialog() {
 							type='button'
 							variant='outline'
 							onClick={closeDialog}
+							disabled={createTeamMutation.isPending || !open}
 							className={teamDialogSecondaryButtonClassName}
 						>
 							Отмена
 						</Button>
 						<Button
 							type='submit'
-							disabled={!isValid || createTeamMutation.isPending}
+							disabled={!isValid || createTeamMutation.isPending || !open}
 							className={teamDialogPrimaryButtonClassName}
 						>
 							{createTeamMutation.isPending ? 'Создание...' : 'Создать'}

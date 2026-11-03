@@ -2,10 +2,18 @@
 
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { FEATURE_KEYS } from '@repo/types'
-import { Button, cn, ConfirmDialog, EmptyState, Skeleton, toast } from '@repo/ui'
+import {
+	Button,
+	cn,
+	ConfirmDialog,
+	EmptyState,
+	Skeleton,
+	toast,
+	useOverlayClose,
+} from '@repo/ui'
 import {
 	Activity,
 	Bot,
@@ -71,10 +79,22 @@ function ProjectDetailPageView() {
 		isError,
 		refetch,
 	} = useProjectDetail(teamId, projectId)
-	const { mutateAsync: deleteProject, isPending: isDeleting } = useDeleteProject()
-
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+	const deleted = useRef(false)
+	const {
+		open: isDeleteDialogOpen,
+		close: closeDeleteDialog,
+		completeClose,
+		show: showDeleteDialog,
+	} = useOverlayClose(() => {
+		if (deleted.current) router.push(teamRoutes.projects(teamId))
+	}, false)
+	const { mutateAsync: deleteProject, isPending: isDeleting } = useDeleteProject({
+		onDeleted: () => {
+			deleted.current = true
+			return closeDeleteDialog()
+		},
+	})
 
 	type RecentActivity = {
 		id: string
@@ -95,7 +115,6 @@ function ProjectDetailPageView() {
 	const handleDelete = async () => {
 		try {
 			await deleteProject({ teamId, projectId })
-			router.push(teamRoutes.projects(teamId))
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)
@@ -147,7 +166,7 @@ function ProjectDetailPageView() {
 							type='button'
 							variant='outline'
 							size='icon-sm'
-							onClick={() => setIsDeleteDialogOpen(true)}
+							onClick={showDeleteDialog}
 							aria-label='Удалить проект'
 							className='text-destructive hover:border-destructive/50 hover:text-destructive'
 						>
@@ -304,7 +323,10 @@ function ProjectDetailPageView() {
 
 			<ConfirmDialog
 				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) void closeDeleteDialog()
+				}}
+				onCloseAutoFocus={completeClose}
 				title='Удалить проект?'
 				description='Проект и все связанные данные будут удалены без возможности восстановления.'
 				confirmLabel='Удалить'

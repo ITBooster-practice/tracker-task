@@ -1,10 +1,17 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 
 import { TEAM_ROLES, userEmailSchema, type TeamMember } from '@repo/types'
-import { Button, ConfirmDialog, EmptyState, toast, usePagination } from '@repo/ui'
+import {
+	Button,
+	ConfirmDialog,
+	EmptyState,
+	toast,
+	useOverlayClose,
+	usePagination,
+} from '@repo/ui'
 import { UserPlus, Users } from '@repo/ui/icons'
 
 import { useMe } from '@/shared/api/use-auth'
@@ -52,7 +59,15 @@ function TeamSettingsPageView() {
 	const [inviteOpen, setInviteOpen] = useState(false)
 	const [inviteRole, setInviteRole] = useState<TeamAssignableRole>(INITIAL_INVITE_ROLE)
 	const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null)
-	const [isDeleteTeamDialogOpen, setIsDeleteTeamDialogOpen] = useState(false)
+	const deleted = useRef(false)
+	const {
+		open: isDeleteTeamDialogOpen,
+		close: closeDeleteTeamDialog,
+		completeClose,
+		show: showDeleteTeamDialog,
+	} = useOverlayClose(() => {
+		if (deleted.current) router.replace(ROUTES.teams)
+	}, false)
 
 	const membersPagination = usePagination()
 
@@ -77,7 +92,12 @@ function TeamSettingsPageView() {
 	const removeTeamMemberMutation = useRemoveTeamMember(teamId)
 	const sendTeamInvitationMutation = useSendTeamInvitation(teamId)
 	const revokeTeamInvitationMutation = useRevokeTeamInvitation(teamId)
-	const deleteTeamMutation = useDeleteTeam()
+	const deleteTeamMutation = useDeleteTeam({
+		onDeleted: () => {
+			deleted.current = true
+			return closeDeleteTeamDialog()
+		},
+	})
 
 	const inviteEmailValue = inviteEmail.trim()
 	const isInviteEmailValid = userEmailSchema.safeParse(inviteEmailValue).success
@@ -193,8 +213,6 @@ function TeamSettingsPageView() {
 		try {
 			await deleteTeamMutation.mutateAsync(teamQuery.data.id)
 			toast.success(TEAM_SETTINGS_TEXT.dangerZone.success)
-			setIsDeleteTeamDialogOpen(false)
-			router.replace(ROUTES.teams)
 		} catch (error) {
 			if (isApiError(error)) {
 				toast.error(error.message)
@@ -298,7 +316,7 @@ function TeamSettingsPageView() {
 					{canDeleteCurrentTeam ? (
 						<TeamSettingsDangerZoneSection
 							isPending={deleteTeamMutation.isPending}
-							onDeleteTeam={() => setIsDeleteTeamDialogOpen(true)}
+							onDeleteTeam={showDeleteTeamDialog}
 						/>
 					) : null}
 				</div>
@@ -345,7 +363,10 @@ function TeamSettingsPageView() {
 
 			<ConfirmDialog
 				open={isDeleteTeamDialogOpen}
-				onOpenChange={setIsDeleteTeamDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) void closeDeleteTeamDialog()
+				}}
+				onCloseAutoFocus={completeClose}
 				title={TEAM_SETTINGS_TEXT.dangerZone.dialogTitle}
 				description={TEAM_SETTINGS_TEXT.dangerZone.dialogDescription}
 				confirmLabel={TEAM_SETTINGS_TEXT.dangerZone.dialogConfirm}
