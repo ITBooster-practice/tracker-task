@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BoardListItem } from '@repo/types'
 
 import { ProjectBoardsSection } from '@/views/boards/ui/project-boards-section'
+import { boardsKeys } from '@/shared/api/use-boards'
 
 const { push, featureEnabled } = vi.hoisted(() => ({
 	push: vi.fn(),
@@ -64,10 +65,24 @@ beforeEach(() => {
 			mutations: { retry: false },
 		},
 	})
+	vi.stubGlobal('matchMedia', () => ({
+		matches: true,
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+	}))
+	vi.stubGlobal(
+		'ResizeObserver',
+		class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		},
+	)
 })
 afterEach(() => {
 	cleanup()
 	client.clear()
+	vi.unstubAllGlobals()
 })
 
 const renderSection = () =>
@@ -82,7 +97,7 @@ describe('ProjectBoardsSection', () => {
 		expect(screen.queryByRole('heading', { name: 'Доски' })).toBeNull()
 		expect(boardsServiceMock.getAll).not.toHaveBeenCalled()
 	})
-	it('показывает дату и реальные счётчики, ведёт в выбранную доску и защищает основную', async () => {
+	it('показывает дату и счётчики, открывает доску и предлагает архивацию всех досок', async () => {
 		renderSection()
 		const link = await screen.findByRole('link', { name: 'Открыть доску «Поддержка»' })
 		expect(link.getAttribute('href')).toBe(
@@ -92,8 +107,11 @@ describe('ProjectBoardsSection', () => {
 		expect(screen.getByText('Задач: 0')).toBeDefined()
 		expect(screen.getAllByText('1 января 2026 г.')).toHaveLength(2)
 		expect(
-			screen.queryByRole('button', { name: 'Удалить доску «Основная доска»' }),
-		).toBeNull()
+			screen.getByRole('button', { name: 'Архивировать доску «Основная доска»' }),
+		).toBeDefined()
+		expect(
+			screen.getByRole('button', { name: 'Архивировать доску «Поддержка»' }),
+		).toBeDefined()
 	})
 
 	it('различает загрузку, ошибку и пустой список; повторяет запрос', async () => {
@@ -179,71 +197,173 @@ describe('ProjectBoardsSection', () => {
 		await waitFor(() => expect(push).toHaveBeenCalledTimes(1))
 	})
 
-	it('не удаляет непустую доску и объясняет причину', async () => {
-		boardsServiceMock.getAll.mockResolvedValue([main, { ...extra, taskCount: 2 }])
+	it.each([0, 2])(
+		'архивирует доску с %i задачами после подтверждения и блокирует повтор',
+		async (taskCount) => {
+			const board = { ...extra, taskCount }
+			const archive = deferred<void>()
+			boardsServiceMock.archive.mockReturnValueOnce(archive.promise)
+			boardsServiceMock.getAll
+				.mockResolvedValueOnce([main, board])
+				.mockResolvedValueOnce([main])
+			renderSection()
+			fireEvent.click(
+				await screen.findByRole('button', { name: 'Архивировать доску «Поддержка»' }),
+			)
+			expect(
+				screen.getByText(
+					taskCount
+						? 'В архив перейдут доска и 2 задачи'
+						: 'В архив перейдёт пустая доска',
+				),
+			).toBeDefined()
+			expect(boardsServiceMock.archive).not.toHaveBeenCalled()
+			const confirm = screen.getByRole('button', { name: 'Архивировать доску' })
+			fireEvent.click(confirm)
+			fireEvent.click(confirm)
+			await waitFor(() =>
+				expect(boardsServiceMock.archive).toHaveBeenCalledExactlyOnceWith(
+					'team-1',
+					'project-1',
+					board.id,
+					{ expectedUpdatedAt: board.updatedAt },
+				),
+			)
+			expect(screen.getByRole('button', { name: 'Архивируем…' })).toHaveProperty(
+				'disabled',
+				true,
+			)
+			expect(screen.getByRole('button', { name: 'Отмена' })).toHaveProperty(
+				'disabled',
+				true,
+			)
+			fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+			expect(screen.getByRole('dialog').getAttribute('data-state')).toBe('open')
+			await act(async () => archive.resolve())
+			await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+			await waitFor(() => expect(screen.queryByText('Поддержка')).toBeNull())
+			expect(document.activeElement).toBe(
+				screen.getByRole('button', { name: 'Создать доску' }),
+			)
+		},
+	)
+
+	it('архивирует основную доску и показывает новую основную из ответа сервера', async () => {
+		boardsServiceMock.archive.mockResolvedValue(undefined)
+		boardsServiceMock.getAll
+			.mockResolvedValueOnce([main, extra])
+			.mockResolvedValueOnce([{ ...extra, isDefault: true }])
 		renderSection()
 		fireEvent.click(
-			await screen.findByRole('button', { name: 'Удалить доску «Поддержка»' }),
+			await screen.findByRole('button', { name: 'Архивировать доску «Основная доска»' }),
 		)
-		expect(screen.getByRole('button', { name: 'Удалить' })).toHaveProperty(
-			'disabled',
-			true,
-		)
-		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
-		expect(screen.getByText(/Перед удалением перенесите/)).toBeDefined()
-		expect(boardsServiceMock.delete).not.toHaveBeenCalled()
+		expect(screen.getByText('В архив перейдут доска и 3 задачи')).toBeDefined()
+		fireEvent.click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+		await waitFor(() => expect(screen.queryByText('Основная доска')).toBeNull())
+		expect(
+			(await screen.findByText('Основная')).closest('a')?.getAttribute('href'),
+		).toContain('board%20%2F2')
 	})
 
-	it('удаляет пустую доску после подтверждения и убирает её из списка', async () => {
-		const remove = deferred<void>()
-		boardsServiceMock.delete.mockReturnValueOnce(remove.promise)
+	it('оставляет список при ошибке архивации и позволяет повторить запрос', async () => {
+		boardsServiceMock.archive
+			.mockRejectedValueOnce({ statusCode: 503 })
+			.mockResolvedValueOnce(undefined)
 		boardsServiceMock.getAll
 			.mockResolvedValueOnce([main, extra])
 			.mockResolvedValueOnce([main])
 		renderSection()
 		fireEvent.click(
-			await screen.findByRole('button', { name: 'Удалить доску «Поддержка»' }),
+			await screen.findByRole('button', { name: 'Архивировать доску «Поддержка»' }),
 		)
-		expect(boardsServiceMock.delete).not.toHaveBeenCalled()
-		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
-		await waitFor(() =>
-			expect(boardsServiceMock.delete).toHaveBeenCalledExactlyOnceWith(
-				'team-1',
-				'project-1',
-				'board /2',
-			),
+		fireEvent.click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		expect((await screen.findByRole('alert')).textContent).toContain(
+			'Не удалось архивировать',
 		)
-		expect(screen.getByRole('button', { name: 'Удаляем…' })).toHaveProperty(
-			'disabled',
-			true,
-		)
-		await act(async () => remove.resolve())
+		expect(client.getQueryData(boardsKeys.list('team-1', 'project-1'))).toEqual([
+			main,
+			extra,
+		])
+		fireEvent.click(screen.getByRole('button', { name: 'Архивировать доску' }))
 		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-		expect(screen.queryByText('Поддержка')).toBeNull()
+		expect(boardsServiceMock.archive).toHaveBeenCalledTimes(2)
 	})
 
-	it('сохраняет отказ удаления и обновляет счётчик при появлении задач', async () => {
-		boardsServiceMock.delete.mockRejectedValueOnce({
-			statusCode: 409,
-			message: 'conflict',
-		})
+	it('обновляет список после конфликта и берёт актуальную версию при повторном открытии', async () => {
+		const updated = { ...extra, updatedAt: '2026-11-03T13:00:00.000Z', taskCount: 4 }
+		boardsServiceMock.archive
+			.mockRejectedValueOnce({ statusCode: 409, message: 'conflict' })
+			.mockResolvedValueOnce(undefined)
 		boardsServiceMock.getAll
 			.mockResolvedValueOnce([main, extra])
-			.mockResolvedValueOnce([main, { ...extra, taskCount: 1 }])
+			.mockResolvedValueOnce([main, updated])
+			.mockResolvedValueOnce([main])
 		renderSection()
 		fireEvent.click(
-			await screen.findByRole('button', { name: 'Удалить доску «Поддержка»' }),
+			await screen.findByRole('button', { name: 'Архивировать доску «Поддержка»' }),
 		)
-		fireEvent.click(screen.getByRole('button', { name: 'Удалить' }))
-		await screen.findByRole('alert')
+		fireEvent.click(screen.getByRole('button', { name: 'Архивировать доску' }))
+		expect((await screen.findByRole('alert')).textContent).toContain('Доска изменилась')
+		await screen.findByText('Задач: 4')
+		fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Архивировать доску «Поддержка»' }),
+		)
+		expect(screen.getByText('В архив перейдут доска и 4 задачи')).toBeDefined()
+		fireEvent.click(screen.getByRole('button', { name: 'Архивировать доску' }))
 		await waitFor(() =>
-			expect(screen.getByRole('button', { name: 'Удалить' })).toHaveProperty(
-				'disabled',
-				true,
+			expect(boardsServiceMock.archive).toHaveBeenLastCalledWith(
+				'team-1',
+				'project-1',
+				extra.id,
+				{ expectedUpdatedAt: updated.updatedAt },
 			),
 		)
-		expect(screen.getByRole('dialog')).toBeDefined()
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 	})
+
+	it.each([true, false])(
+		'дожидается exit при отмене архивации и возвращает фокус (desktop=%s)',
+		async (desktop) => {
+			vi.stubGlobal('matchMedia', () => ({
+				matches: desktop,
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			}))
+			const getStyles = window.getComputedStyle.bind(window)
+			vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+			vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string | null) => {
+				const styles = getStyles(element, pseudo)
+				if (element.matches('[data-slot="dialog-content"], [data-slot="sheet-content"]'))
+					Object.defineProperty(styles, 'animationName', {
+						get: () =>
+							element.getAttribute('data-state') === 'closed'
+								? 'archive-exit'
+								: 'archive-enter',
+					})
+				return styles
+			})
+			renderSection()
+			const trigger = await screen.findByRole('button', {
+				name: 'Архивировать доску «Поддержка»',
+			})
+			trigger.focus()
+			fireEvent.click(trigger)
+			const content = screen.getByRole('dialog')
+			expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Отмена' }))
+			fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
+			expect(content.getAttribute('data-state')).toBe('closed')
+			expect(content.isConnected).toBe(true)
+			const end = new Event('animationend', { bubbles: true })
+			Object.defineProperty(end, 'animationName', { value: 'archive-exit' })
+			fireEvent(content, end)
+			await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+			expect(document.activeElement).toBe(trigger)
+			expect(boardsServiceMock.archive).not.toHaveBeenCalled()
+		},
+	)
 
 	it('смена проекта закрывает форму и игнорирует запоздавший ответ создания', async () => {
 		const post = deferred<BoardListItem>()

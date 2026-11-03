@@ -69,31 +69,6 @@ export const useUpdateBoard = () => {
 	})
 }
 
-export const useDeleteBoard = () => {
-	const client = useQueryClient()
-	return useMutation<
-		void,
-		ApiError,
-		{ teamId: string; projectId: string; boardId: string }
-	>({
-		mutationFn: ({ teamId, projectId, boardId }) =>
-			boardsService.delete(teamId, projectId, boardId),
-		onSuccess: async (_, { teamId, projectId, boardId }) => {
-			const queryKey = boardsKeys.list(teamId, projectId)
-			const boardKey = tasksKeys.board(teamId, projectId, boardId)
-			await Promise.all([
-				client.cancelQueries({ queryKey, exact: true }),
-				client.cancelQueries({ queryKey: boardKey, exact: true }),
-			])
-			client.setQueryData<BoardListItem[]>(queryKey, (boards) =>
-				boards?.filter((board) => board.id !== boardId),
-			)
-			client.removeQueries({ queryKey: boardKey, exact: true })
-			await client.invalidateQueries({ queryKey, exact: true })
-		},
-	})
-}
-
 export const useArchiveBoard = (options?: {
 	onArchived?: () => void | Promise<void>
 }) => {

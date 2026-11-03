@@ -34,12 +34,14 @@ it('создаёт доску по контракту имени и возвра
 	)
 })
 
-it('удаляет доску без несуществующих параметров переноса', async () => {
-	mockApiClient.delete.mockResolvedValue(axiosResponse(undefined))
+it('архивирует доску с версией сохранённых настроек', async () => {
+	mockApiClient.post.mockResolvedValue(axiosResponse(undefined))
+	const data = { expectedUpdatedAt: '2026-11-03T12:00:00.000Z' }
 	await expect(
-		boardsService.delete('team-1', 'project-1', 'board-1'),
+		boardsService.archive('team-1', 'project-1', 'board-1', data),
 	).resolves.toBeUndefined()
-	expect(mockApiClient.delete).toHaveBeenCalledExactlyOnceWith(
-		'/teams/team-1/projects/project-1/boards/board-1',
+	expect(mockApiClient.post).toHaveBeenCalledExactlyOnceWith(
+		'/teams/team-1/projects/project-1/boards/board-1/archive',
+		data,
 	)
 })

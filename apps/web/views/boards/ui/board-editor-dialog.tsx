@@ -334,7 +334,14 @@ function BoardEditorDialogForm({
 			>
 				{archiving && baseline.current ? (
 					<ArchiveBoardDialog
-						view={baseline.current}
+						boardName={baseline.current.board.name}
+						columnCount={baseline.current.columns.length}
+						taskCount={baseline.current.columns.reduce(
+							(total, column) => total + column.tasks.length,
+							0,
+						)}
+						closeLabel='Вернуться к настройкам'
+						note='Несохранённые изменения настроек не будут применены.'
 						desktop={desktop}
 						pending={pending}
 						error={archiveError}
