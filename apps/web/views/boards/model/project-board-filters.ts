@@ -1,7 +1,10 @@
 import { PrioritySchema, TaskTypeSchema, type Priority } from '@repo/types'
 
+import { isTaskOverdue } from '@/features/tasks/model/is-task-overdue'
+import { getServerNow } from '@/shared/lib/server-clock'
+
 import { BOARD_FILTER_ALL } from './constants'
-import type { BoardAssignee, BoardColumn, BoardTypeFilter } from './types'
+import type { BoardAssignee, BoardColumn, BoardTask, BoardTypeFilter } from './types'
 
 export const BOARD_UNASSIGNED = 'UNASSIGNED'
 export type BoardPriorityFilter = Priority | typeof BOARD_FILTER_ALL
@@ -60,41 +63,50 @@ export const hasProjectBoardFilters = (filters: ProjectBoardFilters) =>
 	filters.assignee !== BOARD_FILTER_ALL ||
 	Boolean(filters.overdue)
 
+export function matchesProjectBoardFilters(
+	task: Pick<
+		BoardTask,
+		'title' | 'key' | 'labels' | 'dueDate' | 'type' | 'priority' | 'assigneeId'
+	> & { id?: string },
+	filters: ProjectBoardFilters,
+	now = getServerNow(),
+) {
+	const query = filters.query.trim().toLocaleLowerCase('ru-RU')
+	return (
+		(!filters.overdue || isTaskOverdue(task, now)) &&
+		(!query ||
+			task.title.toLocaleLowerCase('ru-RU').includes(query) ||
+			task.key.toLocaleLowerCase('ru-RU').includes(query) ||
+			task.id?.toLocaleLowerCase('ru-RU').includes(query) ||
+			task.labels.some((label) =>
+				label
+					.normalize('NFC')
+					.toLocaleLowerCase('ru-RU')
+					.includes(query.normalize('NFC')),
+			)) &&
+		(filters.type === BOARD_FILTER_ALL || task.type === filters.type) &&
+		(filters.priority === BOARD_FILTER_ALL || task.priority === filters.priority) &&
+		(filters.assignee === BOARD_FILTER_ALL ||
+			(filters.assignee === BOARD_UNASSIGNED
+				? task.assigneeId === null
+				: task.assigneeId === filters.assignee))
+	)
+}
+
 export function filterProjectBoardColumns(
 	columns: BoardColumn[],
 	filters: ProjectBoardFilters,
+	now = getServerNow(),
 ) {
-	const query = filters.query.trim().toLocaleLowerCase('ru-RU')
 	return columns.map((column) => ({
 		...column,
-		tasks: column.tasks.filter(
-			(task) =>
-				(!filters.overdue ||
-					(task.dueDate !== null &&
-						new Date(task.dueDate).getTime() < Date.now() &&
-						task.status !== 'DONE')) &&
-				(!query ||
-					task.title.toLocaleLowerCase('ru-RU').includes(query) ||
-					task.key.toLocaleLowerCase('ru-RU').includes(query) ||
-					task.labels.some((label) =>
-						label
-							.normalize('NFC')
-							.toLocaleLowerCase('ru-RU')
-							.includes(query.normalize('NFC')),
-					)) &&
-				(filters.type === BOARD_FILTER_ALL || task.type === filters.type) &&
-				(filters.priority === BOARD_FILTER_ALL || task.priority === filters.priority) &&
-				(filters.assignee === BOARD_FILTER_ALL ||
-					(filters.assignee === BOARD_UNASSIGNED
-						? task.assigneeId === null
-						: task.assigneeId === filters.assignee)),
-		),
+		tasks: column.tasks.filter((task) => matchesProjectBoardFilters(task, filters, now)),
 	}))
 }
 
 export function projectBoardAssigneeOptions(
 	columns: BoardColumn[],
-	assignees: BoardAssignee[],
+	assignees: readonly Pick<BoardAssignee, 'id' | 'name'>[],
 	selected: string,
 ) {
 	const options = new Map<string, string>(assignees.map((item) => [item.id, item.name]))
