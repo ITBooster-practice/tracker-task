@@ -135,6 +135,7 @@ describe('Task labels', () => {
 		)
 		const where = {
 			projectId: PROJECT_ID,
+			boardColumn: { board: { archivedAt: null } },
 			OR: [
 				{ title: { contains: '100\\%\\_', mode: 'insensitive' } },
 				{

@@ -27,6 +27,7 @@ import { Authorization } from '../auth/decorators/authorization.decorator'
 import { Authorized } from '../auth/decorators/authorized.decorator'
 import { RequireFeatures } from '../feature-flags/feature.guard'
 import { BoardsService } from './boards.service'
+import { ArchiveBoardDto } from './dto/archive-board.dto'
 import { BoardListItemResponseDto } from './dto/board-response.dto'
 import { CreateBoardDto } from './dto/create-board.dto'
 import { DeleteBoardDto } from './dto/delete-board.dto'
@@ -80,6 +81,21 @@ export class BoardsController {
 		@Body() dto: UpdateBoardDto,
 	) {
 		return this.boardsService.update(teamId, projectId, boardId, userId, dto)
+	}
+
+	@Post(':boardId/archive')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: 'Архивировать доску вместе с задачами (OWNER / ADMIN)' })
+	@ApiNoContentResponse()
+	@ApiConflictResponse({ description: 'Настройки доски изменились' })
+	archive(
+		@Param('teamId') teamId: string,
+		@Param('projectId') projectId: string,
+		@Param('boardId') boardId: string,
+		@Authorized('id') userId: string,
+		@Body() dto: ArchiveBoardDto,
+	) {
+		return this.boardsService.archive(teamId, projectId, boardId, userId, dto)
 	}
 
 	@Delete(':boardId')

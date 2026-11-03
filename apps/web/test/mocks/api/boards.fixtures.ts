@@ -47,6 +47,7 @@ export function createBoardViewFixture(
 			name: 'Board',
 			description: null,
 			isDefault: false,
+			archivedAt: null,
 			createdAt: timestamp,
 			updatedAt: timestamp,
 		},

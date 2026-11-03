@@ -140,12 +140,14 @@ model Board {
   name        String
   description String?
   isDefault   Boolean       @default(false)
+  archivedAt  DateTime?
   columns     BoardColumn[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@unique([projectId, name])
   @@unique([id, projectId])
+  @@index([projectId, archivedAt])
 }
 
 model BoardColumn {

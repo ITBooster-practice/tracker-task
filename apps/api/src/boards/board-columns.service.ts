@@ -26,7 +26,7 @@ export class BoardColumnsService {
 		operation: (tx: Prisma.TransactionClient, projectId: string) => Promise<T>,
 	): Promise<T> {
 		const board = await this.prisma.board.findUnique({
-			where: { id: boardId },
+			where: { id: boardId, archivedAt: null },
 			select: { projectId: true, project: { select: { teamId: true } } },
 		})
 		if (!board) throw new NotFoundException('Доска не найдена')
@@ -45,7 +45,7 @@ export class BoardColumnsService {
 					// Serialize structural changes before reading the current column order.
 					const locked = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
 						SELECT "id" FROM "Board"
-						WHERE "id" = ${boardId} AND "projectId" = ${board.projectId}
+						WHERE "id" = ${boardId} AND "projectId" = ${board.projectId} AND "archivedAt" IS NULL
 						FOR UPDATE
 					`)
 					if (!locked.length) throw new NotFoundException('Доска больше не существует')

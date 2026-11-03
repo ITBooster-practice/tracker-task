@@ -36,7 +36,7 @@ export class BoardTasksService {
 		return this.prisma.$transaction(
 			async (tx) => {
 				const result = await tx.board.findUnique({
-					where: { id: boardId, projectId },
+					where: { id: boardId, projectId, archivedAt: null },
 					include: {
 						columns: {
 							orderBy: [{ position: 'asc' }, { id: 'asc' }],
@@ -69,7 +69,7 @@ export class BoardTasksService {
 		ids: string[],
 	) {
 		const columns = await client.boardColumn.findMany({
-			where: { id: { in: ids }, projectId },
+			where: { id: { in: ids }, projectId, board: { archivedAt: null } },
 		})
 		if (new Set(columns.map((column) => column.id)).size !== new Set(ids).size) {
 			throw new NotFoundException('Колонка не найдена в этом проекте')
@@ -94,7 +94,7 @@ export class BoardTasksService {
 					// A common order supports opposite transfers and column deletion without lock inversion.
 					const boards = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
 					SELECT "id" FROM "Board" WHERE "id" IN (${Prisma.join(boardIds)})
-					AND "projectId" = ${projectId} ORDER BY "id" FOR UPDATE
+					AND "projectId" = ${projectId} AND "archivedAt" IS NULL ORDER BY "id" FOR UPDATE
 				`)
 					if (boards.length !== boardIds.length)
 						throw new NotFoundException('Доска больше не существует')

@@ -100,11 +100,16 @@ describe('Boards (e2e)', () => {
 			where: { projectId: { in: [projectId, otherProjectId] } },
 		})
 		await prisma.board.deleteMany({
-			where: { projectId: { in: [projectId, otherProjectId] }, isDefault: false },
+			where: {
+				OR: [
+					{ projectId, id: { not: defaultBoardId } },
+					{ projectId: otherProjectId, isDefault: false },
+				],
+			},
 		})
 		await prisma.board.update({
 			where: { id: defaultBoardId },
-			data: { name: 'Основная доска' },
+			data: { name: 'Основная доска', archivedAt: null, isDefault: true },
 		})
 	})
 
@@ -810,6 +815,226 @@ describe('Boards (e2e)', () => {
 			.delete(`${path()}/${board.id}`)
 			.set('Cookie', ownerCookies)
 			.expect(403)
+	})
+
+	it.each([false, true])(
+		'archives a board and preserves its data (with tasks: %s)',
+		async (withTasks) => {
+			const board = await createBoard('Архивируемая доска')
+			const column = board.columns[0]!
+			const task = withTasks
+				? await prisma.task.create({
+						data: {
+							title: 'Archived search target',
+							projectId,
+							boardColumnId: column.id,
+							createdById: ownerId,
+						},
+					})
+				: null
+			await request(server)
+				.post(`${path()}/${board.id}/archive`)
+				.set('Cookie', ownerCookies)
+				.send({ expectedUpdatedAt: board.updatedAt })
+				.expect(204)
+			const stored = await snapshotBoard(board.id)
+			expect(stored.archivedAt).toBeInstanceOf(Date)
+			expect(stored.columns.map(({ id }) => id).sort()).toEqual(
+				board.columns.map(({ id }) => id).sort(),
+			)
+			const active = await request(server)
+				.get(path())
+				.set('Cookie', ownerCookies)
+				.expect(200)
+			expect(active.body.map((item: BoardListItem) => item.id)).not.toContain(board.id)
+			await request(server)
+				.get(`/teams/${teamId}/projects/${projectId}/tasks/board`)
+				.query({ boardId: board.id })
+				.set('Cookie', ownerCookies)
+				.expect(404)
+			await request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Rejected', boardColumnId: column.id })
+				.expect(404)
+			await request(server)
+				.patch(`${path()}/${board.id}`)
+				.set('Cookie', ownerCookies)
+				.send({ name: 'Rejected' })
+				.expect(404)
+			await request(server)
+				.post(`/boards/${board.id}/columns`)
+				.set('Cookie', ownerCookies)
+				.send({ key: 'rejected', title: 'Rejected' })
+				.expect(404)
+			if (task) {
+				const list = await request(server)
+					.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+					.query({ search: 'Archived search target' })
+					.set('Cookie', ownerCookies)
+					.expect(200)
+				expect(list.body.data).toEqual([])
+				expect(list.body.meta.total).toBe(0)
+				for (const method of ['get', 'patch', 'delete'] as const) {
+					const call = request(server)
+						[method](`/teams/${teamId}/projects/${projectId}/tasks/${task.id}`)
+						.set('Cookie', ownerCookies)
+					await (method === 'patch' ? call.send({ title: 'Rejected' }) : call).expect(404)
+				}
+				expect(await prisma.task.findUniqueOrThrow({ where: { id: task.id } })).toEqual(
+					task,
+				)
+			}
+		},
+	)
+
+	it('reassigns the primary board and allows a new primary after archiving all boards', async () => {
+		const next = await createBoard('Следующая доска')
+		const primary = await prisma.board.findUniqueOrThrow({
+			where: { id: defaultBoardId },
+		})
+		await request(server)
+			.post(`${path()}/${defaultBoardId}/archive`)
+			.set('Cookie', ownerCookies)
+			.send({ expectedUpdatedAt: primary.updatedAt.toISOString() })
+			.expect(204)
+		expect(
+			(await prisma.board.findUniqueOrThrow({ where: { id: next.id } })).isDefault,
+		).toBe(true)
+		const createdTask = await request(server)
+			.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+			.set('Cookie', ownerCookies)
+			.send({ title: 'Задача без явной колонки' })
+			.expect(201)
+		expect(createdTask.body.boardColumnId).toBe(next.columns[0]!.id)
+		const promoted = await prisma.board.findUniqueOrThrow({ where: { id: next.id } })
+		await request(server)
+			.post(`${path()}/${next.id}/archive`)
+			.set('Cookie', ownerCookies)
+			.send({ expectedUpdatedAt: promoted.updatedAt.toISOString() })
+			.expect(204)
+		const empty = await request(server)
+			.get(path())
+			.set('Cookie', ownerCookies)
+			.expect(200)
+		expect(empty.body).toEqual([])
+		const fresh = await createBoard('Новая основная доска')
+		expect(fresh.isDefault).toBe(true)
+	})
+
+	it('checks archive permissions, project scope and stale confirmations', async () => {
+		const board = await createBoard()
+		const body = { expectedUpdatedAt: board.updatedAt }
+		await request(server)
+			.post(`${path()}/${board.id}/archive`)
+			.set('Cookie', memberCookies)
+			.send(body)
+			.expect(403)
+		await request(server)
+			.post(`${path()}/${board.id}/archive`)
+			.set('Cookie', outsiderCookies)
+			.send(body)
+			.expect(403)
+		await request(server)
+			.post(`${path(otherTeamId, otherProjectId)}/${board.id}/archive`)
+			.set('Cookie', ownerCookies)
+			.send(body)
+			.expect(404)
+		await request(server)
+			.post(`${path()}/${board.id}/archive`)
+			.set('Cookie', ownerCookies)
+			.send({ expectedUpdatedAt: '2000-01-01T00:00:00.000Z' })
+			.expect(409)
+		await request(server)
+			.post(`${path()}/${board.id}/archive`)
+			.set('Cookie', ownerCookies)
+			.send({ ...body, name: 'Unsaved' })
+			.expect(400)
+		expect((await snapshotBoard(board.id)).archivedAt).toBeNull()
+		await request(server)
+			.post(`${path()}/${board.id}/archive`)
+			.set('Cookie', adminCookies)
+			.send(body)
+			.expect(204)
+	})
+
+	it('serializes archive against task creation without losing tasks', async () => {
+		const board = await createBoard()
+		const [archived, created] = await Promise.all([
+			request(server)
+				.post(`${path()}/${board.id}/archive`)
+				.set('Cookie', ownerCookies)
+				.send({ expectedUpdatedAt: board.updatedAt }),
+			request(server)
+				.post(`/teams/${teamId}/projects/${projectId}/tasks`)
+				.set('Cookie', ownerCookies)
+				.send({ title: 'Concurrent archive task', boardColumnId: board.columns[0]!.id }),
+		])
+		expect(archived.status).toBe(204)
+		expect([201, 404]).toContain(created.status)
+		const tasks = await prisma.task.findMany({
+			where: { boardColumn: { boardId: board.id } },
+		})
+		expect(tasks).toHaveLength(created.status === 201 ? 1 : 0)
+		const active = await request(server)
+			.get(`/teams/${teamId}/projects/${projectId}/tasks`)
+			.set('Cookie', ownerCookies)
+			.expect(200)
+		expect(active.body.meta.total).toBe(0)
+	})
+
+	it('allows a task FK insert while archive waits for its board lock', async () => {
+		const board = await createBoard()
+		let release!: () => void
+		let locked!: () => void
+		const ready = new Promise<void>((resolve) => {
+			locked = resolve
+		})
+		const gate = new Promise<void>((resolve) => {
+			release = resolve
+		})
+		const creating = prisma.$transaction(
+			async (tx) => {
+				await tx.$queryRaw`SELECT "id" FROM "Board" WHERE "id" = ${board.id} FOR UPDATE`
+				locked()
+				await gate
+				return tx.task.create({
+					data: {
+						title: 'FK during archive',
+						projectId,
+						boardColumnId: board.columns[0]!.id,
+						createdById: ownerId,
+					},
+				})
+			},
+			{ timeout: 15_000 },
+		)
+		await ready
+		const archiving = request(server)
+			.post(`${path()}/${board.id}/archive`)
+			.set('Cookie', ownerCookies)
+			.send({ expectedUpdatedAt: board.updatedAt })
+			.then((response) => response)
+		try {
+			let projectLocked = false
+			for (let attempt = 0; attempt < 100; attempt++) {
+				const available = await prisma.$queryRaw<
+					{ id: string }[]
+				>`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR NO KEY UPDATE SKIP LOCKED`
+				if (available.length === 0) {
+					projectLocked = true
+					break
+				}
+				await new Promise((resolve) => setTimeout(resolve, 20))
+			}
+			expect(projectLocked).toBe(true)
+		} finally {
+			release()
+		}
+		const [task, response] = await Promise.all([creating, archiving])
+		expect(response.status).toBe(204)
+		expect(await prisma.task.findUnique({ where: { id: task.id } })).not.toBeNull()
+		expect((await snapshotBoard(board.id)).archivedAt).toBeInstanceOf(Date)
 	})
 
 	it('publishes board routes, shared request validation and column responses in Swagger', () => {
