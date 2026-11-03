@@ -76,6 +76,7 @@ export function TaskLabelPicker({
 			<div
 				role='group'
 				aria-label='Выбор меток'
+				aria-busy={suggestions.isFetching}
 				data-disabled={disabled}
 				data-invalid={Boolean(message)}
 				className='flex min-h-11 min-w-0 flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-input bg-card px-3 py-2 shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 data-[invalid=true]:border-destructive data-[invalid=true]:ring-destructive/20 dark:data-[invalid=true]:ring-destructive/40'
@@ -133,6 +134,9 @@ export function TaskLabelPicker({
 							if (search.trim()) add(search)
 						}}
 					/>
+					<span role='status' className='sr-only'>
+						{suggestions.isFetching ? 'Ищем метки…' : ''}
+					</span>
 				</div>
 			</div>
 			{available.length > 0 && (
@@ -171,11 +175,6 @@ export function TaskLabelPicker({
 						<span className='truncate'>Добавить «{draft.data}»</span>
 					</Button>
 				)}
-			{suggestions.isPending && (
-				<p role='status' className='text-xs text-muted-foreground'>
-					Ищем метки…
-				</p>
-			)}
 			{suggestions.isError && (
 				<p role='alert' className='text-sm text-destructive'>
 					Не удалось загрузить метки проекта.{' '}

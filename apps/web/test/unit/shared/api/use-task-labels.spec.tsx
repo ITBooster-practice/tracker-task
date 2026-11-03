@@ -5,7 +5,7 @@ import {
 	tasksServiceMock,
 } from '@/test/mocks/api/tasks-service.mock'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { taskLabelsKeys, useTaskLabels } from '@/shared/api/use-task-labels'
@@ -42,6 +42,7 @@ describe('useTaskLabels', () => {
 		)
 
 		rerender({ project: 'project-2' })
+		expect(result.current.data).toBeUndefined()
 		await waitFor(() => expect(result.current.data).toEqual(['Other']))
 		expect(
 			client.getQueryData(taskLabelsKeys.list('team-1', 'project-1', 'front')),
@@ -49,6 +50,28 @@ describe('useTaskLabels', () => {
 		expect(
 			client.getQueryData(taskLabelsKeys.list('team-1', 'project-2', 'front')),
 		).toEqual(['Other'])
+	})
+
+	it('сохраняет подсказки текущего проекта до завершения нового поиска', async () => {
+		let finishSearch!: (labels: string[]) => void
+		const search = new Promise<string[]>((resolve) => {
+			finishSearch = resolve
+		})
+		tasksServiceMock.getLabels
+			.mockResolvedValueOnce(['Frontend', 'refactor'])
+			.mockReturnValueOnce(search)
+		const { result, rerender } = renderHook(
+			({ search }) => useTaskLabels('team-1', 'project-1', search),
+			{ initialProps: { search: '' }, wrapper: Wrapper },
+		)
+		await waitFor(() => expect(result.current.data).toEqual(['Frontend', 'refactor']))
+		rerender({ search: 'front' })
+		expect(result.current.isFetching).toBe(true)
+		expect(result.current.isPending).toBe(false)
+		expect(result.current.data).toEqual(['Frontend', 'refactor'])
+		await act(async () => finishSearch(['Frontend']))
+		await waitFor(() => expect(result.current.isFetching).toBe(false))
+		expect(result.current.data).toEqual(['Frontend'])
 	})
 
 	it('повторно использует каталог для эквивалентного регистра и пробелов поиска', async () => {
