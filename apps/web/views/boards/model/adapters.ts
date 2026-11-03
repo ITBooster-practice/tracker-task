@@ -1,4 +1,8 @@
-import type { BoardTask as ApiBoardTask, BoardView } from '@repo/types'
+import {
+	formatTaskCode,
+	type BoardTask as ApiBoardTask,
+	type BoardView,
+} from '@repo/types'
 
 import type { BoardAssignee, BoardColumn, BoardTask } from './types'
 
@@ -7,7 +11,7 @@ export const toBoardCardViewModel = (
 	assignees: readonly BoardAssignee[] = [],
 ): BoardTask => ({
 	...task,
-	key: task.id,
+	key: formatTaskCode(task.id),
 	assignee:
 		task.assigneeId === null
 			? null
