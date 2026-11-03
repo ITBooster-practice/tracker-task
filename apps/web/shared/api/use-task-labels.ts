@@ -19,5 +19,9 @@ export function useTaskLabels(teamId: string, projectId: string, search: string)
 		queryFn: ({ signal }) => tasksService.getLabels(teamId, projectId, query, signal),
 		enabled: Boolean(teamId && projectId),
 		staleTime: 30_000,
+		placeholderData: (previousData, previousQuery) =>
+			previousQuery?.queryKey[1] === teamId && previousQuery.queryKey[2] === projectId
+				? previousData
+				: undefined,
 	})
 }

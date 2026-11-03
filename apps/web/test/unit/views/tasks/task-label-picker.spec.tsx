@@ -62,6 +62,7 @@ describe('TaskLabelPicker', () => {
 		query.mockReturnValue({
 			data: ['refactor', 'Frontend'],
 			isPending: false,
+			isFetching: false,
 			isError: false,
 			refetch,
 		})
@@ -69,6 +70,32 @@ describe('TaskLabelPicker', () => {
 	afterEach(() => {
 		cleanup()
 		vi.useRealTimers()
+	})
+
+	it('keeps the draft, focus and add action available while the catalog refreshes', () => {
+		const { rerender } = render(<Picker initial={['refactor']} />)
+		const input = screen.getByLabelText('Метки')
+		input.focus()
+		fireEvent.change(input, { target: { value: 'Новая метка' } })
+		const add = screen.getByRole('button', { name: 'Добавить метку «Новая метка»' })
+		query.mockReturnValue({
+			data: ['refactor', 'Frontend'],
+			isPending: false,
+			isFetching: true,
+			isError: false,
+			refetch,
+		})
+		rerender(<Picker initial={['refactor']} />)
+		expect(
+			screen.getByRole('group', { name: 'Выбор меток' }).getAttribute('aria-busy'),
+		).toBe('true')
+		expect(input).toHaveProperty('value', 'Новая метка')
+		expect(document.activeElement).toBe(input)
+		expect(screen.getByRole('button', { name: 'Добавить метку «Новая метка»' })).toBe(add)
+		fireEvent.click(add)
+		expect(changed).toHaveBeenCalledExactlyOnceWith(['refactor', 'Новая метка'])
+		expect(input).toHaveProperty('value', '')
+		expect(document.activeElement).toBe(input)
 	})
 
 	it('selects project labels, creates a normalized label with Enter and removes it', () => {
