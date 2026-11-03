@@ -50,6 +50,9 @@ export class BoardResponseDto {
 	@ApiProperty()
 	isDefault: boolean
 
+	@ApiProperty({ type: String, format: 'date-time', nullable: true })
+	archivedAt: Date | null
+
 	@ApiProperty({ type: String, format: 'date-time' })
 	createdAt: Date
 

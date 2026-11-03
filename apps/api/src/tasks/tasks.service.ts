@@ -69,22 +69,37 @@ export class TasksService {
 		const requestedStatus = (dto.status ?? TaskStatus.TODO) as TaskStatus
 		const initialColumn = await this.prisma.boardColumn.findFirst({
 			where: dto.boardColumnId
-				? { id: dto.boardColumnId, projectId }
-				: { projectId, key: requestedStatus, isSystem: true, board: { isDefault: true } },
+				? { id: dto.boardColumnId, projectId, board: { archivedAt: null } }
+				: {
+						projectId,
+						key: requestedStatus,
+						board: { isDefault: true, archivedAt: null },
+					},
 		})
-		if (!initialColumn) throw new NotFoundException('Колонка не найдена в этом проекте')
+		const destination =
+			initialColumn ??
+			(!dto.boardColumnId
+				? await this.prisma.boardColumn.findFirst({
+						where: { projectId, board: { isDefault: true, archivedAt: null } },
+						orderBy: [{ position: 'asc' }, { id: 'asc' }],
+					})
+				: null)
+		if (!destination)
+			throw new NotFoundException(
+				'Активная колонка не найдена. Создайте доску или выберите другую колонку.',
+			)
 
 		return this.prisma.$transaction(
 			async (tx) => {
 				// Use the same board lock as task moves and column changes.
 				const locked = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
 				SELECT "id" FROM "Board"
-				WHERE "id" = ${initialColumn.boardId} AND "projectId" = ${projectId}
+				WHERE "id" = ${destination.boardId} AND "projectId" = ${projectId} AND "archivedAt" IS NULL
 				FOR UPDATE
 			`)
 				if (!locked.length) throw new NotFoundException('Доска больше не существует')
 				const column = await tx.boardColumn.findFirst({
-					where: { id: initialColumn.id, boardId: initialColumn.boardId, projectId },
+					where: { id: destination.id, boardId: destination.boardId, projectId },
 				})
 				if (!column) throw new NotFoundException('Колонка больше не существует')
 				const status =
@@ -155,6 +170,7 @@ export class TasksService {
 			projectId,
 			...(filters.status && { status: filters.status as TaskStatus }),
 			...(filters.priority && { priority: filters.priority }),
+			boardColumn: { board: { archivedAt: null } },
 			...(filters.assigneeId && { assigneeId: filters.assigneeId }),
 			...(filters.type && { type: filters.type }),
 			// Task keys are the stable UUIDs exposed by the board and task details.
@@ -216,7 +232,7 @@ export class TasksService {
 
 	private async findTaskOrThrow(projectId: string, taskId: string) {
 		const task = await this.prisma.task.findUnique({
-			where: { id: taskId },
+			where: { id: taskId, projectId, boardColumn: { board: { archivedAt: null } } },
 			include: taskLabelsInclude,
 		})
 
@@ -260,7 +276,7 @@ export class TasksService {
 					// Match task moves and settings: lock the board before reading placement or tasks.
 					const locked = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
 						SELECT "id" FROM "Board"
-						WHERE "id" = ${initialColumn.boardId} AND "projectId" = ${projectId}
+						WHERE "id" = ${initialColumn.boardId} AND "projectId" = ${projectId} AND "archivedAt" IS NULL
 						FOR UPDATE
 					`)
 					if (!locked.length) throw new NotFoundException('Доска больше не существует')
@@ -352,9 +368,31 @@ export class TasksService {
 			throw new ForbiddenException('Недостаточно прав для выполнения этого действия')
 		}
 
-		await this.findTaskOrThrow(projectId, taskId)
-
-		await this.prisma.task.delete({ where: { id: taskId } })
+		const task = await this.findTaskOrThrow(projectId, taskId)
+		await this.prisma
+			.$transaction(async (tx) => {
+				const boards = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+				SELECT b."id" FROM "Board" b
+				JOIN "BoardColumn" c ON c."boardId" = b."id" AND c."projectId" = b."projectId"
+				WHERE c."id" = ${task.boardColumnId} AND b."projectId" = ${projectId}
+				AND b."archivedAt" IS NULL FOR UPDATE OF b
+			`)
+				if (!boards.length) throw new NotFoundException('Доска больше недоступна')
+				await tx.task.delete({
+					where: { id: taskId, projectId, boardColumnId: task.boardColumnId },
+				})
+			})
+			.catch((error: unknown) => {
+				if (
+					error instanceof Prisma.PrismaClientKnownRequestError &&
+					error.code === 'P2025'
+				) {
+					throw new ConflictException(
+						'Задача изменилась. Обновите данные и повторите удаление.',
+					)
+				}
+				throw error
+			})
 
 		return { message: 'Задача успешно удалена', success: true }
 	}

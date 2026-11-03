@@ -6,6 +6,7 @@ export interface Board {
 	name: string
 	description: string | null
 	isDefault: boolean
+	archivedAt: string | null
 	createdAt: string
 	updatedAt: string
 }

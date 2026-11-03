@@ -1,4 +1,5 @@
 import {
+	archiveBoardSchema,
 	createBoardSchema,
 	createColumnSchema,
 	deleteBoardSchema,
@@ -12,6 +13,17 @@ import {
 import { describe, expect, it } from 'vitest'
 
 describe('Shared board contracts', () => {
+	it('requires a current timestamp for archive confirmation and accepts no draft fields', () => {
+		const body = { expectedUpdatedAt: '2026-11-03T12:00:00.000Z' }
+		expect(archiveBoardSchema.parse(body)).toEqual(body)
+		for (const value of [
+			{},
+			{ expectedUpdatedAt: 'invalid' },
+			{ ...body, name: 'Несохранённый черновик' },
+		]) {
+			expect(archiveBoardSchema.safeParse(value).success).toBe(false)
+		}
+	})
 	it('normalizes names and supports an empty DELETE body', () => {
 		expect(createBoardSchema.parse({ name: '  Разработка  ' })).toEqual({
 			name: 'Разработка',

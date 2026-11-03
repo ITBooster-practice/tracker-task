@@ -11,7 +11,7 @@ export async function saveBoardSettings(
 	dto: UpdateBoard,
 ) {
 	const locked = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
-		SELECT "id" FROM "Board" WHERE "id" = ${boardId} AND "projectId" = ${projectId} FOR UPDATE
+		SELECT "id" FROM "Board" WHERE "id" = ${boardId} AND "projectId" = ${projectId} AND "archivedAt" IS NULL FOR UPDATE
 	`)
 	if (!locked.length) throw new NotFoundException('Доска не найдена в этом проекте')
 	const board = await tx.board.findUniqueOrThrow({ where: { id: boardId } })

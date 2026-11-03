@@ -5,17 +5,22 @@ import { PrismaService } from '../../../prisma/prisma.service'
 import { BoardsService } from '../../../src/boards/boards.service'
 
 function createPrismaMock() {
-	return {
+	const prisma = {
 		teamMember: { findUnique: vi.fn().mockResolvedValue({ role: 'OWNER' }) },
 		project: { findFirst: vi.fn().mockResolvedValue({ id: 'project' }) },
 		board: {
+			findFirst: vi.fn().mockResolvedValue({ id: 'default-board' }),
 			findMany: vi.fn().mockResolvedValue([]),
 			findUnique: vi.fn().mockResolvedValue({ isDefault: false }),
 			create: vi.fn(),
 			update: vi.fn(),
 			delete: vi.fn(),
 		},
+		$queryRaw: vi.fn().mockResolvedValue([{ id: 'project' }]),
+		$transaction: vi.fn(),
 	}
+	prisma.$transaction.mockImplementation((callback) => callback(prisma))
+	return prisma
 }
 
 const prismaError = (code: string) =>
@@ -45,7 +50,7 @@ describe('BoardsService', () => {
 		})
 		expect(prisma.board.findMany).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: { projectId: 'project' },
+				where: { projectId: 'project', archivedAt: null },
 				include: {
 					columns: {
 						orderBy: { position: 'asc' },
@@ -136,7 +141,7 @@ describe('BoardsService', () => {
 		).toEqual({ id: 'board', name: 'Renamed', columns: [], taskCount: 0 })
 		expect(prisma.board.update).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: { id: 'board', projectId: 'project' },
+				where: { id: 'board', projectId: 'project', archivedAt: null },
 				data: { name: 'Renamed' },
 			}),
 		)
@@ -145,7 +150,7 @@ describe('BoardsService', () => {
 	it('deletes only a non-default board inside the requested project', async () => {
 		expect(await service.remove('team', 'project', 'board', 'user')).toBeUndefined()
 		expect(prisma.board.delete).toHaveBeenCalledWith({
-			where: { id: 'board', projectId: 'project', isDefault: false },
+			where: { id: 'board', projectId: 'project', isDefault: false, archivedAt: null },
 		})
 	})
 
@@ -195,6 +200,103 @@ describe('BoardsService', () => {
 		prisma.board.delete.mockRejectedValue(prismaError('P2003'))
 		await expect(service.remove('team', 'project', 'board', 'user')).rejects.toThrow(
 			ConflictException,
+		)
+	})
+
+	describe('archive', () => {
+		const stamp = '2026-11-03T12:00:00.000Z'
+		beforeEach(() => {
+			prisma.board.findUnique.mockResolvedValue({
+				id: 'board',
+				isDefault: false,
+				updatedAt: new Date(stamp),
+			})
+		})
+		it.each(['OWNER', 'ADMIN'])(
+			'lets %s archive without removing columns or tasks',
+			async (role) => {
+				prisma.teamMember.findUnique.mockResolvedValue({ role })
+				await service.archive('team', 'project', 'board', 'user', {
+					expectedUpdatedAt: stamp,
+				})
+				expect(prisma.$transaction).toHaveBeenCalledOnce()
+				expect(prisma.board.update).toHaveBeenCalledWith({
+					where: { id: 'board', projectId: 'project', archivedAt: null },
+					data: { archivedAt: expect.any(Date), isDefault: false },
+				})
+				expect(prisma.board.delete).not.toHaveBeenCalled()
+			},
+		)
+		it('promotes the next active board after archiving the primary board', async () => {
+			prisma.board.findUnique.mockResolvedValue({
+				id: 'board',
+				isDefault: true,
+				updatedAt: new Date(stamp),
+			})
+			prisma.board.findFirst.mockResolvedValue({ id: 'next' })
+			await service.archive('team', 'project', 'board', 'user', {
+				expectedUpdatedAt: stamp,
+			})
+			expect(prisma.board.findFirst).toHaveBeenCalledWith({
+				where: { projectId: 'project', archivedAt: null },
+				orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+				select: { id: true },
+			})
+			expect(prisma.board.update).toHaveBeenLastCalledWith({
+				where: { id: 'next' },
+				data: { isDefault: true },
+			})
+		})
+		it('keeps an empty active list when archiving the last board', async () => {
+			prisma.board.findUnique.mockResolvedValue({
+				id: 'board',
+				isDefault: true,
+				updatedAt: new Date(stamp),
+			})
+			prisma.board.findFirst.mockResolvedValue(null)
+			await service.archive('team', 'project', 'board', 'user', {
+				expectedUpdatedAt: stamp,
+			})
+			expect(prisma.board.update).toHaveBeenCalledOnce()
+			expect(prisma.board.create).not.toHaveBeenCalled()
+		})
+		it('rejects a stale confirmation before changing the archive state', async () => {
+			await expect(
+				service.archive('team', 'project', 'board', 'user', {
+					expectedUpdatedAt: '2026-11-02T00:00:00.000Z',
+				}),
+			).rejects.toThrow(ConflictException)
+			expect(prisma.board.update).not.toHaveBeenCalled()
+		})
+		it('rejects a member and an already archived or foreign board', async () => {
+			prisma.teamMember.findUnique.mockResolvedValue({ role: 'MEMBER' })
+			await expect(
+				service.archive('team', 'project', 'board', 'user', { expectedUpdatedAt: stamp }),
+			).rejects.toThrow(ForbiddenException)
+			prisma.teamMember.findUnique.mockResolvedValue({ role: 'OWNER' })
+			prisma.board.findUnique.mockResolvedValue(null)
+			await expect(
+				service.archive('team', 'project', 'board', 'user', { expectedUpdatedAt: stamp }),
+			).rejects.toThrow(NotFoundException)
+			expect(prisma.board.update).not.toHaveBeenCalled()
+		})
+	})
+
+	it('makes the first board after archiving all boards primary again', async () => {
+		prisma.board.findFirst.mockResolvedValue(null)
+		prisma.board.create.mockResolvedValue({ id: 'board', columns: [] })
+		await service.create('team', 'project', 'user', { name: 'Новая' })
+		expect(prisma.board.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					isDefault: true,
+					columns: {
+						create: expect.arrayContaining([
+							expect.objectContaining({ key: 'TODO', isSystem: true }),
+						]),
+					},
+				}),
+			}),
 		)
 	})
 

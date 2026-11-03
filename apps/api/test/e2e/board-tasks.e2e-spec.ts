@@ -502,6 +502,7 @@ describe('Board task payload and moves (e2e)', () => {
 		await task(mainBoard.columns[0].id, 'Another board', 0)
 		const result = await view(extraBoard.id)
 		expect(result.board).toEqual({
+			archivedAt: null,
 			description: null,
 			id: extraBoard.id,
 			projectId,

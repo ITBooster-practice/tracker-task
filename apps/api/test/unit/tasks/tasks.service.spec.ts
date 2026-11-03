@@ -253,6 +253,7 @@ describe('TasksService', () => {
 			expect.objectContaining({
 				where: {
 					projectId: PROJECT_ID,
+					boardColumn: { board: { archivedAt: null } },
 					OR: [
 						{ title: { contains: key, mode: 'insensitive' } },
 						{ id: key },
@@ -337,7 +338,11 @@ describe('TasksService', () => {
 				status: 'IN_REVIEW',
 			})
 			expect(prisma.boardColumn.findFirst).toHaveBeenNthCalledWith(1, {
-				where: { id: 'custom-column', projectId: PROJECT_ID },
+				where: {
+					id: 'custom-column',
+					projectId: PROJECT_ID,
+					board: { archivedAt: null },
+				},
 			})
 			expect(prisma.task.aggregate).toHaveBeenCalledWith({
 				where: { projectId: PROJECT_ID, boardColumnId: 'custom-column' },
@@ -463,14 +468,16 @@ describe('TasksService', () => {
 
 			expect(prisma.task.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: { projectId: PROJECT_ID },
+					where: { projectId: PROJECT_ID, boardColumn: { board: { archivedAt: null } } },
 					orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
 					skip: 0,
 					take: 10,
 				}),
 			)
 			expect(prisma.task.count).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { projectId: PROJECT_ID } }),
+				expect.objectContaining({
+					where: { projectId: PROJECT_ID, boardColumn: { board: { archivedAt: null } } },
+				}),
 			)
 			expect(result).toEqual({
 				data: [MOCK_TASK_RESPONSE],
@@ -494,7 +501,11 @@ describe('TasksService', () => {
 
 			expect(prisma.task.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: { projectId: PROJECT_ID, status: 'TODO' },
+					where: {
+						projectId: PROJECT_ID,
+						status: 'TODO',
+						boardColumn: { board: { archivedAt: null } },
+					},
 				}),
 			)
 		})
@@ -515,7 +526,11 @@ describe('TasksService', () => {
 
 			expect(prisma.task.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: { projectId: PROJECT_ID, priority: 'HIGH' },
+					where: {
+						projectId: PROJECT_ID,
+						priority: 'HIGH',
+						boardColumn: { board: { archivedAt: null } },
+					},
 				}),
 			)
 		})
@@ -537,7 +552,11 @@ describe('TasksService', () => {
 
 			expect(prisma.task.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: { projectId: PROJECT_ID, assigneeId: ASSIGNEE_ID },
+					where: {
+						projectId: PROJECT_ID,
+						assigneeId: ASSIGNEE_ID,
+						boardColumn: { board: { archivedAt: null } },
+					},
 				}),
 			)
 		})
@@ -573,7 +592,13 @@ describe('TasksService', () => {
 			const result = await service.findOne(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID)
 
 			expect(prisma.task.findUnique).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: MOCK_TASK.id } }),
+				expect.objectContaining({
+					where: {
+						id: MOCK_TASK.id,
+						projectId: PROJECT_ID,
+						boardColumn: { board: { archivedAt: null } },
+					},
+				}),
 			)
 			expect(result).toEqual(MOCK_TASK_RESPONSE)
 		})
@@ -773,7 +798,13 @@ describe('TasksService', () => {
 			await service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, USER_ID)
 
 			expect(prisma.task.delete).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: MOCK_TASK.id } }),
+				expect.objectContaining({
+					where: {
+						id: MOCK_TASK.id,
+						projectId: PROJECT_ID,
+						boardColumnId: MOCK_TASK.boardColumnId,
+					},
+				}),
 			)
 		})
 
@@ -785,7 +816,13 @@ describe('TasksService', () => {
 			await service.remove(TEAM_ID, PROJECT_ID, MOCK_TASK.id, MEMBER_ADMIN.userId)
 
 			expect(prisma.task.delete).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: MOCK_TASK.id } }),
+				expect.objectContaining({
+					where: {
+						id: MOCK_TASK.id,
+						projectId: PROJECT_ID,
+						boardColumnId: MOCK_TASK.boardColumnId,
+					},
+				}),
 			)
 		})
 
